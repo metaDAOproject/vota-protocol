@@ -13,4 +13,16 @@ describe("vote-market", () => {
     const tx = await program.methods.initialize().rpc();
     console.log("Your transaction signature", tx);
   });
+  it("Creates a config account", async () => {
+  });
+  it("Updates the allowed mints list", async () => {
+  });
+  it("Buyers can add payment", async () => {
+  });
+  it("Sellers can withdraw vote payment", async () => {
+  });
+  it("Buyers can withdraw rewards", async () => {
+  });
+  it("Sellers can withdraw rewards", async () => {
+  });
 });
