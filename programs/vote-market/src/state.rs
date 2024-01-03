@@ -24,11 +24,24 @@ impl TokenBuy {
 
 #[account]
 pub struct VoteMarketConfig {
-    script_authority: Pubkey,
-    gaugemeister: Pubkey,
+    pub script_authority: Pubkey,
+    pub gaugemeister: Pubkey,
+    pub admin: Pubkey,
+    pub efficiency_ratio: u64,
 }
 
 impl VoteMarketConfig {
-    pub const LEN: usize = 8 + 32 + 32;
+    pub const LEN: usize = 8 + 32 + 32 + 32 + 8;
+}
+
+#[account]
+pub struct AllowedMints {
+    pub mints: Vec<Pubkey>,
+}
+
+impl AllowedMints {
+    pub fn len(mints: usize) -> usize {
+        8 + 4 + 32 * mints
+    }
 }
 
