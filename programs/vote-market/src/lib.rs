@@ -83,14 +83,14 @@ pub struct CreateConfig<'info> {
 
 #[derive(Accounts)]
 pub struct UpdateScriptAuthority<'info> {
-    #[account(mut)]
+    #[account(mut, has_one = admin)]
     pub config: Account<'info, VoteMarketConfig>,
     pub admin: Signer<'info>,
 }
 
 #[derive(Accounts)]
 pub struct UpdateAdmin<'info> {
-    #[account(mut)]
+    #[account(mut, has_one = admin)]
     pub config: Account<'info, VoteMarketConfig>,
     pub admin: Signer<'info>,
 }
