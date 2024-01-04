@@ -66,6 +66,23 @@ describe("vote-market", () => {
 
   });
   it("Updates the allowed mints list", async () => {
+      const {config, allowedMints, mint1, mint2} = await setupConfig(program);
+        const newMint1 = web3.PublicKey.unique();
+        const newMint2 = web3.PublicKey.unique();
+
+        let allowedMintsAccount = await program.provider.connection.getAccountInfo(allowedMints);
+        expect(allowedMintsAccount!.data.length).to.eql(8 + 4 + 32 * 2);
+        await program.methods.updateAllowedMints([mint1, mint2, newMint1, newMint2]).accounts(
+            {
+                config: config.publicKey,
+                admin: program.provider.publicKey,
+                allowedMints
+            }).rpc();
+        allowedMintsAccount = await program.provider.connection.getAccountInfo(allowedMints);
+        expect(allowedMintsAccount!.data.length).to.eql(8 + 4 + 32 * 4);
+        const allowedMintsData = await program.account.allowedMints.fetch(allowedMints);
+        expect(allowedMintsData.mints).to.eql([mint1, mint2, newMint1, newMint2]);
+
 
   });
   it("Buyers can add payment", async () => {
