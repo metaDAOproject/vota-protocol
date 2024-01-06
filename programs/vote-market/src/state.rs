@@ -1,25 +1,15 @@
 use anchor_lang::prelude::*;
+
 #[account]
-pub struct GaugeBuy {
-    token_buys: Vec<TokenBuy>,
-    buyer: Pubkey,
-}
-
-impl GaugeBuy {
-    pub fn len(&self) -> usize {
-        8 + 32 + self.token_buys.len()
-    }
-}
-
-#[derive(AnchorDeserialize, AnchorSerialize, Copy, Clone)]
 pub struct TokenBuy {
     mint: Pubkey,
     amount: u64,
     percent_to_use_bps: u64,
+    reward_receiver: Pubkey,
 }
 
 impl TokenBuy {
-    pub const LEN: usize = 8 + 32 + 8 + 8;
+    pub const LEN: usize = 8 + 32 + 8 + 8 + 32;
 }
 
 #[account]
@@ -44,4 +34,6 @@ impl AllowedMints {
         8 + 4 + 32 * mints
     }
 }
+
+
 

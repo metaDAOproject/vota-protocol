@@ -1,6 +1,9 @@
 mod state;
+mod gauge_state;
+
 use anchor_lang::prelude::*;
-use crate::state::{AllowedMints, VoteMarketConfig};
+use crate::state::{AllowedMints, TokenBuy, VoteMarketConfig};
+use anchor_spl::token::{TokenAccount, Mint};
 
 declare_id!("CgpagJ94phFKHBKkk4pd4YdKgfNCp5SzsiNwcLe73dc");
 
@@ -61,7 +64,7 @@ pub mod vote_market {
         Ok(())
     }
 
-    pub fn buy_votes(ctx: Context<Initialize>) -> Result<()> {
+    pub fn increase_vote_buy(ctx: Context<Initialize>) -> Result<()> {
         Ok(())
     }
 
@@ -131,5 +134,29 @@ pub struct UpdateAllowedMints<'info> {
         seeds = [b"allow-list".as_ref(), config.to_account_info().key.as_ref()],
         bump)]
     pub allowed_mints: Account<'info, AllowedMints>,
+    pub system_program: Program<'info, System>,
+}
+
+
+#[derive(Accounts)]
+#[instruction(epoch: u32)]
+pub struct IncreaseVoteBuy<'info> {
+    #[account(mut)]
+    pub buyer: Signer<'info>,
+    #[account(mut)]
+    pub buyer_token_account: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub destination_token_account: Account<'info, TokenAccount>,
+    pub mint: Account<'info, Mint>,
+    #[account(has_one = gaugemeister)]
+    pub config: Account<'info, VoteMarketConfig>,
+    pub gaugemeister: Account<'info, gauge_state::Gaugemeister>,
+    #[account(init_if_needed,
+    payer = buyer,
+    space = TokenBuy::LEN,
+    seeds = [b"token-buy".as_ref(), epoch.to_le_bytes().as_ref(), config.key().as_ref(), gauge.key().as_ref()],
+    bump)]
+    pub token_buy: Account<'info, TokenBuy>,
+    pub gauge: Account<'info, gauge_state::Gauge>,
     pub system_program: Program<'info, System>,
 }
