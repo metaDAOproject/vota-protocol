@@ -1,20 +1,24 @@
 mod state;
-mod gauge_state;
 
-use anchor_lang::prelude::*;
 use crate::state::{AllowedMints, TokenBuy, VoteMarketConfig};
-use anchor_spl::token::{TokenAccount, Mint};
+use anchor_lang::prelude::*;
+use anchor_spl::token::{Mint, TokenAccount};
 
 declare_id!("CgpagJ94phFKHBKkk4pd4YdKgfNCp5SzsiNwcLe73dc");
 
 #[program]
 pub mod vote_market {
+    use super::*;
     use anchor_lang::solana_program::program::invoke;
     use anchor_lang::solana_program::system_instruction;
-    use super::*;
 
-
-    pub fn create_config(ctx: Context<CreateConfig>, mints: Vec<Pubkey>, gaugemeister: Pubkey, efficiency_ratio: u64, script_authority: Option<Pubkey> ) -> Result<()> {
+    pub fn create_config(
+        ctx: Context<CreateConfig>,
+        mints: Vec<Pubkey>,
+        gaugemeister: Pubkey,
+        efficiency_ratio: u64,
+        script_authority: Option<Pubkey>,
+    ) -> Result<()> {
         if let Some(script_authority) = script_authority {
             ctx.accounts.config.script_authority = script_authority;
         } else {
@@ -32,12 +36,18 @@ pub mod vote_market {
         Ok(())
     }
 
-    pub fn update_script_authority(ctx: Context<UpdateScriptAuthority>, script_authority: Pubkey) -> Result<()> {
+    pub fn update_script_authority(
+        ctx: Context<UpdateScriptAuthority>,
+        script_authority: Pubkey,
+    ) -> Result<()> {
         ctx.accounts.config.script_authority = script_authority;
         Ok(())
     }
 
-    pub fn update_allowed_mints(ctx: Context<UpdateAllowedMints>, allowed_mints: Vec<Pubkey>) -> Result<()> {
+    pub fn update_allowed_mints(
+        ctx: Context<UpdateAllowedMints>,
+        allowed_mints: Vec<Pubkey>,
+    ) -> Result<()> {
         let allowed_mints_size = AllowedMints::len(ctx.accounts.allowed_mints.mints.len());
         let next_allowed_mints_size = AllowedMints::len(allowed_mints.len());
         if next_allowed_mints_size > allowed_mints_size {
@@ -52,11 +62,14 @@ pub mod vote_market {
                     &ctx.accounts.allowed_mints.key(),
                     required_lamports,
                 );
-                invoke(&transfer_rent, &[
-                    ctx.accounts.admin.to_account_info(),
-                    ctx.accounts.allowed_mints.to_account_info(),
-                    ctx.accounts.system_program.to_account_info(),
-                ])?;
+                invoke(
+                    &transfer_rent,
+                    &[
+                        ctx.accounts.admin.to_account_info(),
+                        ctx.accounts.allowed_mints.to_account_info(),
+                        ctx.accounts.system_program.to_account_info(),
+                    ],
+                )?;
             }
         }
 
@@ -136,7 +149,6 @@ pub struct UpdateAllowedMints<'info> {
     pub allowed_mints: Account<'info, AllowedMints>,
     pub system_program: Program<'info, System>,
 }
-
 
 #[derive(Accounts)]
 #[instruction(epoch: u32)]

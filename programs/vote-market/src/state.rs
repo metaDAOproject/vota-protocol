@@ -34,6 +34,3 @@ impl AllowedMints {
         8 + 4 + 32 * mints
     }
 }
-
-
-
