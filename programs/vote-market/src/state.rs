@@ -2,10 +2,10 @@ use anchor_lang::prelude::*;
 
 #[account]
 pub struct TokenBuy {
-    mint: Pubkey,
-    amount: u64,
-    percent_to_use_bps: u64,
-    reward_receiver: Pubkey,
+    pub mint: Pubkey,
+    pub amount: u64,
+    pub percent_to_use_bps: u64,
+    pub reward_receiver: Pubkey,
 }
 
 impl TokenBuy {

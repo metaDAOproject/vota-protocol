@@ -1,4 +1,5 @@
 mod state;
+mod errors;
 
 use crate::state::{AllowedMints, TokenBuy, VoteMarketConfig};
 use anchor_lang::prelude::*;
@@ -12,6 +13,7 @@ pub mod vote_market {
     use super::*;
     use anchor_lang::solana_program::program::invoke;
     use anchor_lang::solana_program::system_instruction;
+    use anchor_spl::token::spl_token;
 
     pub fn create_config(
         ctx: Context<CreateConfig>,
@@ -80,7 +82,36 @@ pub mod vote_market {
     }
 
     pub fn increase_vote_buy(ctx: Context<IncreaseVoteBuy>, epoch: u32, amount: u64) -> Result<()> {
-        msg!("token buy: {}", ctx.accounts.token_buy.key());
+        let gaugemeister_info = ctx.accounts.gaugemeister.to_account_info();
+        // TODO: see if try_from_slice can work
+        let mut gaugemeister = &gaugemeister_info.data.borrow_mut()[..];
+        let gaugemeister_data : gauge_state::Gaugemeister = gauge_state::Gaugemeister::try_deserialize(
+            &mut gaugemeister,
+        )?;
+        if gaugemeister_data.current_rewards_epoch > epoch {
+            return Err(errors::ErrorCode::CompletedEpoch.into());
+        }
+        let transfer_ix = spl_token::instruction::transfer(
+            &ctx.accounts.token_program.key(),
+            &ctx.accounts.buyer_token_account.key(),
+            &ctx.accounts.destination_token_account.key(),
+            &ctx.accounts.buyer.key(),
+            &[],
+            amount,
+        )?;
+        invoke(
+            &transfer_ix,
+            &[
+                ctx.accounts.buyer_token_account.to_account_info(),
+                ctx.accounts.destination_token_account.to_account_info(),
+                ctx.accounts.buyer.to_account_info(),
+                ctx.accounts.token_program.to_account_info(),
+            ],
+        )?;
+        ctx.accounts.token_buy.amount = amount;
+        ctx.accounts.token_buy.mint = ctx.accounts.mint.key();
+        ctx.accounts.token_buy.percent_to_use_bps = 0;
+        ctx.accounts.token_buy.reward_receiver = ctx.accounts.buyer.key();
         Ok(())
     }
 
@@ -158,14 +189,17 @@ pub struct UpdateAllowedMints<'info> {
 pub struct IncreaseVoteBuy<'info> {
     #[account(mut)]
     pub buyer: Signer<'info>,
-    #[account(mut)]
+    #[account(mut,
+    associated_token::mint = mint,
+    associated_token::authority = buyer,
+    )]
     pub buyer_token_account: Account<'info, TokenAccount>,
     #[account(init,
     payer = buyer,
     associated_token::mint = mint,
     associated_token::authority = token_buy
     )]
-   pub destination_token_account: Account<'info, TokenAccount>,
+    pub destination_token_account: Account<'info, TokenAccount>,
     pub mint: Account<'info, Mint>,
     #[account(has_one = gaugemeister)]
     pub config: Account<'info, VoteMarketConfig>,

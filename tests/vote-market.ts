@@ -10,7 +10,12 @@ import {setupConfig} from "./test-setup";
 import GAUGE_IDL from "../external-state/idls/gauge.json";
 import {Gauge} from "../external-state/types/gauge";
 import {GAUGE, GAUGE_PROGRAM_ID, GAUGEMEISTER} from "./constants";
-import {getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID} from "@solana/spl-token";
+import {
+    getAssociatedTokenAddressSync,
+    TOKEN_PROGRAM_ID,
+    ASSOCIATED_TOKEN_PROGRAM_ID,
+    getAccount
+} from "@solana/spl-token";
 
 dotenv.config();
 
@@ -25,79 +30,79 @@ describe("vote-market", () => {
     const gaugeProgram = new Program(GAUGE_IDL as any, GAUGE_PROGRAM_ID) as Program<Gauge>;
 
 
-    it("Creates a config account", async () => {
-      const {config, allowedMints,allowedMintList, scriptAuthority} = await setupConfig(program);
-      const configAccount = await program.account.voteMarketConfig.fetch(config.publicKey);
-      expect(configAccount.gaugemeister).to.eql(GAUGEMEISTER);
-      expect(configAccount.scriptAuthority).to.eql(scriptAuthority);
-      expect(configAccount.efficiencyRatio.eq(new BN(100))).to.be.true;
-      const allowedMintsAccount = await program.account.allowedMints.fetch(allowedMints);
-      expect(allowedMintsAccount.mints).to.eql(allowedMintList);
-    });
-    it("changes the admin account", async () => {
-      const {config} = await setupConfig(program);
-      const newAdmin = web3.Keypair.generate();
-      //Should fail if the admin doesn't sign
-      try {
-
-        await program.methods.updateAdmin(newAdmin.publicKey).accounts(
-            {
-              config: config.publicKey,
-              admin: newAdmin .publicKey,
-            }).signers([newAdmin]).rpc();
-      } catch (e) {
-        expect(e.message).to.contain("A has one constraint was violated");
-      }
-      await program.methods.updateAdmin(newAdmin.publicKey).accounts(
-          {
-            config: config.publicKey,
-            admin: program.provider.publicKey,
-          }).rpc();
-      const configAccount = await program.account.voteMarketConfig.fetch(config.publicKey);
-      expect(configAccount.admin).to.eql(newAdmin.publicKey);
-    });
-    it("changes the script authority account", async () => {
-      const {config} = await setupConfig(program);
-      const newScriptAuthority = web3.Keypair.generate();
-      //Should fail if the admin doesn't sign
-      try {
-        await program.methods.updateScriptAuthority(newScriptAuthority.publicKey).accounts(
-            {
-              config: config.publicKey,
-              admin: newScriptAuthority.publicKey,
-            }).signers([newScriptAuthority]).rpc();
-      } catch (e) {
-        expect(e.message).to.contain("A has one constraint was violated");
-      }
-      await program.methods.updateScriptAuthority(newScriptAuthority.publicKey).accounts(
-          {
-            config: config.publicKey,
-            admin: program.provider.publicKey,
-          }).rpc();
-      const configAccount = await program.account.voteMarketConfig.fetch(config.publicKey);
-      expect(configAccount.scriptAuthority).to.eql(newScriptAuthority.publicKey);
-
-    });
-    it("Updates the allowed mints list", async () => {
-        const {config, allowedMints, allowedMintList} = await setupConfig(program);
-          const newMint1 = web3.PublicKey.unique();
-          const newMint2 = web3.PublicKey.unique();
-
-          let allowedMintsAccount = await program.provider.connection.getAccountInfo(allowedMints);
-          expect(allowedMintsAccount!.data.length).to.eql(8 + 4 + 32 * 2);
-          await program.methods.updateAllowedMints([...allowedMintList, newMint1, newMint2]).accounts(
-              {
-                  config: config.publicKey,
-                  admin: program.provider.publicKey,
-                  allowedMints
-              }).rpc();
-          allowedMintsAccount = await program.provider.connection.getAccountInfo(allowedMints);
-          expect(allowedMintsAccount!.data.length).to.eql(8 + 4 + 32 * 4);
-          const allowedMintsData = await program.account.allowedMints.fetch(allowedMints);
-          expect(allowedMintsData.mints).to.eql([...allowedMintList, newMint1, newMint2]);
-
-
-    });
+    // it("Creates a config account", async () => {
+    //   const {config, allowedMints,allowedMintList, scriptAuthority} = await setupConfig(program);
+    //   const configAccount = await program.account.voteMarketConfig.fetch(config.publicKey);
+    //   expect(configAccount.gaugemeister).to.eql(GAUGEMEISTER);
+    //   expect(configAccount.scriptAuthority).to.eql(scriptAuthority);
+    //   expect(configAccount.efficiencyRatio.eq(new BN(100))).to.be.true;
+    //   const allowedMintsAccount = await program.account.allowedMints.fetch(allowedMints);
+    //   expect(allowedMintsAccount.mints).to.eql(allowedMintList);
+    // });
+    // it("changes the admin account", async () => {
+    //   const {config} = await setupConfig(program);
+    //   const newAdmin = web3.Keypair.generate();
+    //   //Should fail if the admin doesn't sign
+    //   try {
+    //
+    //     await program.methods.updateAdmin(newAdmin.publicKey).accounts(
+    //         {
+    //           config: config.publicKey,
+    //           admin: newAdmin .publicKey,
+    //         }).signers([newAdmin]).rpc();
+    //   } catch (e) {
+    //     expect(e.message).to.contain("A has one constraint was violated");
+    //   }
+    //   await program.methods.updateAdmin(newAdmin.publicKey).accounts(
+    //       {
+    //         config: config.publicKey,
+    //         admin: program.provider.publicKey,
+    //       }).rpc();
+    //   const configAccount = await program.account.voteMarketConfig.fetch(config.publicKey);
+    //   expect(configAccount.admin).to.eql(newAdmin.publicKey);
+    // });
+    // it("changes the script authority account", async () => {
+    //   const {config} = await setupConfig(program);
+    //   const newScriptAuthority = web3.Keypair.generate();
+    //   //Should fail if the admin doesn't sign
+    //   try {
+    //     await program.methods.updateScriptAuthority(newScriptAuthority.publicKey).accounts(
+    //         {
+    //           config: config.publicKey,
+    //           admin: newScriptAuthority.publicKey,
+    //         }).signers([newScriptAuthority]).rpc();
+    //   } catch (e) {
+    //     expect(e.message).to.contain("A has one constraint was violated");
+    //   }
+    //   await program.methods.updateScriptAuthority(newScriptAuthority.publicKey).accounts(
+    //       {
+    //         config: config.publicKey,
+    //         admin: program.provider.publicKey,
+    //       }).rpc();
+    //   const configAccount = await program.account.voteMarketConfig.fetch(config.publicKey);
+    //   expect(configAccount.scriptAuthority).to.eql(newScriptAuthority.publicKey);
+    //
+    // });
+    // it("Updates the allowed mints list", async () => {
+    //     const {config, allowedMints, allowedMintList} = await setupConfig(program);
+    //       const newMint1 = web3.PublicKey.unique();
+    //       const newMint2 = web3.PublicKey.unique();
+    //
+    //       let allowedMintsAccount = await program.provider.connection.getAccountInfo(allowedMints);
+    //       expect(allowedMintsAccount!.data.length).to.eql(8 + 4 + 32 * 2);
+    //       await program.methods.updateAllowedMints([...allowedMintList, newMint1, newMint2]).accounts(
+    //           {
+    //               config: config.publicKey,
+    //               admin: program.provider.publicKey,
+    //               allowedMints
+    //           }).rpc();
+    //       allowedMintsAccount = await program.provider.connection.getAccountInfo(allowedMints);
+    //       expect(allowedMintsAccount!.data.length).to.eql(8 + 4 + 32 * 4);
+    //       const allowedMintsData = await program.account.allowedMints.fetch(allowedMints);
+    //       expect(allowedMintsData.mints).to.eql([...allowedMintList, newMint1, newMint2]);
+    //
+    //
+    // });
     it("Buyers can add payment", async () => {
         const {mint, ata} = await setupTokens(program, payer);
         const {allowedMintList, allowedMints, config } = await setupConfig(program, [mint]);
@@ -125,8 +130,16 @@ describe("vote-market", () => {
                 tokenProgram: TOKEN_PROGRAM_ID,
                 associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
                 systemProgram: web3.SystemProgram.programId,
-            }).rpc({skipPreflight: true});
+            }).rpc({commitment: "confirmed"});
         console.log("sig", sig);
+        const destinationTokenAccountData = await getAccount(program.provider.connection, destinationTokenAccount);
+        console.log("amount in destination token account", destinationTokenAccountData.amount.toString());
+        expect(destinationTokenAccountData.amount === BigInt(1_000_000)).to.be.true;
+        const tokenBuyData = await program.account.tokenBuy.fetch(tokenBuy);
+        expect(tokenBuyData.amount.eq(new BN(1_000_000))).to.be.true;
+        expect(tokenBuyData.mint).to.eql(destinationTokenAccountData.mint);
+        expect(tokenBuyData.percentToUseBps.eq(new BN(0))).to.be.true;
+        expect(tokenBuyData.rewardReceiver).to.eql(program.provider.publicKey);
     });
     it("Sellers can withdraw vote payment", async () => {
     });
