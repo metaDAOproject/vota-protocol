@@ -2,7 +2,8 @@ mod state;
 
 use crate::state::{AllowedMints, TokenBuy, VoteMarketConfig};
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Mint, TokenAccount};
+use anchor_spl::associated_token::AssociatedToken;
+use anchor_spl::token::{Mint, Token, TokenAccount};
 
 declare_id!("CgpagJ94phFKHBKkk4pd4YdKgfNCp5SzsiNwcLe73dc");
 
@@ -73,11 +74,13 @@ pub mod vote_market {
             }
         }
 
+
         ctx.accounts.allowed_mints.mints = allowed_mints;
         Ok(())
     }
 
-    pub fn increase_vote_buy(ctx: Context<Initialize>) -> Result<()> {
+    pub fn increase_vote_buy(ctx: Context<IncreaseVoteBuy>, epoch: u32, amount: u64) -> Result<()> {
+        msg!("token buy: {}", ctx.accounts.token_buy.key());
         Ok(())
     }
 
@@ -157,8 +160,12 @@ pub struct IncreaseVoteBuy<'info> {
     pub buyer: Signer<'info>,
     #[account(mut)]
     pub buyer_token_account: Account<'info, TokenAccount>,
-    #[account(mut)]
-    pub destination_token_account: Account<'info, TokenAccount>,
+    #[account(init,
+    payer = buyer,
+    associated_token::mint = mint,
+    associated_token::authority = token_buy
+    )]
+   pub destination_token_account: Account<'info, TokenAccount>,
     pub mint: Account<'info, Mint>,
     #[account(has_one = gaugemeister)]
     pub config: Account<'info, VoteMarketConfig>,
@@ -170,5 +177,7 @@ pub struct IncreaseVoteBuy<'info> {
     bump)]
     pub token_buy: Account<'info, TokenBuy>,
     pub gauge: Account<'info, gauge_state::Gauge>,
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
 }

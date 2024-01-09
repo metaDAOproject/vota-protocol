@@ -1,6 +1,7 @@
 import {Program, web3} from "@coral-xyz/anchor";
 import BN from "bn.js";
 import { VoteMarket } from "../target/types/vote_market";
+import {GAUGEMEISTER} from "./constants";
 
 export async function setupConfig(program: Program<VoteMarket>, allowedMintList: web3.PublicKey[] = undefined) {
     const config = web3.Keypair.generate();
@@ -10,7 +11,7 @@ export async function setupConfig(program: Program<VoteMarket>, allowedMintList:
         const mint2 = web3.PublicKey.unique();
         allowedMintList = [mint1, mint2];
     }
-    const gaugemeister = web3.PublicKey.unique()
+    const gaugemeister = GAUGEMEISTER;
     const scriptAuthority = program.provider.publicKey;
     const tx = await program.methods.createConfig(
         allowedMintList,
@@ -23,5 +24,5 @@ export async function setupConfig(program: Program<VoteMarket>, allowedMintList:
             payer: program.provider.publicKey,
             allowedMints
         }).signers([config]).rpc();
-    return {config, allowedMints, allowedMintList, gaugemeister, scriptAuthority};
+    return {config, allowedMints, allowedMintList, scriptAuthority};
 }
