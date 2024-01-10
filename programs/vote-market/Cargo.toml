@@ -18,6 +18,6 @@ default = []
 [dependencies]
 anchor-lang = { version = "0.29.0", features = ["init-if-needed"]}
 anchor-spl = "0.29.0"
-ahash = "=0.8.6"
+ahash = "=0.8.4"
 gauge-state = { path = "../../external-state/gauge-state" }
 locked-voter-state = { path = "../../external-state/locked-voter-state" }

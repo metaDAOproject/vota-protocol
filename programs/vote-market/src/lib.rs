@@ -1,5 +1,5 @@
-mod state;
 mod errors;
+mod state;
 
 use crate::state::{AllowedMints, TokenBuy, VoteMarketConfig};
 use anchor_lang::prelude::*;
@@ -76,7 +76,6 @@ pub mod vote_market {
             }
         }
 
-
         ctx.accounts.allowed_mints.mints = allowed_mints;
         Ok(())
     }
@@ -85,9 +84,8 @@ pub mod vote_market {
         let gaugemeister_info = ctx.accounts.gaugemeister.to_account_info();
         // TODO: see if try_from_slice can work
         let mut gaugemeister = &gaugemeister_info.data.borrow_mut()[..];
-        let gaugemeister_data : gauge_state::Gaugemeister = gauge_state::Gaugemeister::try_deserialize(
-            &mut gaugemeister,
-        )?;
+        let gaugemeister_data: gauge_state::Gaugemeister =
+            gauge_state::Gaugemeister::try_deserialize(&mut gaugemeister)?;
         if gaugemeister_data.current_rewards_epoch > epoch {
             return Err(errors::ErrorCode::CompletedEpoch.into());
         }
