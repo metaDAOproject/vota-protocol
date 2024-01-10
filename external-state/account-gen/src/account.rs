@@ -1,7 +1,7 @@
-use std::io;
-use anchor_lang::{AnchorDeserialize, AnchorSerialize};
-use serde::{Deserialize, Serialize};
+use anchor_lang::{AccountDeserialize, AccountSerialize, AnchorDeserialize, AnchorSerialize};
 use base64::prelude::*;
+use serde::{Deserialize, Serialize};
+use std::io;
 
 use anchor_lang::prelude::Pubkey;
 
@@ -29,22 +29,24 @@ impl Root {
         }
     }
 
-    pub fn get_account_data<T: AnchorDeserialize>(&self) -> Result<T, io::Error> {
+    pub fn get_account_data<T: AccountDeserialize>(&self) -> Result<T, io::Error> {
         let account_data = &self.account.data[0];
         let data = BASE64_STANDARD.decode(account_data).unwrap();
-        T::deserialize(&mut data.as_slice())
+        T::try_deserialize(&mut data.as_slice())
             .or_else(|e| return Err(io::Error::new(io::ErrorKind::Other, format!("{:?}", e))))
     }
 
-    pub fn update_account_data<T: AnchorSerialize>(
+    pub fn update_account_data<T: AccountSerialize>(
         &self,
         account_data: &T,
     ) -> Result<Root, io::Error> {
+        println!("account_data before: {:?}", self.account.data);
         let mut data = Vec::new();
-        account_data.serialize(&mut data).unwrap();
+        account_data.try_serialize(&mut data).unwrap();
         let encoded_data = BASE64_STANDARD.encode(&data);
         let mut account = self.account.clone();
         account.data = vec![encoded_data];
+        println!("account_data after: {:?}", &account.data);
         Ok(Root {
             pubkey: self.pubkey.clone(),
             account,
@@ -58,4 +60,3 @@ impl Root {
         })
     }
 }
-
