@@ -5,6 +5,12 @@ declare_id!("GaugesLJrnVjNNWLReiw3Q7xQhycSBRgeHGTMDUaX231");
 use anchor_lang::prelude::*;
 const PUBKEY_BYTES: usize = 32;
 
+#[error_code]
+pub enum GaugeStateError{
+    #[msg("Overflow when incrementing epoch")]
+    Overflow,
+}
+
 #[account]
 #[derive(Copy, Debug, Default)]
 pub struct Gaugemeister {
@@ -40,7 +46,16 @@ pub struct Gaugemeister {
     /// Governor associated with the Locker. Unused but useful for frontends.
     pub locker_governor: Pubkey,
 }
+impl Gaugemeister {
+    /// Length of a [Gaugemeister] in bytes.
+    pub const LEN: usize = PUBKEY_BYTES + 1 + PUBKEY_BYTES * 4 + 4 + 4 + 8 + PUBKEY_BYTES * 2;
 
+    /// Fetches the current voting epoch. This is always the epoch after [Self::current_rewards_epoch].
+    pub fn voting_epoch(&self) -> Result<u32> {
+        let voting_epoch = self.current_rewards_epoch.checked_add(1).ok_or(GaugeStateError::Overflow)?;
+        Ok(voting_epoch)
+    }
+}
 /// A [Gauge] determines the rewards shares to give to a [quarry_mine::Quarry].
 #[account]
 #[derive(Copy, Debug, Default)]
@@ -69,6 +84,42 @@ pub struct EpochGauge {
 impl EpochGauge {
     /// Length of an [EpochGauge] in bytes.
     pub const LEN: usize = PUBKEY_BYTES + 4 + 8;
+}
+
+/// A [GaugeVoter] represents an [locked_voter::Escrow] that can vote on gauges.
+#[account]
+#[derive(Copy, Debug, Default)]
+pub struct GaugeVoter {
+    /// The [Gaugemeister].
+    pub gaugemeister: Pubkey,
+    /// The Escrow of the [GaugeVoter].
+    pub escrow: Pubkey,
+
+    /// Owner of the Escrow of the [GaugeVoter].
+    pub owner: Pubkey,
+    /// Total number of parts that the voter has distributed.
+    pub total_weight: u32,
+    /// This number gets incremented whenever weights are changed.
+    /// Use this to determine if votes must be re-committed.
+    ///
+    /// This is primarily used when provisioning an [EpochGaugeVoter]:
+    /// 1. When one wants to commit their votes, they call [gauge::prepare_epoch_gauge_voter]
+    /// 2. The [Self::weight_change_seqno] gets written to [EpochGaugeVoter::weight_change_seqno].
+    /// 3. In [gauge::gauge_commit_vote], if the [Self::weight_change_seqno] has changed, the transaction is blocked with a [crate::ErrorCode::WeightSeqnoChanged] error.
+    pub weight_change_seqno: u64,
+}
+
+/// A [GaugeVote] is a user's vote for a given [Gauge].
+#[account]
+#[derive(Copy, Debug, Default)]
+pub struct GaugeVote {
+    /// The [GaugeVoter].
+    pub gauge_voter: Pubkey,
+    /// The [Gauge] being voted on.
+    pub gauge: Pubkey,
+
+    /// Proportion of votes that the voter is applying to this gauge.
+    pub weight: u32,
 }
 
 /// An [EpochGaugeVoter] is a [GaugeVoter]'s total committed votes for a

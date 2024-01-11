@@ -5,7 +5,6 @@ import { VoteMarket } from "../target/types/vote_market";
 
 export async function setupTokens(program: Program<VoteMarket>, payer: web3.Keypair) {
     const mintAuth = web3.Keypair.generate();
-    let balance = 0;
     const mint = await createMint(program.provider.connection,
         payer,
         mintAuth.publicKey,
