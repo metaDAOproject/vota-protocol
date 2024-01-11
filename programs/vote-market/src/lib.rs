@@ -1,5 +1,7 @@
 mod errors;
 mod state;
+mod util;
+
 
 use crate::state::{AllowedMints, TokenBuy, VoteMarketConfig};
 use anchor_lang::prelude::*;

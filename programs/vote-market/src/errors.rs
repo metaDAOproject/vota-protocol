@@ -5,4 +5,6 @@ use anchor_lang::prelude::*;
 pub enum ErrorCode {
     #[msg("Cannot modify completed epochs")]
     CompletedEpoch,
+    #[msg("Allocated vote amount is greater than total vote amount")]
+    InvalidAllocatedVoteAmount,
 }

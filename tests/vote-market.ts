@@ -106,7 +106,7 @@ describe("vote-market", () => {
     });
     it("Buyers can add payment", async () => {
         const {mint, ata} = await setupTokens(program, payer);
-        const {allowedMintList, allowedMints, config } = await setupConfig(program, [mint]);
+        const { config } = await setupConfig(program, [mint]);
         const gaugeMeisterData = await gaugeProgram.account.gaugemeister.fetch(GAUGEMEISTER);
         const epochBuffer = Buffer.alloc(4);
         epochBuffer.writeUInt32LE(gaugeMeisterData.currentRewardsEpoch);
