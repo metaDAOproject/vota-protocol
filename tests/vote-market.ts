@@ -153,7 +153,35 @@ describe("vote-market", () => {
             const tokenBuyDataMore = await program.account.tokenBuy.fetch(tokenBuy);
             expect(tokenBuyDataMore.amount.eq(new BN(2_000_000))).to.be.true;
     });
-    it("Sellers can withdraw vote payment", async () => {
+    it("Vote sellers can withdraw vote payment", async () => {
+        // Add payment
+        const {mint, ata} = await setupTokens(program, payer);
+        const { config } = await setupConfig(program, [mint]);
+        const gaugeMeisterData = await gaugeProgram.account.gaugemeister.fetch(GAUGEMEISTER);
+        const epochBuffer = Buffer.alloc(4);
+        epochBuffer.writeUInt32LE(gaugeMeisterData.currentRewardsEpoch);
+        const [tokenBuy, bump] = anchor.web3.PublicKey.findProgramAddressSync(
+            [Buffer.from("token-buy"), epochBuffer, config.publicKey.toBuffer(), GAUGE.toBuffer()],
+            program.programId);
+        const destinationTokenAccount = getAssociatedTokenAddressSync(mint, tokenBuy, true);
+        await program.methods.increaseVoteBuy(gaugeMeisterData.currentRewardsEpoch, new BN(1_000_000)).accounts(
+            {
+                buyer: program.provider.publicKey,
+                buyerTokenAccount: ata,
+                destinationTokenAccount,
+                mint,
+                config: config.publicKey,
+                gaugemeister: GAUGEMEISTER,
+                tokenBuy,
+                gauge: GAUGE,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+                systemProgram: web3.SystemProgram.programId,
+            }).rpc({commitment: "confirmed"});
+        // Claim payment
+        await program.methods.claimVotePayment().rpc();
+
+
     });
     it("Buyers can withdraw rewards", async () => {
     });

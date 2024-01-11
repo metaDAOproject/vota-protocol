@@ -93,7 +93,7 @@ pub mod vote_market {
         let transfer_ix = spl_token::instruction::transfer(
             &ctx.accounts.token_program.key(),
             &ctx.accounts.buyer_token_account.key(),
-            &ctx.accounts.destination_token_account.key(),
+            &ctx.accounts.token_vault.key(),
             &ctx.accounts.buyer.key(),
             &[],
             amount,
@@ -102,7 +102,7 @@ pub mod vote_market {
             &transfer_ix,
             &[
                 ctx.accounts.buyer_token_account.to_account_info(),
-                ctx.accounts.destination_token_account.to_account_info(),
+                ctx.accounts.token_vault.to_account_info(),
                 ctx.accounts.buyer.to_account_info(),
                 ctx.accounts.token_program.to_account_info(),
             ],
@@ -114,15 +114,15 @@ pub mod vote_market {
         Ok(())
     }
 
-    pub fn withdraw_seller_vote_payment(ctx: Context<Initialize>) -> Result<()> {
+    pub fn claim_vote_payment(ctx: Context<Initialize>) -> Result<()> {
         Ok(())
     }
 
-    pub fn withdraw_seller_rewards(ctx: Context<Initialize>) -> Result<()> {
+    pub fn claim_rewards_as_vote_seller(ctx: Context<Initialize>) -> Result<()> {
         Ok(())
     }
 
-    pub fn withdraw_buyer_rewards(ctx: Context<Initialize>) -> Result<()> {
+    pub fn claim_rewards_as_vote_buyer(ctx: Context<Initialize>) -> Result<()> {
         Ok(())
     }
 
@@ -198,7 +198,7 @@ pub struct IncreaseVoteBuy<'info> {
     associated_token::mint = mint,
     associated_token::authority = token_buy
     )]
-    pub destination_token_account: Account<'info, TokenAccount>,
+    pub token_vault: Account<'info, TokenAccount>,
     pub mint: Account<'info, Mint>,
     #[account(has_one = gaugemeister)]
     pub config: Account<'info, VoteMarketConfig>,
@@ -212,5 +212,49 @@ pub struct IncreaseVoteBuy<'info> {
     pub gauge: Account<'info, gauge_state::Gauge>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+#[instruction(epoch: u32)]
+pub struct ClaimVotePayment<'info> {
+    #[account(mut)]
+    pub seller: Signer<'info>,
+    #[account(mut,
+    associated_token::mint = mint,
+    associated_token::authority = seller,
+    )]
+    pub seller_token_account: Account<'info, TokenAccount>,
+    #[account(mut,
+    associated_token::mint = mint,
+    associated_token::authority = token_buy,
+    )]
+    pub token_vault: Account<'info, TokenAccount>,
+    pub mint: Account<'info, Mint>,
+    #[account(has_one = gaugemeister)]
+    pub config: Account<'info, VoteMarketConfig>,
+    #[account(mut,
+    seeds = [b"token-buy".as_ref(), epoch.to_le_bytes().as_ref(), config.key().as_ref(), gauge.key().as_ref()],
+    bump,
+    has_one = mint)]
+    pub token_buy: Account<'info, TokenBuy>,
+    #[account(constraint = seller.key() == epoch_gauge_voter.gauge_voter)]
+    pub epoch_gauge_voter: Account<'info, gauge_state::EpochGaugeVoter>,
+    #[account(seeds = [b"vote-delegate", config.key().as_ref()], bump)]
+    /// CHECK this is going to be a PDA signer to close the EpochGaugeVote. Verifying the seeds should be enough.
+    pub vote_delegate: UncheckedAccount<'info>,
+    #[account(has_one = vote_delegate)]
+    pub escrow: Account<'info, locked_voter_state::Escrow>,
+    pub gaugemeister: Account<'info, gauge_state::Gaugemeister>,
+    #[account(has_one = gaugemeister, has_one = escrow)]
+    pub gauge_voter: Account<'info, gauge_state::GaugeVoter>,
+    #[account(has_one = gauge_voter, has_one = gauge)]
+    pub gauge_vote: Account<'info, gauge_state::GaugeVote>,
+    #[account(has_one = gaugemeister)]
+    pub gauge: Account<'info, gauge_state::Gauge>,
+    pub epoch_gauge: Account<'info, gauge_state::EpochGauge>,
+    #[account(seeds = [b"EpochGaugeVote", gauge_vote.key().as_ref(), epoch.to_le_bytes().as_ref()], bump)]
+    pub epoch_gauge_vote: Account<'info, gauge_state::EpochGaugeVote>,
+    pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
