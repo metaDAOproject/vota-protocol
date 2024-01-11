@@ -36,9 +36,7 @@ export async function setupTokens(program: Program<VoteMarket>, payer: web3.Keyp
             skipPreflight: true,
         }
     );
-    console.log("minto to sig", sig)
     const tokenAccount = await getAccount(program.provider.connection, ata);
-    console.log("this is the amount", tokenAccount.amount);
     expect(tokenAccount.amount).to.eql(BigInt(1000000000));
     return {mint, ata};
 }

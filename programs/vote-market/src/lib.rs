@@ -84,7 +84,6 @@ pub mod vote_market {
 
     pub fn increase_vote_buy(ctx: Context<IncreaseVoteBuy>, epoch: u32, amount: u64) -> Result<()> {
         let gaugemeister_info = ctx.accounts.gaugemeister.to_account_info();
-        // TODO: see if try_from_slice can work
         let mut gaugemeister = &gaugemeister_info.data.borrow_mut()[..];
         let gaugemeister_data: gauge_state::Gaugemeister =
             gauge_state::Gaugemeister::try_deserialize(&mut gaugemeister)?;
@@ -108,7 +107,7 @@ pub mod vote_market {
                 ctx.accounts.token_program.to_account_info(),
             ],
         )?;
-        ctx.accounts.token_buy.amount = amount;
+        ctx.accounts.token_buy.amount += amount;
         ctx.accounts.token_buy.mint = ctx.accounts.mint.key();
         ctx.accounts.token_buy.percent_to_use_bps = 0;
         ctx.accounts.token_buy.reward_receiver = ctx.accounts.buyer.key();
@@ -194,7 +193,7 @@ pub struct IncreaseVoteBuy<'info> {
     associated_token::authority = buyer,
     )]
     pub buyer_token_account: Account<'info, TokenAccount>,
-    #[account(init,
+    #[account(init_if_needed,
     payer = buyer,
     associated_token::mint = mint,
     associated_token::authority = token_buy
