@@ -1,5 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
-import {AnchorProvider, Program, web3} from "@coral-xyz/anchor";
+import {AnchorProvider, Program, web3 } from "@coral-xyz/anchor";
 import {VoteMarket} from "../target/types/vote_market";
 import {expect} from "chai";
 import BN from "bn.js";
@@ -16,6 +16,7 @@ import {
     ASSOCIATED_TOKEN_PROGRAM_ID,
     getAccount
 } from "@solana/spl-token";
+import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet";
 
 dotenv.config();
 
@@ -24,7 +25,8 @@ describe("vote-market", () => {
     const rawKey = fs.readFileSync(process.env.KEY_PATH, 'utf-8');
     const payer = web3.Keypair.fromSecretKey(Uint8Array.from(JSON.parse(rawKey)));
 
-    anchor.setProvider(AnchorProvider.env())
+    const connection = new web3.Connection("http://127.0.0.1:8899", "confirmed");
+    anchor.setProvider(new AnchorProvider(connection, new NodeWallet(payer), AnchorProvider.defaultOptions()));
     const program = anchor.workspace.VoteMarket as Program<VoteMarket>;
     before( async () => {
         await program.provider.connection.requestAirdrop(payer.publicKey, 1000000000000)
@@ -194,6 +196,11 @@ describe("vote-market", () => {
         let [gaugeVote, gaugeVoteBump] = anchor.web3.PublicKey.findProgramAddressSync(
             [Buffer.from("GaugeVote"), gaugeVoter.toBuffer(), GAUGE.toBuffer()],
             GAUGE_PROGRAM_ID);
+        console.log("Locker is", gaugeMeisterData.locker.toBase58());
+        console.log("Owner is", program.provider.publicKey.toBase58());
+        console.log("Escrow is", escrow.toBase58());
+        console.log("GaugeVoter is", gaugeVoter.toBase58());
+        console.log("GaugeVote is", gaugeVote.toBase58());
 
         let [epochGaugeVoter, epochGaugeVoterBump] = anchor.web3.PublicKey.findProgramAddressSync(
             [Buffer.from("EpochGaugeVoter"), gaugeVoter.toBuffer(), Buffer.from(epochBuffer)],

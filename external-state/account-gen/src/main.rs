@@ -10,6 +10,7 @@ use crate::account::proccess_account;
 mod account;
 mod errors;
 mod utils;
+mod toml_update;
 
 fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();

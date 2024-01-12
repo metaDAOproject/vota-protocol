@@ -42,10 +42,6 @@ filename = "./test-accounts/gauge-voter.json"
 address = "28ZDtf6d2wsYhBvabTxUHTRT6MDxqjmqR7RMCp348tyU"
 filename = "./test-accounts/gaugemeister.json"
 
-#[[test.validator.account]]
-#address = "8erad8kmNrLJDJPe9UkmTHomrMV3EW48sjGeECyVjbYX"
-#filename = "./test-accounts/locker.json"
-
 [[test.validator.account]]
 address = "3xC4eW6xhW3Gpb4T5sCKFe73ay2K4aUUfxL57XFdguJx"
 filename = "./test-accounts/gauge.json"
