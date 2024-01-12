@@ -114,7 +114,7 @@ pub mod vote_market {
         Ok(())
     }
 
-    pub fn claim_vote_payment(ctx: Context<Initialize>) -> Result<()> {
+    pub fn claim_vote_payment(ctx: Context<ClaimVotePayment>, epoch: u32) -> Result<()> {
         Ok(())
     }
 
@@ -238,8 +238,6 @@ pub struct ClaimVotePayment<'info> {
     bump,
     has_one = mint)]
     pub token_buy: Account<'info, TokenBuy>,
-    #[account(constraint = seller.key() == epoch_gauge_voter.gauge_voter)]
-    pub epoch_gauge_voter: Account<'info, gauge_state::EpochGaugeVoter>,
     #[account(seeds = [b"vote-delegate", config.key().as_ref()], bump)]
     /// CHECK this is going to be a PDA signer to close the EpochGaugeVote. Verifying the seeds should be enough.
     pub vote_delegate: UncheckedAccount<'info>,
@@ -250,6 +248,8 @@ pub struct ClaimVotePayment<'info> {
     pub gauge_voter: Account<'info, gauge_state::GaugeVoter>,
     #[account(has_one = gauge_voter, has_one = gauge)]
     pub gauge_vote: Account<'info, gauge_state::GaugeVote>,
+    #[account(constraint = seller.key() == epoch_gauge_voter.gauge_voter)]
+    pub epoch_gauge_voter: Account<'info, gauge_state::EpochGaugeVoter>,
     #[account(has_one = gaugemeister)]
     pub gauge: Account<'info, gauge_state::Gauge>,
     pub epoch_gauge: Account<'info, gauge_state::EpochGauge>,
