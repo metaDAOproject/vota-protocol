@@ -158,15 +158,23 @@ describe("vote-market", () => {
     it("Vote sellers can withdraw vote payment", async () => {
         // Add payment
         const {mint, ata} = await setupTokens(program, payer);
+        //TODO can't generate config here. Needs to match vote delegate in the escrow account
         const { config } = await setupConfig(program, [mint]);
         const gaugeMeisterData = await gaugeProgram.account.gaugemeister.fetch(GAUGEMEISTER);
         const epochBuffer = Buffer.alloc(4);
-        epochBuffer.writeUInt32LE(gaugeMeisterData.currentRewardsEpoch);
-        const [tokenBuy, bump] = anchor.web3.PublicKey.findProgramAddressSync(
+        epochBuffer.writeUInt32LE(gaugeMeisterData.currentRewardsEpoch + 1);
+        const [tokenBuy, _] = anchor.web3.PublicKey.findProgramAddressSync(
             [Buffer.from("token-buy"), epochBuffer, config.publicKey.toBuffer(), GAUGE.toBuffer()],
             program.programId);
+        const epochBuffer2 = Buffer.alloc(4);
+        epochBuffer2.writeUInt32LE(gaugeMeisterData.currentRewardsEpoch + 2);
+        const [tokenBuy2, _2] = anchor.web3.PublicKey.findProgramAddressSync(
+            [Buffer.from("token-buy"), epochBuffer2, config.publicKey.toBuffer(), GAUGE.toBuffer()],
+            program.programId);
+        console.log("tokenBuy", tokenBuy.toBase58());
+        console.log("tokenBuy2", tokenBuy2.toBase58());
         const tokenVault = getAssociatedTokenAddressSync(mint, tokenBuy, true);
-        await program.methods.increaseVoteBuy(gaugeMeisterData.currentRewardsEpoch, new BN(1_000_000)).accounts(
+        await program.methods.increaseVoteBuy(gaugeMeisterData.currentRewardsEpoch + 1, new BN(1_000_000)).accounts(
             {
                 buyer: program.provider.publicKey,
                 buyerTokenAccount: ata,
@@ -205,6 +213,11 @@ describe("vote-market", () => {
         let [epochGaugeVoter, epochGaugeVoterBump] = anchor.web3.PublicKey.findProgramAddressSync(
             [Buffer.from("EpochGaugeVoter"), gaugeVoter.toBuffer(), Buffer.from(epochBuffer)],
             GAUGE_PROGRAM_ID);
+        console.log("epochGaugeVpoter", epochGaugeVoter.toBase58());
+        let [epochGaugeVoter2, epochGaugeVoterBump2] = anchor.web3.PublicKey.findProgramAddressSync(
+            [Buffer.from("EpochGaugeVoter"), gaugeVoter.toBuffer(), Buffer.from(epochBuffer2)],
+            GAUGE_PROGRAM_ID);
+            console.log("epochGaugeVpoter 2", epochGaugeVoter2.toBase58());
 
         let [epochGaugeVote, epochGaugeVoteBump] = anchor.web3.PublicKey.findProgramAddressSync(
             [Buffer.from("EpochGaugeVote"), gaugeVote.toBuffer(), Buffer.from(epochBuffer)],
@@ -215,7 +228,7 @@ describe("vote-market", () => {
             GAUGE_PROGRAM_ID);
 
         // Claim payment
-        await program.methods.claimVotePayment(91).accounts({
+        await program.methods.claimVotePayment(gaugeMeisterData.currentRewardsEpoch + 1).accounts({
             seller: program.provider.publicKey,
             sellerTokenAccount: ata,
             tokenVault,
@@ -234,48 +247,6 @@ describe("vote-market", () => {
             tokenProgram: TOKEN_PROGRAM_ID,
             systemProgram: web3.SystemProgram.programId,
         }).rpc();
-    // #[account(mut)]
-    //     pub seller: Signer<'info>,
-    // #[account(mut,
-    //         associated_token::mint = mint,
-    //         associated_token::authority = seller,
-    //     )]
-    //     pub seller_token_account: Account<'info, TokenAccount>,
-    // #[account(mut,
-    //         associated_token::mint = mint,
-    //         associated_token::authority = token_buy,
-    //     )]
-    //     pub token_vault: Account<'info, TokenAccount>,
-    //     pub mint: Account<'info, Mint>,
-    // #[account(has_one = gaugemeister)]
-    //     pub config: Account<'info, VoteMarketConfig>,
-    // #[account(mut,
-    //         seeds = [b"token-buy".as_ref(), epoch.to_le_bytes().as_ref(), config.key().as_ref(), gauge.key().as_ref()],
-    //         bump,
-    //         has_one = mint)]
-    //     pub token_buy: Account<'info, TokenBuy>,
-    // #[account(seeds = [b"vote-delegate", config.key().as_ref()], bump)]
-    //     /// CHECK this is going to be a PDA signer to close the EpochGaugeVote. Verifying the seeds should be enough.
-    //     pub vote_delegate: UncheckedAccount<'info>,
-    // #[account(has_one = vote_delegate)]
-    //     pub escrow: Account<'info, locked_voter_state::Escrow>,
-    //     pub gaugemeister: Account<'info, gauge_state::Gaugemeister>,
-    // #[account(has_one = gaugemeister, has_one = escrow)]
-    //     pub gauge_voter: Account<'info, gauge_state::GaugeVoter>,
-    // #[account(has_one = gauge_voter, has_one = gauge)]
-    //     pub gauge_vote: Account<'info, gauge_state::GaugeVote>,
-    // #[account(constraint = seller.key() == epoch_gauge_voter.gauge_voter)]
-    //     pub epoch_gauge_voter: Account<'info, gauge_state::EpochGaugeVoter>,
-    // #[account(has_one = gaugemeister)]
-    //     pub gauge: Account<'info, gauge_state::Gauge>,
-    //     pub epoch_gauge: Account<'info, gauge_state::EpochGauge>,
-    // #[account(seeds = [b"EpochGaugeVote", gauge_vote.key().as_ref(), epoch.to_le_bytes().as_ref()], bump)]
-    //     pub epoch_gauge_vote: Account<'info, gauge_state::EpochGaugeVote>,
-    //     pub token_program: Program<'info, Token>,
-    //     pub system_program: Program<'info, System>,
-    // }
-
-
     });
     it("Buyers can withdraw rewards", async () => {
     });

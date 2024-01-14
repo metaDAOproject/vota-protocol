@@ -17,6 +17,7 @@ dependencies = [
  "solana-sdk",
  "thiserror",
  "toml 0.8.8",
+ "vote-market",
 ]
 
 [[package]]

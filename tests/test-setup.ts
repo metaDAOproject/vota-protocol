@@ -2,9 +2,10 @@ import {Program, web3} from "@coral-xyz/anchor";
 import BN from "bn.js";
 import { VoteMarket } from "../target/types/vote_market";
 import {GAUGEMEISTER} from "./constants";
+import fs from "fs";
 
 export async function setupConfig(program: Program<VoteMarket>, allowedMintList: web3.PublicKey[] = undefined) {
-    const config = web3.Keypair.generate();
+    const config = web3.Keypair.fromSecretKey(Uint8Array.from(JSON.parse(fs.readFileSync("tests/config.json", "utf-8"))));
     const [allowedMints, _] = web3.PublicKey.findProgramAddressSync([Buffer.from("allow-list"), config.publicKey.toBuffer()], program.programId);
     if(allowedMintList === undefined) {
         const mint1 = web3.PublicKey.unique();

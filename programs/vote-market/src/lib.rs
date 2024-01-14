@@ -87,7 +87,8 @@ pub mod vote_market {
         let mut gaugemeister = &gaugemeister_info.data.borrow_mut()[..];
         let gaugemeister_data: gauge_state::Gaugemeister =
             gauge_state::Gaugemeister::try_deserialize(&mut gaugemeister)?;
-        if gaugemeister_data.current_rewards_epoch > epoch {
+        // TODO: Check for overflow
+        if gaugemeister_data.current_rewards_epoch + 1 > epoch {
             return Err(errors::ErrorCode::CompletedEpoch.into());
         }
         let transfer_ix = spl_token::instruction::transfer(
@@ -233,10 +234,9 @@ pub struct ClaimVotePayment<'info> {
     pub mint: Account<'info, Mint>,
     #[account(has_one = gaugemeister)]
     pub config: Account<'info, VoteMarketConfig>,
+    /// TODO put mint back
     #[account(mut,
-    seeds = [b"token-buy".as_ref(), epoch.to_le_bytes().as_ref(), config.key().as_ref(), gauge.key().as_ref()],
-    bump,
-    has_one = mint)]
+    seeds = [b"token-buy".as_ref(), epoch.to_le_bytes().as_ref(), config.key().as_ref(), gauge.key().as_ref()], bump)]
     pub token_buy: Account<'info, TokenBuy>,
     #[account(seeds = [b"vote-delegate", config.key().as_ref()], bump)]
     /// CHECK this is going to be a PDA signer to close the EpochGaugeVote. Verifying the seeds should be enough.
@@ -246,14 +246,14 @@ pub struct ClaimVotePayment<'info> {
     pub gaugemeister: Account<'info, gauge_state::Gaugemeister>,
     #[account(has_one = gaugemeister, has_one = escrow)]
     pub gauge_voter: Account<'info, gauge_state::GaugeVoter>,
-    #[account(has_one = gauge_voter, has_one = gauge)]
+    #[account(constraint = gauge_vote.gauge_voter == seller.key(), has_one = gauge)]
     pub gauge_vote: Account<'info, gauge_state::GaugeVote>,
-    #[account(constraint = seller.key() == epoch_gauge_voter.gauge_voter)]
+    #[account(has_one = gauge_voter)]
     pub epoch_gauge_voter: Account<'info, gauge_state::EpochGaugeVoter>,
     #[account(has_one = gaugemeister)]
     pub gauge: Account<'info, gauge_state::Gauge>,
     pub epoch_gauge: Account<'info, gauge_state::EpochGauge>,
-    #[account(seeds = [b"EpochGaugeVote", gauge_vote.key().as_ref(), epoch.to_le_bytes().as_ref()], bump)]
+    #[account(mut)]
     pub epoch_gauge_vote: Account<'info, gauge_state::EpochGaugeVote>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,

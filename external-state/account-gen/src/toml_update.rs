@@ -5,8 +5,8 @@ use toml::{Table, Value};
 
 
 pub struct AddressInfo {
-    name: String,
-    pubkey: Pubkey,
+    pub name: String,
+    pub pubkey: Pubkey,
 }
 
 pub fn update_anchor_toml(table: &mut Value, update_info: Vec<AddressInfo>) {
