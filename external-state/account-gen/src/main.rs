@@ -35,7 +35,9 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let payer = read_keypair_file(path)?;
     println!("Using payer pubkey: {:?}", payer.pubkey());
     let (gaugemeister_data, gaugemeister_account) =
-        account::proccess_account::<Gaugemeister, _>("gaugemeister", None, |x| x, &mut accounts_to_update)?;
+        proccess_account::<Gaugemeister, _>("gaugemeister", None, |x| x, &mut accounts_to_update)?;
+
+    println!("next epoch is {}", gaugemeister_data.next_epoch_starts_at);
 
     let (escrow_address, _) = Pubkey::find_program_address(
         &[

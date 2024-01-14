@@ -13,18 +13,21 @@ wallet = "/home/fzzyyti/.config/solana/burner.json"
 url = "https://api.apr.dev"
 
 [scripts]
-test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 --file ./tests/vote-market-voting.ts --file ./tests/vote-market-rewards.ts"
+
+[test.validator]
+url = "https://api.mainnet-beta.solana.com"
 
 [[test.validator.account]]
 address = "28ZDtf6d2wsYhBvabTxUHTRT6MDxqjmqR7RMCp348tyU"
 filename = "./test-accounts/gaugemeister.json"
 
 [[test.validator.account]]
-address = "C8CMP5RkRQneDtYruTNWbRXihorfXpYh7JdEXjia1DJL"
+address = "FXLMDGpLirbot2DY9JCmeKZtvu1TFaWSszE1Bd1kQAn"
 filename = "./test-accounts/escrow.json"
 
 [[test.validator.account]]
-address = "5mMpr6k2AzWVcAPjoJTgfQfbe9HCHTjTUPJm8TxragF"
+address = "2VshMQTveehVLKvE6mMtxazzz2geq9DKtMJLTqFf79YN"
 filename = "./test-accounts/gauge-voter.json"
 
 [[test.validator.account]]
@@ -32,7 +35,7 @@ address = "3xC4eW6xhW3Gpb4T5sCKFe73ay2K4aUUfxL57XFdguJx"
 filename = "./test-accounts/gauge.json"
 
 [[test.validator.account]]
-address = "E3NpYfVxUJbUH375vC6MpZE54NZrqc79hvE4U3pUgvou"
+address = "3KQwaioayMgkUkrKsDCkQUS7cKrKkqVFko5EhDqhjZjt"
 filename = "./test-accounts/gauge-vote.json"
 
 [[test.validator.account]]
@@ -40,13 +43,16 @@ address = "2AtXU77mwCTgEEnpAvz9uFUWBNmt7f4rCCGQVKwQBGpw"
 filename = "./test-accounts/epoch-gauge.json"
 
 [[test.validator.account]]
-address = "8J3ePFUwdqJLWN1YPN4fyueKjtmR8nVG7VYhKXXzAzGp"
+address = "3FeuhCpKsU8ETqgoKUhTfmVb1LqHkhEehrFxQyABzRbi"
 filename = "./test-accounts/epoch-gauge-voter.json"
 
 [[test.validator.account]]
-address = "8J3ePFUwdqJLWN1YPN4fyueKjtmR8nVG7VYhKXXzAzGp"
+address = "3FeuhCpKsU8ETqgoKUhTfmVb1LqHkhEehrFxQyABzRbi"
 filename = "./test-accounts/epoch-gauge-voter.json"
 
 [[test.validator.account]]
-address = "HmeFZh5TPAM1iuuX8YPkKaAjy9P5vi4f1otP3hMWYhos"
+address = "FMy6Vo76j6dJW4Y4sj6zwrq2rt4RW31LX4w5pcV7MZjJ"
 filename = "./test-accounts/epoch-gauge-vote.json"
+
+[[test.validator.clone]]
+address = "GaugesLJrnVjNNWLReiw3Q7xQhycSBRgeHGTMDUaX231"

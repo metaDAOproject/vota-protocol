@@ -13,7 +13,10 @@ wallet = "/home/fzzyyti/.config/solana/burner.json"
 url = "https://api.apr.dev"
 
 [scripts]
-test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 --file ./tests/vote-market-voting.ts --file ./tests/vote-market-rewards.ts"
+
+[test.validator]
+url = "https://api.mainnet-beta.solana.com"
 
 [[test.validator.account]]
 address = "28ZDtf6d2wsYhBvabTxUHTRT6MDxqjmqR7RMCp348tyU"
@@ -50,3 +53,6 @@ filename = "./test-accounts/epoch-gauge-voter.json"
 [[test.validator.account]]
 address = "HmeFZh5TPAM1iuuX8YPkKaAjy9P5vi4f1otP3hMWYhos"
 filename = "./test-accounts/epoch-gauge-vote.json"
+
+[[test.validator.clone]]
+address = "GaugesLJrnVjNNWLReiw3Q7xQhycSBRgeHGTMDUaX231"
