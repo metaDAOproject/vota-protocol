@@ -115,10 +115,10 @@ describe("vote market voting phase", () => {
         const gaugeMeisterData = await gaugeProgram.account.gaugemeister.fetch(GAUGEMEISTER);
         const epochBuffer = Buffer.alloc(4);
         epochBuffer.writeUInt32LE(gaugeMeisterData.currentRewardsEpoch + 1);
-        const [tokenBuy, bump] = anchor.web3.PublicKey.findProgramAddressSync(
-            [Buffer.from("token-buy"), epochBuffer, config.publicKey.toBuffer(), GAUGE.toBuffer()],
+        const [voteBuy, bump] = anchor.web3.PublicKey.findProgramAddressSync(
+            [Buffer.from("vote-buy"), epochBuffer, config.publicKey.toBuffer(), GAUGE.toBuffer()],
             program.programId);
-        const tokenVault = getAssociatedTokenAddressSync(mint, tokenBuy, true);
+        const tokenVault = getAssociatedTokenAddressSync(mint, voteBuy, true);
         await program.methods.increaseVoteBuy(gaugeMeisterData.currentRewardsEpoch + 1, new BN(1_000_000)).accounts(
             {
                 buyer: program.provider.publicKey,
@@ -127,7 +127,7 @@ describe("vote market voting phase", () => {
                 mint,
                 config: config.publicKey,
                 gaugemeister: GAUGEMEISTER,
-                tokenBuy,
+                voteBuy,
                 gauge: GAUGE,
                 tokenProgram: TOKEN_PROGRAM_ID,
                 allowedMints,
@@ -136,11 +136,11 @@ describe("vote market voting phase", () => {
             }).rpc({commitment: "confirmed"});
         const destinationTokenAccountData = await getAccount(program.provider.connection, tokenVault);
         expect(destinationTokenAccountData.amount === BigInt(1_000_000)).to.be.true;
-        const tokenBuyData = await program.account.tokenBuy.fetch(tokenBuy);
-        expect(tokenBuyData.amount.eq(new BN(1_000_000))).to.be.true;
-        expect(tokenBuyData.mint).to.eql(destinationTokenAccountData.mint);
-        expect(tokenBuyData.percentToUseBps.eq(new BN(0))).to.be.true;
-        expect(tokenBuyData.rewardReceiver).to.eql(program.provider.publicKey);
+        const voteBuyData = await program.account.voteBuy.fetch(voteBuy);
+        expect(voteBuyData.amount.eq(new BN(1_000_000))).to.be.true;
+        expect(voteBuyData.mint).to.eql(destinationTokenAccountData.mint);
+        expect(voteBuyData.percentToUseBps.eq(new BN(0))).to.be.true;
+        expect(voteBuyData.rewardReceiver).to.eql(program.provider.publicKey);
         //Add more tokens
         await program.methods.increaseVoteBuy(gaugeMeisterData.currentRewardsEpoch + 1, new BN(1_000_000)).accounts(
             {
@@ -150,15 +150,15 @@ describe("vote market voting phase", () => {
                 mint,
                 config: config.publicKey,
                 gaugemeister: GAUGEMEISTER,
-                tokenBuy,
+                voteBuy,
                 gauge: GAUGE,
                 tokenProgram: TOKEN_PROGRAM_ID,
                 allowedMints,
                 associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
                 systemProgram: web3.SystemProgram.programId,
             }).rpc({commitment: "confirmed", skipPreflight: true});
-        const tokenBuyDataMore = await program.account.tokenBuy.fetch(tokenBuy);
-        expect(tokenBuyDataMore.amount.eq(new BN(2_000_000))).to.be.true;
+        const voteBuyDataMore = await program.account.voteBuy.fetch(voteBuy);
+        expect(voteBuyDataMore.amount.eq(new BN(2_000_000))).to.be.true;
         // Try invalid buyer
         const invalid_buyer = web3.Keypair.generate();
 
@@ -187,7 +187,7 @@ describe("vote market voting phase", () => {
                     mint,
                     config: config.publicKey,
                     gaugemeister: GAUGEMEISTER,
-                    tokenBuy,
+                    voteBuy,
                     gauge: GAUGE,
                     tokenProgram: TOKEN_PROGRAM_ID,
                     allowedMints,
@@ -205,10 +205,10 @@ describe("vote market voting phase", () => {
         const gaugeMeisterData = await gaugeProgram.account.gaugemeister.fetch(GAUGEMEISTER);
         const epochBuffer = Buffer.alloc(4);
         epochBuffer.writeUInt32LE(gaugeMeisterData.currentRewardsEpoch + 1);
-        const [tokenBuy, bump] = anchor.web3.PublicKey.findProgramAddressSync(
-            [Buffer.from("token-buy"), epochBuffer, config.publicKey.toBuffer(), GAUGE.toBuffer()],
+        const [voteBuy, bump] = anchor.web3.PublicKey.findProgramAddressSync(
+            [Buffer.from("vote-buy"), epochBuffer, config.publicKey.toBuffer(), GAUGE.toBuffer()],
             program.programId);
-        const tokenVault = getAssociatedTokenAddressSync(mint, tokenBuy, true);
+        const tokenVault = getAssociatedTokenAddressSync(mint, voteBuy, true);
         try {
             await program.methods.increaseVoteBuy(gaugeMeisterData.currentRewardsEpoch + 1, new BN(1_000_000)).accounts(
                 {
@@ -218,7 +218,7 @@ describe("vote market voting phase", () => {
                     mint,
                     config: config.publicKey,
                     gaugemeister: GAUGEMEISTER,
-                    tokenBuy,
+                    voteBuy,
                     gauge: GAUGE,
                     tokenProgram: TOKEN_PROGRAM_ID,
                     allowedMints,

@@ -44,15 +44,12 @@ describe("vote market rewards phase", () => {
         var gaugeMeisterData = await gaugeProgram.account.gaugemeister.fetch(GAUGEMEISTER);
         const epochBuffer = Buffer.alloc(4);
         epochBuffer.writeUInt32LE(gaugeMeisterData.currentRewardsEpoch + 1);
-        const [tokenBuy, _] = anchor.web3.PublicKey.findProgramAddressSync(
-            [Buffer.from("token-buy"), epochBuffer, config.publicKey.toBuffer(), GAUGE.toBuffer()],
+        const [voteBuy, _] = anchor.web3.PublicKey.findProgramAddressSync(
+            [Buffer.from("vote-buy"), epochBuffer, config.publicKey.toBuffer(), GAUGE.toBuffer()],
             program.programId);
         const epochBuffer2 = Buffer.alloc(4);
         epochBuffer2.writeUInt32LE(gaugeMeisterData.currentRewardsEpoch + 2);
-        const [tokenBuy2, _2] = anchor.web3.PublicKey.findProgramAddressSync(
-            [Buffer.from("token-buy"), epochBuffer2, config.publicKey.toBuffer(), GAUGE.toBuffer()],
-            program.programId);
-        const tokenVault = getAssociatedTokenAddressSync(mint, tokenBuy, true);
+        const tokenVault = getAssociatedTokenAddressSync(mint, voteBuy, true);
         await program.methods.increaseVoteBuy(gaugeMeisterData.currentRewardsEpoch + 1, new BN(1_000_000)).accounts(
             {
                 buyer: program.provider.publicKey,
@@ -61,7 +58,7 @@ describe("vote market rewards phase", () => {
                 mint,
                 config: config.publicKey,
                 gaugemeister: GAUGEMEISTER,
-                tokenBuy,
+                voteBuy,
                 gauge: GAUGE,
                 allowedMints,
                 tokenProgram: TOKEN_PROGRAM_ID,
@@ -110,7 +107,7 @@ describe("vote market rewards phase", () => {
                 tokenVault,
                 mint,
                 config: config.publicKey,
-                tokenBuy,
+                voteBuy,
                 voteDelegate,
                 escrow,
                 gaugemeister: GAUGEMEISTER,
@@ -155,7 +152,7 @@ describe("vote market rewards phase", () => {
             tokenVault,
             mint,
             config: config.publicKey,
-            tokenBuy,
+            voteBuy,
             voteDelegate,
             escrow,
             gaugemeister: GAUGEMEISTER,
@@ -186,7 +183,7 @@ describe("vote market rewards phase", () => {
                 tokenVault,
                 mint,
                 config: config.publicKey,
-                tokenBuy,
+                voteBuy,
                 voteDelegate,
                 escrow,
                 gaugemeister: GAUGEMEISTER,

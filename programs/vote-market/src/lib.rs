@@ -3,7 +3,7 @@ mod state;
 mod util;
 
 
-use crate::state::{AllowedMints, TokenBuy, VoteMarketConfig};
+use crate::state::{AllowedMints, VoteBuy, VoteMarketConfig};
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{Mint, Token, TokenAccount};
@@ -18,20 +18,16 @@ pub mod vote_market {
     use anchor_lang::solana_program::program::{invoke, invoke_signed};
     use anchor_lang::solana_program::system_instruction;
     use anchor_spl::token::spl_token;
-    use crate::util::math::calculate_voter_share;
+    use crate::util::math::get_user_payment;
 
     pub fn create_config(
         ctx: Context<CreateConfig>,
         mints: Vec<Pubkey>,
         gaugemeister: Pubkey,
         efficiency_ratio: u64,
-        script_authority: Option<Pubkey>,
+        script_authority: Pubkey,
     ) -> Result<()> {
-        if let Some(script_authority) = script_authority {
-            ctx.accounts.config.script_authority = script_authority;
-        } else {
-            ctx.accounts.config.script_authority = ctx.accounts.payer.key();
-        }
+        ctx.accounts.config.script_authority = script_authority;
         ctx.accounts.config.gaugemeister = gaugemeister;
         ctx.accounts.allowed_mints.mints = mints;
         ctx.accounts.config.admin = ctx.accounts.payer.key();
@@ -86,21 +82,27 @@ pub mod vote_market {
     }
 
     pub fn increase_vote_buy(ctx: Context<IncreaseVoteBuy>, epoch: u32, amount: u64) -> Result<()> {
-        //Check buyer
-        if ctx.accounts.token_buy.reward_receiver == Pubkey::default() {
-            ctx.accounts.token_buy.reward_receiver = ctx.accounts.buyer.key();
+        //Check buyer and mint
+        if ctx.accounts.buyer.key() == Pubkey::default() {
+            return err!(errors::ErrorCode::InvalidBuyer);
         }
-        if ctx.accounts.token_buy.reward_receiver != ctx.accounts.buyer.key() {
-            return Err(errors::ErrorCode::InvalidBuyer.into());
+        if ctx.accounts.mint.key() == Pubkey::default() {
+            return err!(errors::ErrorCode::InvalidMint);
+        }
+        if ctx.accounts.vote_buy.reward_receiver == Pubkey::default() && ctx.accounts.vote_buy.mint == Pubkey::default() {
+            ctx.accounts.vote_buy.reward_receiver = ctx.accounts.buyer.key();
+            ctx.accounts.vote_buy.mint = ctx.accounts.mint.key();
+            ctx.accounts.vote_buy.percent_to_use_bps = 0;
+        }
+        if ctx.accounts.vote_buy.reward_receiver != ctx.accounts.buyer.key() {
+            return err!(errors::ErrorCode::InvalidBuyer);
+        }
+        if ctx.accounts.vote_buy.mint != ctx.accounts.mint.key() {
+            return err!(errors::ErrorCode::InvalidMint);
         }
         // Check epoch
-        let gaugemeister_info = ctx.accounts.gaugemeister.to_account_info();
-        let mut gaugemeister = &gaugemeister_info.data.borrow_mut()[..];
-        let gaugemeister_data: gauge_state::Gaugemeister =
-            gauge_state::Gaugemeister::try_deserialize(&mut gaugemeister)?;
-        if gaugemeister_data.current_rewards_epoch.checked_add(1)
-            .ok_or::<Error>(errors::ErrorCode::EpochOverflow.into()).unwrap() > epoch {
-            return Err(errors::ErrorCode::CompletedEpoch.into());
+        if ctx.accounts.gaugemeister.current_rewards_epoch + 1 > epoch {
+            return err!(errors::ErrorCode::CompletedEpoch);
         }
         // Check if mint is valid
         ctx.accounts.allowed_mints.mints.iter().find(|mint| mint == &&ctx.accounts.mint.key())
@@ -122,33 +124,31 @@ pub mod vote_market {
                 ctx.accounts.token_program.to_account_info(),
             ],
         )?;
-        ctx.accounts.token_buy.amount += amount;
-        ctx.accounts.token_buy.mint = ctx.accounts.mint.key();
-        ctx.accounts.token_buy.percent_to_use_bps = 0;
+        ctx.accounts.vote_buy.amount += amount;
         Ok(())
     }
 
     pub fn claim_vote_payment(ctx: Context<ClaimVotePayment>, epoch: u32) -> Result<()> {
         if epoch > ctx.accounts.gaugemeister.current_rewards_epoch  {
-            return Err(errors::ErrorCode::EpochVotingNotCompleted.into());
+            return err!(errors::ErrorCode::EpochVotingNotCompleted);
         }
         let total_power = ctx.accounts.epoch_gauge.total_power;
         let allocated_power = ctx.accounts.epoch_gauge_vote.allocated_power;
-        let total_vote_payment = ctx.accounts.token_buy.amount;
-        let voter_share = calculate_voter_share(total_power, total_vote_payment, allocated_power)?;
+        let total_vote_payment = ctx.accounts.vote_buy.amount;
+        let voter_share = get_user_payment(total_power, total_vote_payment, allocated_power)?;
         let transfer_ix = spl_token::instruction::transfer(
             &ctx.accounts.token_program.key(),
             &ctx.accounts.token_vault.key(),
             &ctx.accounts.seller_token_account.key(),
-            &ctx.accounts.token_buy.key(),
+            &ctx.accounts.vote_buy.key(),
             &[],
             voter_share,
         )?;
-        let (expected_token_buy, bump) = Pubkey::find_program_address(
-            &[b"token-buy".as_ref(), epoch.to_le_bytes().as_ref(), ctx.accounts.config.key().as_ref(), ctx.accounts.gauge.key().as_ref()],
+        let (expected_vote_buy, bump) = Pubkey::find_program_address(
+            &[b"vote-buy".as_ref(), epoch.to_le_bytes().as_ref(), ctx.accounts.config.key().as_ref(), ctx.accounts.gauge.key().as_ref()],
             ctx.program_id,
         );
-        if expected_token_buy != ctx.accounts.token_buy.key() {
+        if expected_vote_buy != ctx.accounts.vote_buy.key() {
             return Err(ProgramError::InvalidSeeds.into());
         }
         invoke_signed(
@@ -156,10 +156,10 @@ pub mod vote_market {
             &[
                 ctx.accounts.token_vault.to_account_info(),
                 ctx.accounts.seller_token_account.to_account_info(),
-                ctx.accounts.token_buy.to_account_info(),
+                ctx.accounts.vote_buy.to_account_info(),
                 ctx.accounts.token_program.to_account_info(),
             ],
-            &[&[b"token-buy".as_ref(), epoch.to_le_bytes().as_ref(), ctx.accounts.config.key().as_ref(), ctx.accounts.gauge.key().as_ref(), &[bump]]],
+            &[&[b"vote-buy".as_ref(), epoch.to_le_bytes().as_ref(), ctx.accounts.config.key().as_ref(), ctx.accounts.gauge.key().as_ref(), &[bump]]],
         )?;
 
         //Calculating the discriminator manually instead of including the crate
@@ -316,7 +316,7 @@ pub struct IncreaseVoteBuy<'info> {
     #[account(init_if_needed,
     payer = buyer,
     associated_token::mint = mint,
-    associated_token::authority = token_buy
+    associated_token::authority = vote_buy
     )]
     pub token_vault: Account<'info, TokenAccount>,
     pub mint: Account<'info, Mint>,
@@ -325,10 +325,10 @@ pub struct IncreaseVoteBuy<'info> {
     pub gaugemeister: Account<'info, gauge_state::Gaugemeister>,
     #[account(init_if_needed,
     payer = buyer,
-    space = TokenBuy::LEN,
-    seeds = [b"token-buy".as_ref(), epoch.to_le_bytes().as_ref(), config.key().as_ref(), gauge.key().as_ref()],
+    space = VoteBuy::LEN,
+    seeds = [b"vote-buy".as_ref(), epoch.to_le_bytes().as_ref(), config.key().as_ref(), gauge.key().as_ref()],
     bump)]
-    pub token_buy: Account<'info, TokenBuy>,
+    pub vote_buy: Account<'info, VoteBuy>,
     pub gauge: Account<'info, gauge_state::Gauge>,
     #[account(seeds = [b"allow-list".as_ref(), config.key().as_ref()], bump)]
     pub allowed_mints: Account<'info, AllowedMints>,
@@ -349,15 +349,15 @@ pub struct ClaimVotePayment<'info> {
     pub seller_token_account: Account<'info, TokenAccount>,
     #[account(mut,
     associated_token::mint = mint,
-    associated_token::authority = token_buy,
+    associated_token::authority = vote_buy,
     )]
     pub token_vault: Account<'info, TokenAccount>,
     pub mint: Account<'info, Mint>,
     #[account(has_one = gaugemeister)]
     pub config: Account<'info, VoteMarketConfig>,
     #[account(mut,
-    seeds = [b"token-buy".as_ref(), epoch.to_le_bytes().as_ref(), config.key().as_ref(), gauge.key().as_ref()], bump)]
-    pub token_buy: Account<'info, TokenBuy>,
+    seeds = [b"vote-buy".as_ref(), epoch.to_le_bytes().as_ref(), config.key().as_ref(), gauge.key().as_ref()], bump)]
+    pub vote_buy: Account<'info, VoteBuy>,
     #[account(mut, seeds = [b"vote-delegate", config.key().as_ref()], bump)]
     pub vote_delegate: SystemAccount<'info>,
     #[account(has_one = vote_delegate)]

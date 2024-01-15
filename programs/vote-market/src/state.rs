@@ -1,14 +1,14 @@
 use anchor_lang::prelude::*;
 
 #[account]
-pub struct TokenBuy {
+pub struct VoteBuy {
     pub mint: Pubkey,
     pub amount: u64,
     pub percent_to_use_bps: u64,
     pub reward_receiver: Pubkey,
 }
 
-impl TokenBuy {
+impl VoteBuy {
     pub const LEN: usize = 8 + 32 + 8 + 8 + 32;
 }
 
