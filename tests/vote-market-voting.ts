@@ -76,6 +76,7 @@ describe("vote market voting phase", () => {
               config: config.publicKey,
               admin: newScriptAuthority.publicKey,
             }).signers([newScriptAuthority]).rpc();
+            expect.fail("Needs to fail without correct signer");
       } catch (e) {
         expect(e.message).to.contain("A has one constraint was violated");
       }
@@ -151,7 +152,7 @@ describe("vote market voting phase", () => {
                 tokenProgram: TOKEN_PROGRAM_ID,
                 associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
                 systemProgram: web3.SystemProgram.programId,
-            }).rpc({commitment: "confirmed"});
+            }).rpc({commitment: "confirmed", skipPreflight: true});
             const tokenBuyDataMore = await program.account.tokenBuy.fetch(tokenBuy);
             expect(tokenBuyDataMore.amount.eq(new BN(2_000_000))).to.be.true;
     });

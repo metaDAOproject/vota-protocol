@@ -1,16 +1,25 @@
 import fs from "fs";
+import * as anchor from "@coral-xyz/anchor";
 import {AnchorProvider, Program, web3} from "@coral-xyz/anchor";
 import {VoteMarket} from "../target/types/vote_market";
-import * as anchor from "@coral-xyz/anchor";
 import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet";
 import GAUGE_IDL from "../external-state/idls/gauge.json";
 import {GAUGE, GAUGE_PROGRAM_ID, GAUGEMEISTER, LOCKED_VOTER_PROGRAM_ID} from "./constants";
 import {Gauge} from "../external-state/types/gauge";
 import {setupTokens} from "./setup-tokens";
 import {setupConfig} from "./test-setup";
-import crypto from "crypto";
-import {ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID} from "@solana/spl-token";
+import {
+    ASSOCIATED_TOKEN_PROGRAM_ID,
+    getAccount,
+    getAssociatedTokenAddressSync,
+    TOKEN_PROGRAM_ID
+} from "@solana/spl-token";
 import BN from "bn.js";
+import dotenv from "dotenv";
+import {expect} from "chai";
+import * as crypto from "crypto";
+
+dotenv.config();
 
 describe("vote market rewards phase", () => {
     // Configure the client to use the local cluster.
@@ -20,7 +29,7 @@ describe("vote market rewards phase", () => {
     const connection = new web3.Connection("http://127.0.0.1:8899", "confirmed");
     anchor.setProvider(new AnchorProvider(connection, new NodeWallet(payer), AnchorProvider.defaultOptions()));
     const program = anchor.workspace.VoteMarket as Program<VoteMarket>;
-    before( async () => {
+    before(async () => {
         await program.provider.connection.requestAirdrop(payer.publicKey, 1000000000000)
         await new Promise(resolve => setTimeout(resolve, 1000));
     });
@@ -45,8 +54,6 @@ describe("vote market rewards phase", () => {
         const [tokenBuy2, _2] = anchor.web3.PublicKey.findProgramAddressSync(
             [Buffer.from("token-buy"), epochBuffer2, config.publicKey.toBuffer(), GAUGE.toBuffer()],
             program.programId);
-        console.log("tokenBuy", tokenBuy.toBase58());
-        console.log("tokenBuy2", tokenBuy2.toBase58());
         const tokenVault = getAssociatedTokenAddressSync(mint, tokenBuy, true);
         await program.methods.increaseVoteBuy(gaugeMeisterData.currentRewardsEpoch + 1, new BN(1_000_000)).accounts(
             {
@@ -64,26 +71,6 @@ describe("vote market rewards phase", () => {
             }).rpc({commitment: "confirmed"});
 
 
-
-        //get instruction discriminator
-        var hash = crypto.createHash('sha256');
-        hash.update(Buffer.from("global:trigger_next_epoch"));
-        const discriminator = hash.digest().subarray(0, 8);
-        const triggerNextEpochIx = new web3.TransactionInstruction({
-            data: Buffer.from(discriminator),
-            keys: [
-                {pubkey: GAUGEMEISTER, isSigner: false, isWritable: true},
-            ],
-            programId: GAUGE_PROGRAM_ID,
-        });
-        const latestBlock = await program.provider.connection.getLatestBlockhash();
-        const triggerNextEpochTx = new web3.Transaction({feePayer: payer.publicKey, ...latestBlock}).add(triggerNextEpochIx);
-        triggerNextEpochTx.sign(payer);
-        const result = await program.provider.sendAndConfirm(triggerNextEpochTx, [], {commitment: "confirmed"});
-        console.log("Trigger next epoch result", result);
-        var gaugeMeisterData2 = await gaugeProgram.account.gaugemeister.fetch(GAUGEMEISTER);
-        console.log("Current epoch", gaugeMeisterData2.currentRewardsEpoch);
-
         let [voteDelegate, voteDelegateBump] = anchor.web3.PublicKey.findProgramAddressSync(
             [Buffer.from("vote-delegate"), config.publicKey.toBuffer()],
             program.programId
@@ -100,20 +87,13 @@ describe("vote market rewards phase", () => {
         let [gaugeVote, gaugeVoteBump] = anchor.web3.PublicKey.findProgramAddressSync(
             [Buffer.from("GaugeVote"), gaugeVoter.toBuffer(), GAUGE.toBuffer()],
             GAUGE_PROGRAM_ID);
-        console.log("Locker is", gaugeMeisterData.locker.toBase58());
-        console.log("Owner is", program.provider.publicKey.toBase58());
-        console.log("Escrow is", escrow.toBase58());
-        console.log("GaugeVoter is", gaugeVoter.toBase58());
-        console.log("GaugeVote is", gaugeVote.toBase58());
 
         let [epochGaugeVoter, epochGaugeVoterBump] = anchor.web3.PublicKey.findProgramAddressSync(
             [Buffer.from("EpochGaugeVoter"), gaugeVoter.toBuffer(), Buffer.from(epochBuffer)],
             GAUGE_PROGRAM_ID);
-        console.log("epochGaugeVpoter", epochGaugeVoter.toBase58());
         let [epochGaugeVoter2, epochGaugeVoterBump2] = anchor.web3.PublicKey.findProgramAddressSync(
             [Buffer.from("EpochGaugeVoter"), gaugeVoter.toBuffer(), Buffer.from(epochBuffer2)],
             GAUGE_PROGRAM_ID);
-        console.log("epochGaugeVpoter 2", epochGaugeVoter2.toBase58());
 
         let [epochGaugeVote, epochGaugeVoteBump] = anchor.web3.PublicKey.findProgramAddressSync(
             [Buffer.from("EpochGaugeVote"), gaugeVote.toBuffer(), Buffer.from(epochBuffer)],
@@ -123,7 +103,63 @@ describe("vote market rewards phase", () => {
             [Buffer.from("EpochGauge"), GAUGE.toBuffer(), Buffer.from(epochBuffer)],
             GAUGE_PROGRAM_ID);
 
-        // Claim payment
+        let [votePayer, votePayerBump] = anchor.web3.PublicKey.findProgramAddressSync(
+            [Buffer.from("vote-payer"), config.publicKey.toBuffer()],
+            program.programId
+        );
+
+        try {
+            // Claim payment
+            await program.methods.claimVotePayment(gaugeMeisterData.currentRewardsEpoch + 1).accounts({
+                seller: program.provider.publicKey,
+                sellerTokenAccount: ata,
+                tokenVault,
+                mint,
+                config: config.publicKey,
+                tokenBuy,
+                voteDelegate,
+                escrow,
+                gaugemeister: GAUGEMEISTER,
+                gaugeVoter,
+                gaugeVote,
+                epochGaugeVoter,
+                epochGaugeVote,
+                epochGauge,
+                gauge: GAUGE,
+                votePayer,
+                gaugeProgram: GAUGE_PROGRAM_ID,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                systemProgram: web3.SystemProgram.programId,
+            }).rpc();
+            expect.fail("Should have thrown an error when withdrawing vote payment before voting is complete");
+        } catch (e) {
+            expect(e.error.errorCode.code).to.equal("EpochVotingNotCompleted");
+        }
+
+        //get instruction discriminator
+        var hash = crypto.createHash('sha256');
+        hash.update(Buffer.from("global:trigger_next_epoch"));
+        const discriminator = hash.digest().subarray(0, 8);
+        const triggerNextEpochIx = new web3.TransactionInstruction({
+            data: Buffer.from(discriminator),
+            keys: [
+                {pubkey: GAUGEMEISTER, isSigner: false, isWritable: true},
+            ],
+            programId: GAUGE_PROGRAM_ID,
+        });
+        const latestBlock = await program.provider.connection.getLatestBlockhash();
+        const triggerNextEpochTx = new web3.Transaction({feePayer: payer.publicKey, ...latestBlock}).add(triggerNextEpochIx);
+        triggerNextEpochTx.sign(payer);
+        await program.provider.sendAndConfirm(triggerNextEpochTx, [], {commitment: "confirmed"});
+        const gaugeMeisterData2 = await gaugeProgram.account.gaugemeister.fetch(GAUGEMEISTER);
+        console.log("Current epoch", gaugeMeisterData2.currentRewardsEpoch);
+
+        let sellerTokenAccountData= await getAccount(program.provider.connection, ata);
+        console.log("Seller token account", sellerTokenAccountData.amount.toString());
+        expect(sellerTokenAccountData.amount === BigInt(999_000_000)).to.be.true;
+        let tokenVaultData = await getAccount(program.provider.connection, tokenVault);
+        console.log("Token Vault", tokenVaultData.amount.toString());
+        expect(tokenVaultData.amount === BigInt(1_000_000)).to.be.true;
         await program.methods.claimVotePayment(gaugeMeisterData.currentRewardsEpoch + 1).accounts({
             seller: program.provider.publicKey,
             sellerTokenAccount: ata,
@@ -140,9 +176,45 @@ describe("vote market rewards phase", () => {
             epochGaugeVote,
             epochGauge,
             gauge: GAUGE,
+            votePayer,
+            gaugeProgram: GAUGE_PROGRAM_ID,
             tokenProgram: TOKEN_PROGRAM_ID,
             systemProgram: web3.SystemProgram.programId,
-        }).rpc();
+        }).rpc({commitment: "confirmed"});
+        console.log("Claimed vote payment");
+        sellerTokenAccountData= await getAccount(program.provider.connection, ata);
+        const expectedRewards = BigInt(18514);
+        expect(sellerTokenAccountData.amount === BigInt(999_000_000) + expectedRewards).to.be.true;
+        tokenVaultData = await getAccount(program.provider.connection, tokenVault);
+        expect(tokenVaultData.amount === BigInt(1_000_000) - expectedRewards).to.be.true;
+
+        //Should not be able to claim again
+        try {
+            await program.methods.claimVotePayment(gaugeMeisterData.currentRewardsEpoch + 1).accounts({
+                seller: program.provider.publicKey,
+                sellerTokenAccount: ata,
+                tokenVault,
+                mint,
+                config: config.publicKey,
+                tokenBuy,
+                voteDelegate,
+                escrow,
+                gaugemeister: GAUGEMEISTER,
+                gaugeVoter,
+                gaugeVote,
+                epochGaugeVoter,
+                epochGaugeVote,
+                epochGauge,
+                gauge: GAUGE,
+                votePayer,
+                gaugeProgram: GAUGE_PROGRAM_ID,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                systemProgram: web3.SystemProgram.programId,
+            }).rpc({commitment: "confirmed"});
+            expect.fail("Claimed vote payment twice");
+        } catch (e) {
+            expect(e.error.errorCode.code).to.equal("AccountNotInitialized");
+        }
     });
     it("Buyers can withdraw rewards", async () => {
     });

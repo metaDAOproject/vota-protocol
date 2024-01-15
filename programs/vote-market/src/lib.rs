@@ -7,15 +7,17 @@ use crate::state::{AllowedMints, TokenBuy, VoteMarketConfig};
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{Mint, Token, TokenAccount};
+use sha2::{Digest, Sha256};
 
 declare_id!("CgpagJ94phFKHBKkk4pd4YdKgfNCp5SzsiNwcLe73dc");
 
 #[program]
 pub mod vote_market {
     use super::*;
-    use anchor_lang::solana_program::program::invoke;
+    use anchor_lang::solana_program::program::{invoke, invoke_signed};
     use anchor_lang::solana_program::system_instruction;
     use anchor_spl::token::spl_token;
+    use crate::util::math::calculate_voter_share;
 
     pub fn create_config(
         ctx: Context<CreateConfig>,
@@ -116,6 +118,113 @@ pub mod vote_market {
     }
 
     pub fn claim_vote_payment(ctx: Context<ClaimVotePayment>, epoch: u32) -> Result<()> {
+        if epoch > ctx.accounts.gaugemeister.current_rewards_epoch  {
+            return Err(errors::ErrorCode::EpochVotingNotCompleted.into());
+        }
+        let total_power = ctx.accounts.epoch_gauge.total_power;
+        let allocated_power = ctx.accounts.epoch_gauge_vote.allocated_power;
+        let total_vote_payment = ctx.accounts.token_buy.amount;
+        let voter_share = calculate_voter_share(total_power, total_vote_payment, allocated_power)?;
+        msg!("voter_share: {}", voter_share);
+        let transfer_ix = spl_token::instruction::transfer(
+            &ctx.accounts.token_program.key(),
+            &ctx.accounts.token_vault.key(),
+            &ctx.accounts.seller_token_account.key(),
+            &ctx.accounts.token_buy.key(),
+            &[],
+            voter_share,
+        )?;
+        let (expected_token_buy, bump) = Pubkey::find_program_address(
+            &[b"token-buy".as_ref(), epoch.to_le_bytes().as_ref(), ctx.accounts.config.key().as_ref(), ctx.accounts.gauge.key().as_ref()],
+            ctx.program_id,
+        );
+        if expected_token_buy != ctx.accounts.token_buy.key() {
+            return Err(ProgramError::InvalidSeeds.into());
+        }
+        invoke_signed(
+            &transfer_ix,
+            &[
+                ctx.accounts.token_vault.to_account_info(),
+                ctx.accounts.seller_token_account.to_account_info(),
+                ctx.accounts.token_buy.to_account_info(),
+                ctx.accounts.token_program.to_account_info(),
+            ],
+            &[&[b"token-buy".as_ref(), epoch.to_le_bytes().as_ref(), ctx.accounts.config.key().as_ref(), ctx.accounts.gauge.key().as_ref(), &[bump]]],
+        )?;
+
+        //Calculating the discriminator manually instead of including the crate
+        //because the anchor_lang version of gauge is not compatible with this program.
+        let mut hasher = Sha256::new();
+        hasher.update(b"global:close_epoch_gauge_vote");
+        let mut data: Vec<u8> = hasher.finalize()[..8].try_into().unwrap();
+        data.extend_from_slice(&epoch.to_le_bytes());
+        let (expected_vote_delegate, vote_delegate_bump) = Pubkey::find_program_address(
+            &[b"vote-delegate".as_ref(), ctx.accounts.config.key().as_ref()],
+            ctx.program_id,
+        );
+        if expected_vote_delegate != ctx.accounts.vote_delegate.key() {
+            return Err(ProgramError::InvalidSeeds.into());
+        }
+        let close_ix = anchor_lang::solana_program::instruction::Instruction {
+            program_id: ctx.accounts.gauge_program.key(),
+            accounts: vec![
+                AccountMeta {
+                    pubkey: ctx.accounts.epoch_gauge_vote.key(),
+                    is_signer: false,
+                    is_writable: true,
+                },
+                AccountMeta {
+                    pubkey: ctx.accounts.gaugemeister.key(),
+                    is_signer: false,
+                    is_writable: false,
+                },
+                AccountMeta {
+                    pubkey: ctx.accounts.gauge.key(),
+                    is_signer: false,
+                    is_writable: false,
+                },
+                AccountMeta {
+                    pubkey: ctx.accounts.gauge_voter.key(),
+                    is_signer: false,
+                    is_writable: false,
+                },
+                AccountMeta {
+                    pubkey: ctx.accounts.gauge_vote.key(),
+                    is_signer: false,
+                    is_writable: false,
+                },
+                AccountMeta {
+                    pubkey: ctx.accounts.escrow.key(),
+                    is_signer: false,
+                    is_writable: false,
+                },
+                AccountMeta {
+                    pubkey: ctx.accounts.vote_delegate.key(),
+                    is_signer: true,
+                    is_writable: false,
+                },
+                AccountMeta {
+                    pubkey: ctx.accounts.vote_payer.key(),
+                    is_signer: false,
+                    is_writable: true,
+                },
+            ],
+            data,
+        };
+        invoke_signed(
+            &close_ix,
+            &[
+                ctx.accounts.epoch_gauge_vote.to_account_info(),
+                ctx.accounts.gaugemeister.to_account_info(),
+                ctx.accounts.gauge.to_account_info(),
+                ctx.accounts.gauge_voter.to_account_info(),
+                ctx.accounts.gauge_vote.to_account_info(),
+                ctx.accounts.escrow.to_account_info(),
+                ctx.accounts.vote_delegate.to_account_info(),
+                ctx.accounts.vote_payer.to_account_info(),
+            ],
+            &[&[b"vote-delegate".as_ref(), ctx.accounts.config.key().as_ref(), &[vote_delegate_bump]]],
+        )?;
         Ok(())
     }
 
@@ -246,7 +355,7 @@ pub struct ClaimVotePayment<'info> {
     pub gaugemeister: Account<'info, gauge_state::Gaugemeister>,
     #[account(has_one = gaugemeister, has_one = escrow)]
     pub gauge_voter: Account<'info, gauge_state::GaugeVoter>,
-    #[account(constraint = gauge_vote.gauge_voter == seller.key(), has_one = gauge)]
+    #[account(has_one = gauge_voter, has_one = gauge)]
     pub gauge_vote: Account<'info, gauge_state::GaugeVote>,
     #[account(has_one = gauge_voter)]
     pub epoch_gauge_voter: Account<'info, gauge_state::EpochGaugeVoter>,
@@ -255,6 +364,10 @@ pub struct ClaimVotePayment<'info> {
     pub epoch_gauge: Account<'info, gauge_state::EpochGauge>,
     #[account(mut)]
     pub epoch_gauge_vote: Account<'info, gauge_state::EpochGaugeVote>,
+    #[account(mut, seeds = [b"vote-payer", config.key().as_ref()], bump)]
+    pub vote_payer: SystemAccount<'info>,
+    /// CHECK: I'm not sure how to check a program.
+    pub gauge_program: UncheckedAccount<'info>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }

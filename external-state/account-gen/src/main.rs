@@ -91,7 +91,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     println!("Gauge vote address is {}", gauge_vote_address);
     proccess_account::<GaugeVote,_>("gauge-vote", Some(gauge_vote_address), |mut data| {
-        data.gauge_voter = payer.pubkey();
+        data.gauge_voter = gauge_voter_address;
         data.gauge = gauge_account.pubkey;
         data
     }, &mut accounts_to_update)?;
