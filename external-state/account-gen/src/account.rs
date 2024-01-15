@@ -2,7 +2,6 @@ use anchor_lang::{AccountDeserialize, AccountSerialize};
 use base64::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::{fs, io};
-use std::str::FromStr;
 use anchor_lang::prelude::Pubkey;
 use crate::errors::AccountGenError::InvalidAccountData;
 use crate::toml_update::AddressInfo;

@@ -1,6 +1,5 @@
 use anchor_lang::error;
 use anchor_lang::error::Error;
-use anchor_lang::prelude::ProgramError;
 use crate::errors::ErrorCode;
 
 pub fn calculate_voter_share(total_power: u64, allocated_power: u64, total_vote_payment: u64) -> Result<u64, Error> {

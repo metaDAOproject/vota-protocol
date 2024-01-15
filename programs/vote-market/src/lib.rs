@@ -8,6 +8,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use sha2::{Digest, Sha256};
+use gauge_state::GaugeProgram;
 
 declare_id!("CgpagJ94phFKHBKkk4pd4YdKgfNCp5SzsiNwcLe73dc");
 
@@ -29,11 +30,11 @@ pub mod vote_market {
         if let Some(script_authority) = script_authority {
             ctx.accounts.config.script_authority = script_authority;
         } else {
-            ctx.accounts.config.script_authority = *ctx.accounts.payer.key;
+            ctx.accounts.config.script_authority = ctx.accounts.payer.key();
         }
         ctx.accounts.config.gaugemeister = gaugemeister;
         ctx.accounts.allowed_mints.mints = mints;
-        ctx.accounts.config.admin = *ctx.accounts.payer.key;
+        ctx.accounts.config.admin = ctx.accounts.payer.key();
         ctx.accounts.config.efficiency_ratio = efficiency_ratio;
         Ok(())
     }
@@ -85,14 +86,25 @@ pub mod vote_market {
     }
 
     pub fn increase_vote_buy(ctx: Context<IncreaseVoteBuy>, epoch: u32, amount: u64) -> Result<()> {
+        //Check buyer
+        if ctx.accounts.token_buy.reward_receiver == Pubkey::default() {
+            ctx.accounts.token_buy.reward_receiver = ctx.accounts.buyer.key();
+        }
+        if ctx.accounts.token_buy.reward_receiver != ctx.accounts.buyer.key() {
+            return Err(errors::ErrorCode::InvalidBuyer.into());
+        }
+        // Check epoch
         let gaugemeister_info = ctx.accounts.gaugemeister.to_account_info();
         let mut gaugemeister = &gaugemeister_info.data.borrow_mut()[..];
         let gaugemeister_data: gauge_state::Gaugemeister =
             gauge_state::Gaugemeister::try_deserialize(&mut gaugemeister)?;
-        // TODO: Check for overflow
-        if gaugemeister_data.current_rewards_epoch + 1 > epoch {
+        if gaugemeister_data.current_rewards_epoch.checked_add(1)
+            .ok_or::<Error>(errors::ErrorCode::EpochOverflow.into()).unwrap() > epoch {
             return Err(errors::ErrorCode::CompletedEpoch.into());
         }
+        // Check if mint is valid
+        ctx.accounts.allowed_mints.mints.iter().find(|mint| mint == &&ctx.accounts.mint.key())
+            .ok_or::<Error>(errors::ErrorCode::InvalidMint.into())?;
         let transfer_ix = spl_token::instruction::transfer(
             &ctx.accounts.token_program.key(),
             &ctx.accounts.buyer_token_account.key(),
@@ -113,7 +125,6 @@ pub mod vote_market {
         ctx.accounts.token_buy.amount += amount;
         ctx.accounts.token_buy.mint = ctx.accounts.mint.key();
         ctx.accounts.token_buy.percent_to_use_bps = 0;
-        ctx.accounts.token_buy.reward_receiver = ctx.accounts.buyer.key();
         Ok(())
     }
 
@@ -125,7 +136,6 @@ pub mod vote_market {
         let allocated_power = ctx.accounts.epoch_gauge_vote.allocated_power;
         let total_vote_payment = ctx.accounts.token_buy.amount;
         let voter_share = calculate_voter_share(total_power, total_vote_payment, allocated_power)?;
-        msg!("voter_share: {}", voter_share);
         let transfer_ix = spl_token::instruction::transfer(
             &ctx.accounts.token_program.key(),
             &ctx.accounts.token_vault.key(),
@@ -156,7 +166,7 @@ pub mod vote_market {
         //because the anchor_lang version of gauge is not compatible with this program.
         let mut hasher = Sha256::new();
         hasher.update(b"global:close_epoch_gauge_vote");
-        let mut data: Vec<u8> = hasher.finalize()[..8].try_into().unwrap();
+        let mut data: Vec<u8> = hasher.finalize()[..8].into();
         data.extend_from_slice(&epoch.to_le_bytes());
         let (expected_vote_delegate, vote_delegate_bump) = Pubkey::find_program_address(
             &[b"vote-delegate".as_ref(), ctx.accounts.config.key().as_ref()],
@@ -204,7 +214,7 @@ pub mod vote_market {
                     is_writable: false,
                 },
                 AccountMeta {
-                    pubkey: ctx.accounts.vote_payer.key(),
+                    pubkey: ctx.accounts.vote_delegate.key(),
                     is_signer: false,
                     is_writable: true,
                 },
@@ -221,7 +231,7 @@ pub mod vote_market {
                 ctx.accounts.gauge_vote.to_account_info(),
                 ctx.accounts.escrow.to_account_info(),
                 ctx.accounts.vote_delegate.to_account_info(),
-                ctx.accounts.vote_payer.to_account_info(),
+                ctx.accounts.vote_delegate.to_account_info(),
             ],
             &[&[b"vote-delegate".as_ref(), ctx.accounts.config.key().as_ref(), &[vote_delegate_bump]]],
         )?;
@@ -320,6 +330,8 @@ pub struct IncreaseVoteBuy<'info> {
     bump)]
     pub token_buy: Account<'info, TokenBuy>,
     pub gauge: Account<'info, gauge_state::Gauge>,
+    #[account(seeds = [b"allow-list".as_ref(), config.key().as_ref()], bump)]
+    pub allowed_mints: Account<'info, AllowedMints>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
@@ -343,13 +355,11 @@ pub struct ClaimVotePayment<'info> {
     pub mint: Account<'info, Mint>,
     #[account(has_one = gaugemeister)]
     pub config: Account<'info, VoteMarketConfig>,
-    /// TODO put mint back
     #[account(mut,
     seeds = [b"token-buy".as_ref(), epoch.to_le_bytes().as_ref(), config.key().as_ref(), gauge.key().as_ref()], bump)]
     pub token_buy: Account<'info, TokenBuy>,
-    #[account(seeds = [b"vote-delegate", config.key().as_ref()], bump)]
-    /// CHECK this is going to be a PDA signer to close the EpochGaugeVote. Verifying the seeds should be enough.
-    pub vote_delegate: UncheckedAccount<'info>,
+    #[account(mut, seeds = [b"vote-delegate", config.key().as_ref()], bump)]
+    pub vote_delegate: SystemAccount<'info>,
     #[account(has_one = vote_delegate)]
     pub escrow: Account<'info, locked_voter_state::Escrow>,
     pub gaugemeister: Account<'info, gauge_state::Gaugemeister>,
@@ -364,10 +374,7 @@ pub struct ClaimVotePayment<'info> {
     pub epoch_gauge: Account<'info, gauge_state::EpochGauge>,
     #[account(mut)]
     pub epoch_gauge_vote: Account<'info, gauge_state::EpochGaugeVote>,
-    #[account(mut, seeds = [b"vote-payer", config.key().as_ref()], bump)]
-    pub vote_payer: SystemAccount<'info>,
-    /// CHECK: I'm not sure how to check a program.
-    pub gauge_program: UncheckedAccount<'info>,
+    pub gauge_program: Program<'info, GaugeProgram>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }

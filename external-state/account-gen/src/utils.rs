@@ -1,5 +1,5 @@
 use anchor_lang::prelude::Pubkey;
-use serde::{Deserialize, Serializer};
+use serde::Deserialize;
 use std::str::FromStr;
 
 pub fn deserialize_pubkey<'de, D>(deserializer: D) -> Result<Pubkey, D::Error>

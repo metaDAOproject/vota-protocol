@@ -108,7 +108,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         &gauge_state::id(),
     );
 
-    let (epoch_gauge_data, _) = account::proccess_account::<EpochGauge, _>("epoch-gauge", Some(epoch_gauge_address), |x|x , &mut accounts_to_update)?;
+    proccess_account::<EpochGauge, _>("epoch-gauge", Some(epoch_gauge_address), |x|x , &mut accounts_to_update)?;
 
     let (epoch_gauge_voter_address, _) = Pubkey::find_program_address(
         &[
@@ -141,7 +141,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let anchor_toml_file = fs::read_to_string("./Anchor.toml").unwrap();
     let mut anchor_toml  = Value::Table(anchor_toml_file.parse::<Table>().unwrap());
     update_anchor_toml(&mut anchor_toml, accounts_to_update);
-    fs::copy("./Anchor.toml", "./Anchor.toml.bak");
-    fs::write("./Anchor.toml", toml::to_string(&anchor_toml).unwrap());
+    fs::copy("./Anchor.toml", "./Anchor.toml.bak")?;
+    fs::write("./Anchor.toml", toml::to_string(&anchor_toml).unwrap())?;
     Ok(())
 }

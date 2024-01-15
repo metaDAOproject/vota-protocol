@@ -1,5 +1,3 @@
-use serde::Serialize;
-use solana_sdk::pubkey;
 use solana_sdk::pubkey::Pubkey;
 use toml::{Table, Value};
 
@@ -41,7 +39,7 @@ impl TableDiver for Value {
         match self {
             Value::Table(t) => {
                 t.iter_mut()
-                    .find(|(&ref k,_)|  k == name)
+                    .find(|(k,_)|  *k == name)
                     .map(|(_,v)| v)
             }
             _ => None,

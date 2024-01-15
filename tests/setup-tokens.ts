@@ -1,7 +1,7 @@
 import {Program, web3} from "@coral-xyz/anchor";
 import {createAssociatedTokenAccount, createMint, getAccount, MintLayout, mintTo} from "@solana/spl-token";
 import {expect} from "chai";
-import { VoteMarket } from "../target/types/vote_market";
+import {VoteMarket} from "../target/types/vote_market";
 
 export async function setupTokens(program: Program<VoteMarket>, payer: web3.Keypair) {
     const mintAuth = web3.Keypair.generate();
@@ -38,5 +38,5 @@ export async function setupTokens(program: Program<VoteMarket>, payer: web3.Keyp
     );
     const tokenAccount = await getAccount(program.provider.connection, ata);
     expect(tokenAccount.amount).to.eql(BigInt(1000000000));
-    return {mint, ata};
+    return {mint, ata, mintAuth};
 }

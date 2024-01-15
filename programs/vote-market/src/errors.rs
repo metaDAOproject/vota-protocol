@@ -9,4 +9,10 @@ pub enum ErrorCode {
     EpochVotingNotCompleted,
     #[msg("Allocated vote amount is greater than total vote amount")]
     InvalidAllocatedVoteAmount,
+    #[msg("Epoch overflow")]
+    EpochOverflow,
+    #[msg("Invalid vote payment mint")]
+    InvalidMint,
+    #[msg("The initial buyer is the only reward receiver for this epoch")]
+    InvalidBuyer,
 }

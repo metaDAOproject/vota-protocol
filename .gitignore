@@ -8,3 +8,4 @@ test-ledger
 .idea
 .env
 test-accounts
+Anchor.toml.bak

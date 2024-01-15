@@ -4,6 +4,14 @@ declare_id!("GaugesLJrnVjNNWLReiw3Q7xQhycSBRgeHGTMDUaX231");
 
 use anchor_lang::prelude::*;
 const PUBKEY_BYTES: usize = 32;
+#[derive(Clone)]
+pub struct GaugeProgram;
+
+impl Id for GaugeProgram {
+    fn id() -> Pubkey {
+        ID
+    }
+}
 
 #[error_code]
 pub enum GaugeStateError{
