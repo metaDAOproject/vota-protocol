@@ -1,5 +1,5 @@
 [workspace]
-members = [
+members = [ "external-state/account-gen",
     "programs/*"
 ]
 resolver = "2"

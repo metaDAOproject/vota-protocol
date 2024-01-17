@@ -1,0 +1,14 @@
+{
+  "pubkey": "7Jmy8EEofM24NRcy5BUmqHgYmXqo5P2N35RBQ6uuJdDe",
+  "account": {
+    "lamports": 1252800,
+    "data": [
+      "U+V3hX7RN24r2tPCJbjTjjbQcqq4wn76aK7ROnE0VAUs34QYr3iY+VsAAAAJY6fgEgAAAA==",
+      "base64"
+    ],
+    "owner": "GaugesLJrnVjNNWLReiw3Q7xQhycSBRgeHGTMDUaX231",
+    "executable": false,
+    "rentEpoch": 0,
+    "space": 52
+  }
+}

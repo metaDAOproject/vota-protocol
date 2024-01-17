@@ -6,3 +6,6 @@ node_modules
 test-ledger
 .yarn
 .idea
+.env
+test-accounts
+Anchor.toml.bak
