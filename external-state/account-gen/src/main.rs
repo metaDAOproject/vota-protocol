@@ -34,10 +34,14 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     };
     let payer = read_keypair_file(path)?;
     println!("Using payer pubkey: {:?}", payer.pubkey());
+    // create test accounts directory if it doesn't exist
+    let test_accounts_dir = cwd.join("test-accounts");
+    if !test_accounts_dir.exists() {
+        fs::create_dir(test_accounts_dir)?;
+    }
+
     let (gaugemeister_data, gaugemeister_account) =
         proccess_account::<Gaugemeister, _>("gaugemeister", None, |x| x, &mut accounts_to_update)?;
-
-    println!("next epoch is {}", gaugemeister_data.next_epoch_starts_at);
 
     let (escrow_address, _) = Pubkey::find_program_address(
         &[
