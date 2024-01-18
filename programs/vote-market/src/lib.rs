@@ -7,7 +7,6 @@ use crate::state::{AllowedMints, VoteBuy, VoteMarketConfig};
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{Mint, Token, TokenAccount};
-use sha2::{Digest, Sha256};
 use gauge_state::GaugeProgram;
 
 declare_id!("CgpagJ94phFKHBKkk4pd4YdKgfNCp5SzsiNwcLe73dc");
@@ -17,6 +16,7 @@ pub mod vote_market {
     use super::*;
     use anchor_lang::solana_program::program::{invoke, invoke_signed};
     use anchor_lang::solana_program::system_instruction;
+    use anchor_lang::{solana_program, system_program};
     use anchor_spl::token::spl_token;
     use crate::util::math::get_user_payment;
 
@@ -164,9 +164,7 @@ pub mod vote_market {
 
         //Calculating the discriminator manually instead of including the crate
         //because the anchor_lang version of gauge is not compatible with this program.
-        let mut hasher = Sha256::new();
-        hasher.update(b"global:close_epoch_gauge_vote");
-        let mut data: Vec<u8> = hasher.finalize()[..8].into();
+        let mut data: Vec<u8> = solana_program::hash::hash(b"global:close_epoch_gauge_vote").to_bytes()[..8].to_vec();
         data.extend_from_slice(&epoch.to_le_bytes());
         let (expected_vote_delegate, vote_delegate_bump) = Pubkey::find_program_address(
             &[b"vote-delegate".as_ref(), ctx.accounts.config.key().as_ref()],

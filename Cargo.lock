@@ -2505,7 +2505,6 @@ dependencies = [
  "anchor-spl",
  "gauge-state",
  "locked-voter-state",
- "sha2 0.10.8",
 ]
 
 [[package]]
