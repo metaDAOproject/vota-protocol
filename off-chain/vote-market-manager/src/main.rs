@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 mod actions;
+mod accounts;
 
 const ANCHOR_DISCRIMINATOR_SIZE: usize = 8;
 const GAUGEMEISTER: Pubkey = pubkey!("28ZDtf6d2wsYhBvabTxUHTRT6MDxqjmqR7RMCp348tyU");
@@ -64,6 +65,15 @@ fn main() {
                         .value_parser(value_parser!(String))
                         .help("The delegate to delegate the escrow to"),
                 ),
+        )
+        .subcommand(
+            clap::command!("prepare-vote")
+                .arg(
+                    clap::Arg::new("owner")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The owner of the escrow to vote for"),
+                )
         );
 
     let matches = cmd.get_matches();
@@ -82,7 +92,7 @@ fn main() {
         }
         Some(("get-escrow", matches)) => {
             let owner = Pubkey::from_str(matches.get_one::<String>("owner").unwrap()).unwrap();
-            let escrow = escrows::get_escrow_address_for_owner(client, owner);
+            let escrow = accounts::resolve::get_escrow_address_for_owner(&owner);
             println!("{}", escrow);
         }
         Some(("get-vote-buys", matches)) => {
@@ -90,6 +100,12 @@ fn main() {
             let epoch = matches.get_one::<u32>("epoch").unwrap();
             let vote_buys = actions::vote_buys::get_all_vote_buys(*epoch, config);
             println!("vote buys: {:?}", vote_buys);
+        }
+        Some(("prepare-vote", matches)) => {
+            println!("prepare-vote");
+            let owner = Pubkey::from_str(matches.get_one::<String>("owner").unwrap()).unwrap();
+            println!("owner: {:?}", owner);
+            actions::prepare_vote::prepare_vote(&client, owner);
         }
         _ => {
             println!("no subcommand matched")

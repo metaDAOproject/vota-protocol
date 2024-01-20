@@ -9,13 +9,8 @@ use solana_client::rpc_filter::{Memcmp, MemcmpEncodedBytes, RpcFilterType};
 use solana_program::pubkey::Pubkey;
 use solana_sdk::pubkey;
 
-pub fn get_escrow_address_for_owner(client: RpcClient, owner: Pubkey) -> Pubkey {
-    Pubkey::find_program_address(
-        &[b"Escrow".as_ref(), LOCKER.as_ref(), owner.as_ref()],
-        &LOCKER_PROGRAM,
-    )
-    .0
-}
+
+
 
 pub fn get_delegated_escrows(client: RpcClient) {
     let accounts = client
