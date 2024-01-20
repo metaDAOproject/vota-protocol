@@ -112,9 +112,11 @@ describe("vote market voting phase", () => {
     it("Buyers can add payment", async () => {
         const {mint, ata, mintAuth} = await setupTokens(program, payer);
         const {config, allowedMints} = await setupConfig(program, [mint]);
+        console.log("config", config.publicKey.toBase58());
         const gaugeMeisterData = await gaugeProgram.account.gaugemeister.fetch(GAUGEMEISTER);
         const epochBuffer = Buffer.alloc(4);
         epochBuffer.writeUInt32LE(gaugeMeisterData.currentRewardsEpoch + 1);
+        console.log("epoch", gaugeMeisterData.currentRewardsEpoch + 1);
         const [voteBuy, bump] = anchor.web3.PublicKey.findProgramAddressSync(
             [Buffer.from("vote-buy"), epochBuffer, config.publicKey.toBuffer(), GAUGE.toBuffer()],
             program.programId);

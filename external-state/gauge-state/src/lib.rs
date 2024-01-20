@@ -14,7 +14,7 @@ impl Id for GaugeProgram {
 }
 
 #[error_code]
-pub enum GaugeStateError{
+pub enum GaugeStateError {
     #[msg("Overflow when incrementing epoch")]
     Overflow,
 }
@@ -60,7 +60,10 @@ impl Gaugemeister {
 
     /// Fetches the current voting epoch. This is always the epoch after [Self::current_rewards_epoch].
     pub fn voting_epoch(&self) -> Result<u32> {
-        let voting_epoch = self.current_rewards_epoch.checked_add(1).ok_or(GaugeStateError::Overflow)?;
+        let voting_epoch = self
+            .current_rewards_epoch
+            .checked_add(1)
+            .ok_or(GaugeStateError::Overflow)?;
         Ok(voting_epoch)
     }
 }
@@ -75,6 +78,11 @@ pub struct Gauge {
     /// If true, this Gauge cannot receive any more votes
     /// and rewards shares cannot be synchronized from it.
     pub is_disabled: bool,
+}
+
+impl Gauge {
+    /// Length of a [Gauge] in bytes.
+    pub const LEN: usize = PUBKEY_BYTES * 2 + 1;
 }
 
 #[account]

@@ -1,7 +1,6 @@
-mod errors;
-mod state;
-mod util;
-
+pub mod errors;
+pub mod state;
+pub mod util;
 
 use crate::state::{AllowedMints, VoteBuy, VoteMarketConfig};
 use anchor_lang::prelude::*;
@@ -14,11 +13,11 @@ declare_id!("CgpagJ94phFKHBKkk4pd4YdKgfNCp5SzsiNwcLe73dc");
 #[program]
 pub mod vote_market {
     use super::*;
+    use crate::util::math::get_user_payment;
     use anchor_lang::solana_program::program::{invoke, invoke_signed};
     use anchor_lang::solana_program::system_instruction;
     use anchor_lang::{solana_program, system_program};
     use anchor_spl::token::spl_token;
-    use crate::util::math::get_user_payment;
 
     pub fn create_config(
         ctx: Context<CreateConfig>,
@@ -89,7 +88,9 @@ pub mod vote_market {
         if ctx.accounts.mint.key() == Pubkey::default() {
             return err!(errors::ErrorCode::InvalidMint);
         }
-        if ctx.accounts.vote_buy.reward_receiver == Pubkey::default() && ctx.accounts.vote_buy.mint == Pubkey::default() {
+        if ctx.accounts.vote_buy.reward_receiver == Pubkey::default()
+            && ctx.accounts.vote_buy.mint == Pubkey::default()
+        {
             ctx.accounts.vote_buy.reward_receiver = ctx.accounts.buyer.key();
             ctx.accounts.vote_buy.mint = ctx.accounts.mint.key();
             ctx.accounts.vote_buy.percent_to_use_bps = 0;
@@ -105,7 +106,11 @@ pub mod vote_market {
             return err!(errors::ErrorCode::CompletedEpoch);
         }
         // Check if mint is valid
-        ctx.accounts.allowed_mints.mints.iter().find(|mint| mint == &&ctx.accounts.mint.key())
+        ctx.accounts
+            .allowed_mints
+            .mints
+            .iter()
+            .find(|mint| mint == &&ctx.accounts.mint.key())
             .ok_or::<Error>(errors::ErrorCode::InvalidMint.into())?;
         let transfer_ix = spl_token::instruction::transfer(
             &ctx.accounts.token_program.key(),
@@ -129,7 +134,7 @@ pub mod vote_market {
     }
 
     pub fn claim_vote_payment(ctx: Context<ClaimVotePayment>, epoch: u32) -> Result<()> {
-        if epoch > ctx.accounts.gaugemeister.current_rewards_epoch  {
+        if epoch > ctx.accounts.gaugemeister.current_rewards_epoch {
             return err!(errors::ErrorCode::EpochVotingNotCompleted);
         }
         let total_power = ctx.accounts.epoch_gauge.total_power;
@@ -145,7 +150,12 @@ pub mod vote_market {
             voter_share,
         )?;
         let (expected_vote_buy, bump) = Pubkey::find_program_address(
-            &[b"vote-buy".as_ref(), epoch.to_le_bytes().as_ref(), ctx.accounts.config.key().as_ref(), ctx.accounts.gauge.key().as_ref()],
+            &[
+                b"vote-buy".as_ref(),
+                epoch.to_le_bytes().as_ref(),
+                ctx.accounts.config.key().as_ref(),
+                ctx.accounts.gauge.key().as_ref(),
+            ],
             ctx.program_id,
         );
         if expected_vote_buy != ctx.accounts.vote_buy.key() {
@@ -159,15 +169,25 @@ pub mod vote_market {
                 ctx.accounts.vote_buy.to_account_info(),
                 ctx.accounts.token_program.to_account_info(),
             ],
-            &[&[b"vote-buy".as_ref(), epoch.to_le_bytes().as_ref(), ctx.accounts.config.key().as_ref(), ctx.accounts.gauge.key().as_ref(), &[bump]]],
+            &[&[
+                b"vote-buy".as_ref(),
+                epoch.to_le_bytes().as_ref(),
+                ctx.accounts.config.key().as_ref(),
+                ctx.accounts.gauge.key().as_ref(),
+                &[bump],
+            ]],
         )?;
 
         //Calculating the discriminator manually instead of including the crate
         //because the anchor_lang version of gauge is not compatible with this program.
-        let mut data: Vec<u8> = solana_program::hash::hash(b"global:close_epoch_gauge_vote").to_bytes()[..8].to_vec();
+        let mut data: Vec<u8> =
+            solana_program::hash::hash(b"global:close_epoch_gauge_vote").to_bytes()[..8].to_vec();
         data.extend_from_slice(&epoch.to_le_bytes());
         let (expected_vote_delegate, vote_delegate_bump) = Pubkey::find_program_address(
-            &[b"vote-delegate".as_ref(), ctx.accounts.config.key().as_ref()],
+            &[
+                b"vote-delegate".as_ref(),
+                ctx.accounts.config.key().as_ref(),
+            ],
             ctx.program_id,
         );
         if expected_vote_delegate != ctx.accounts.vote_delegate.key() {
@@ -231,7 +251,11 @@ pub mod vote_market {
                 ctx.accounts.vote_delegate.to_account_info(),
                 ctx.accounts.vote_delegate.to_account_info(),
             ],
-            &[&[b"vote-delegate".as_ref(), ctx.accounts.config.key().as_ref(), &[vote_delegate_bump]]],
+            &[&[
+                b"vote-delegate".as_ref(),
+                ctx.accounts.config.key().as_ref(),
+                &[vote_delegate_bump],
+            ]],
         )?;
         Ok(())
     }

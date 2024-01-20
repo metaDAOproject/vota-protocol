@@ -12,5 +12,7 @@ solana-sdk = "1.17.16"
 solana-account-decoder = "1.17.16"
 solana-program = "1.17.16"
 locked-voter-state = { path = "../../external-state/locked-voter-state" }
+gauge-state = {path = "../../external-state/gauge-state"}
+vote-market = { path = "../../programs/vote-market" }
 anchor-lang = "0.29.0"
 dotenv = "0.15.0"

@@ -1,33 +1,53 @@
 use crate::actions::escrows;
 use clap::{value_parser, Parser};
+use dotenv::dotenv;
 use solana_sdk::pubkey;
 use solana_sdk::pubkey::Pubkey;
+use std::env;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::env;
-use dotenv::dotenv;
 
 mod actions;
 
+const ANCHOR_DISCRIMINATOR_SIZE: usize = 8;
+const GAUGEMEISTER: Pubkey = pubkey!("28ZDtf6d2wsYhBvabTxUHTRT6MDxqjmqR7RMCp348tyU");
+const LOCKER: Pubkey = pubkey!("8erad8kmNrLJDJPe9UkmTHomrMV3EW48sjGeECyVjbYX");
+const LOCKER_PROGRAM: Pubkey = pubkey!("LocktDzaV1W2Bm9DeZeiyz4J9zs4fRqNiYqQyracRXw");
+
 fn main() {
     dotenv().ok();
-    let GAUGEMEISTER = pubkey!("28ZDtf6d2wsYhBvabTxUHTRT6MDxqjmqR7RMCp348tyU");
-    let MY_ESCROW = pubkey!("C8CMP5RkRQneDtYruTNWbRXihorfXpYh7JdEXjia1DJL");
+    let my_escrow = pubkey!("C8CMP5RkRQneDtYruTNWbRXihorfXpYh7JdEXjia1DJL");
 
     let rpc_url = env::var("RPC_URL").unwrap().to_string();
-    print!("rpc_url: {:?}", rpc_url);
+    println!("rpc_url: {:?}", rpc_url);
     let client = solana_client::rpc_client::RpcClient::new(rpc_url);
     // let args = Args::parse();
     let cmd = clap::Command::new("vote-market-manager")
         .bin_name("vote-market-manager")
-        .subcommand(clap::command!("get"))
-        .subcommand(clap::command!("get-escrow")
-            .arg(
+        .subcommand(clap::command!("get-escrows"))
+        .subcommand(
+            clap::command!("get-vote-buys")
+                .arg(
+                    clap::Arg::new("config")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("the config for the vote buy accounts"),
+                )
+                .arg(
+                    clap::Arg::new("epoch")
+                        .required(true)
+                        .value_parser(value_parser!(u32))
+                        .help("the epoch for the vote buy accounts"),
+                ),
+        )
+        .subcommand(
+            clap::command!("get-escrow").arg(
                 clap::Arg::new("owner")
                     .required(true)
                     .value_parser(value_parser!(String))
                     .help("The owner of the escrow to get"),
-            ))
+            ),
+        )
         .subcommand(
             clap::command!("delegate")
                 .arg(
@@ -48,7 +68,7 @@ fn main() {
 
     let matches = cmd.get_matches();
     match matches.subcommand() {
-        Some(("get", matches)) => {
+        Some(("get-escrows", matches)) => {
             escrows::get_delegated_escrows(client);
         }
         Some(("delegate", matches)) => {
@@ -63,7 +83,13 @@ fn main() {
         Some(("get-escrow", matches)) => {
             let owner = Pubkey::from_str(matches.get_one::<String>("owner").unwrap()).unwrap();
             let escrow = escrows::get_escrow_address_for_owner(client, owner);
-            println!("{}",escrow);
+            println!("{}", escrow);
+        }
+        Some(("get-vote-buys", matches)) => {
+            let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap()).unwrap();
+            let epoch = matches.get_one::<u32>("epoch").unwrap();
+            let vote_buys = actions::vote_buys::get_all_vote_buys(*epoch, config);
+            println!("vote buys: {:?}", vote_buys);
         }
         _ => {
             println!("no subcommand matched")

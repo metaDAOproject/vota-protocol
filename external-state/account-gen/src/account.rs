@@ -1,12 +1,11 @@
+use crate::errors::AccountGenError::InvalidAccountData;
+use crate::toml_update::AddressInfo;
+use crate::utils::{deserialize_pubkey, serialize_pubkey};
+use anchor_lang::prelude::Pubkey;
 use anchor_lang::{AccountDeserialize, AccountSerialize};
 use base64::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::{fs, io};
-use anchor_lang::prelude::Pubkey;
-use crate::errors::AccountGenError::InvalidAccountData;
-use crate::toml_update::AddressInfo;
-use crate::utils::{deserialize_pubkey, serialize_pubkey};
-
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Root {
@@ -88,7 +87,10 @@ where
     let account_file = get_account_file(account_name)?;
     let account = Root::from_string(&account_file)?;
     let new_address = new_address.unwrap_or(account.pubkey);
-    accounts_to_update.push(AddressInfo { name: account_name.to_string(), pubkey: new_address});
+    accounts_to_update.push(AddressInfo {
+        name: account_name.to_string(),
+        pubkey: new_address,
+    });
     let mut account_data = account.get_account_data::<T>()?;
     account_data = data_update(account_data);
     let updated_account = account
@@ -106,4 +108,3 @@ fn get_account_file(account_name: &str) -> io::Result<String> {
         account_name
     ))
 }
-

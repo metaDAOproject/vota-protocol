@@ -4867,11 +4867,13 @@ dependencies = [
  "anchor-lang",
  "clap 4.4.18",
  "dotenv",
+ "gauge-state",
  "locked-voter-state",
  "solana-account-decoder",
  "solana-client",
  "solana-program",
  "solana-sdk",
+ "vote-market",
 ]
 
 [[package]]
