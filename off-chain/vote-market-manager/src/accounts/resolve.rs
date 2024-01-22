@@ -34,17 +34,17 @@ impl VoteKeys {
             self.epoch_gauge_vote,
         ]
     }
-    pub fn get_missing_accounts(&self, client: &RpcClient) -> Vec<VoteCreateStep> {
+    pub fn get_missing_prepare_vote_accounts(&self, client: &RpcClient) -> Vec<VoteCreateStep> {
         let accounts = client.get_multiple_accounts(&self.get_all_keys()).unwrap();
-        println!("accounts: {:?}", accounts);
         let mut steps: Vec<VoteCreateStep> = Vec::new();
         for (index, account) in accounts.iter().enumerate() {
             if account.is_none() {
+                // We don't need to match epoch gauge vote, because we can't set that until we
+                // have set the vote amount
                 match index {
                     0 => steps.push(VoteCreateStep::GaugeVoter(self.gauge_voter)),
                     1 => steps.push(VoteCreateStep::GaugeVote(self.gauge_vote)),
                     2 => steps.push(VoteCreateStep::EpochGaugeVoter(self.epoch_gauge_voter)),
-                    3 => steps.push(VoteCreateStep::EpochGaugeVote(self.epoch_gauge_vote)),
                     _ => {}
                 }
             }

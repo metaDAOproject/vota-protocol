@@ -174,6 +174,7 @@ describe("vote market rewards phase", () => {
         const voteDelegateBalance = await program.provider.connection.getBalance(voteDelegate);
         const expectedGaugeVoteRent = await program.provider.connection.getMinimumBalanceForRentExemption(16)
         expect(voteDelegateBalance === expectedGaugeVoteRent).to.be.true;
+        console.log("claim sig", sig);
 
         //Should not be able to claim again
         try {
