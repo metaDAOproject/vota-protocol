@@ -94,6 +94,13 @@ fn get_epoch_gauge_voter(gauge_voter: &Pubkey, epoch: u32) -> Pubkey {
     ).0
 }
 
+pub fn get_delegate(config: &Pubkey) -> Pubkey {
+    Pubkey::find_program_address(
+        &[b"delegate".as_ref(), config.as_ref()],
+        &vote_market::id(),
+    ).0
+}
+
 
 
 

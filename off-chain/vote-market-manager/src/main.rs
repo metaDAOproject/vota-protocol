@@ -87,7 +87,31 @@ fn main() {
                         .value_parser(value_parser!(u32))
                         .help("The epoch to vote for"),
                 )
-        );
+        ).subcommand(
+            clap::command!("vote")
+                .arg(
+                    clap::arg!(-k --keypair <FILE> "The delegate keypair")
+                        .value_parser(value_parser!(PathBuf)),
+                )
+                .arg(
+                    clap::Arg::new("config")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The config for the vote buy accounts"),
+                )
+                .arg(
+                    clap::Arg::new("escrow")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The escrow to vote for"),
+                )
+                .arg(
+                    clap::Arg::new("epoch")
+                        .required(true)
+                        .value_parser(value_parser!(u32))
+                        .help("The epoch to vote for"),
+                )
+           );
 
     let matches = cmd.get_matches();
     match matches.subcommand() {
@@ -123,6 +147,19 @@ fn main() {
             let keypair = solana_sdk::signature::read_keypair_file(keypair_path).unwrap();
             actions::prepare_vote::prepare_vote(&client, &owner, &gauge, &keypair, *epoch);
         }
+        Some(("vote", matches)) => {
+            println!("vote");
+            let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap()).unwrap();
+            let escrow = Pubkey::from_str(matches.get_one::<String>("escrow").unwrap()).unwrap();
+            let epoch = matches.get_one::<u32>("epoch").unwrap();
+            let keypair_path = matches.get_one::<PathBuf>("keypair").unwrap();
+            let keypair = solana_sdk::signature::read_keypair_file(keypair_path).unwrap();
+            let weights = vec![actions::vote::WeightInfo {
+                gauge: Pubkey::from_str("3xC4eW6xhW3Gpb4T5sCKFe73ay2K4aUUfxL57XFdguJx").unwrap(),
+                weight: 100,
+            }];
+            actions::vote::vote(&client, &keypair, &config, &escrow, *epoch, weights);
+        },
         _ => {
             println!("no subcommand matched")
         }

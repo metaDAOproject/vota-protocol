@@ -1,0 +1,7 @@
+1) Get all delegated accounts
+2) Get all guages with a vote buy account for the epoch
+3) prepare first 3 accounts needed to vote for each gauge with a vote buy for each delegated account
+4) Check power we have delegated. Check total power used so far. Assume delegated
+accounts didn't vote yet.
+5) Determine optimal vote weights. I think it is the same for every voter
+6) Set weights for each gauge and commit for every voter

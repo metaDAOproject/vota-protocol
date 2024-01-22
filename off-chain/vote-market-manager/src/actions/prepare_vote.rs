@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::signer::keypair::Keypair;
 use solana_program::instruction::AccountMeta;
