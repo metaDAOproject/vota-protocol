@@ -16,7 +16,7 @@ pub mod vote_market {
     use crate::util::math::get_user_payment;
     use anchor_lang::solana_program::program::{invoke, invoke_signed};
     use anchor_lang::solana_program::system_instruction;
-    use anchor_lang::{solana_program, system_program};
+    use anchor_lang::solana_program;
     use anchor_spl::token::spl_token;
 
     pub fn create_config(
@@ -260,15 +260,15 @@ pub mod vote_market {
         Ok(())
     }
 
-    pub fn claim_rewards_as_vote_seller(ctx: Context<Initialize>) -> Result<()> {
+    pub fn claim_rewards_as_vote_seller(_ctx: Context<Initialize>) -> Result<()> {
         Ok(())
     }
 
-    pub fn claim_rewards_as_vote_buyer(ctx: Context<Initialize>) -> Result<()> {
+    pub fn claim_rewards_as_vote_buyer(_ctx: Context<Initialize>) -> Result<()> {
         Ok(())
     }
 
-    pub fn vote(ctx: Context<Initialize>) -> Result<()> {
+    pub fn vote(_ctx: Context<Initialize>) -> Result<()> {
         Ok(())
     }
 }

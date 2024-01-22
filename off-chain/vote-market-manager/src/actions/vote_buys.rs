@@ -6,7 +6,6 @@ use solana_client::rpc_config::{RpcAccountInfoConfig, RpcProgramAccountsConfig};
 use solana_client::rpc_filter::RpcFilterType::DataSize;
 use solana_client::rpc_filter::{Memcmp, MemcmpEncodedBytes, RpcFilterType};
 use solana_program::pubkey::Pubkey;
-use solana_sdk::pubkey;
 use std::env;
 use vote_market::state::VoteBuy;
 
@@ -56,15 +55,10 @@ pub fn get_all_vote_buys(epoch: u32, config: Pubkey) -> Vec<VoteBuy> {
         vote_buy_addresses.push(vote_buy_address);
     }
     let vote_buy_accounts = client.get_multiple_accounts(&vote_buy_addresses).unwrap();
-    for vote_buy_account in vote_buy_accounts {
-        match vote_buy_account {
-            Some(vote_buy) => {
-                let parsed_vote_buy =
-                    VoteBuy::try_deserialize(&mut vote_buy.data.as_slice()).unwrap();
-                vote_buy_parsed_accounts.push(parsed_vote_buy);
-            }
-            _ => { }
-        }
+    for vote_buy_account in vote_buy_accounts.into_iter().flatten() {
+        let parsed_vote_buy =
+            VoteBuy::try_deserialize(&mut vote_buy_account.data.as_slice()).unwrap();
+        vote_buy_parsed_accounts.push(parsed_vote_buy);
     }
     vote_buy_parsed_accounts
 }

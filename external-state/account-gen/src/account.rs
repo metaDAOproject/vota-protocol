@@ -18,6 +18,7 @@ pub struct Root {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[allow(non_snake_case)]
 pub struct Account {
     pub lamports: u64,
     pub data: Vec<String>,
