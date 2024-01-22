@@ -36,6 +36,7 @@ impl VoteKeys {
     }
     pub fn get_missing_accounts(&self, client: &RpcClient) -> Vec<VoteCreateStep> {
         let accounts = client.get_multiple_accounts(&self.get_all_keys()).unwrap();
+        println!("accounts: {:?}", accounts);
         let mut steps: Vec<VoteCreateStep> = Vec::new();
         for (index, account) in accounts.iter().enumerate() {
             if account.is_none() {
@@ -52,7 +53,7 @@ impl VoteKeys {
     }
 }
 
-pub fn resolve_vote_keys(escrow: Pubkey, gauge: Pubkey, epoch: u32) -> VoteKeys {
+pub fn resolve_vote_keys(escrow: &Pubkey, gauge: &Pubkey, epoch: u32) -> VoteKeys {
     let gauge_voter = get_gauge_voter(&escrow);
     let gauge_vote = get_gauge_vote(&gauge_voter, &gauge);
     let epoch_gauge_voter = get_epoch_gauge_voter(&gauge_voter, epoch);
