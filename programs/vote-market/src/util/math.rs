@@ -13,8 +13,7 @@ pub fn get_user_payment(
     if allocated_power > total_power {
         return err!(ErrorCode::InvalidAllocatedVoteAmount);
     }
-    let shifted_allocated_power = ((allocated_power as u128) << 64) / (total_power as u128);
-    Ok((((total_vote_payment as u128) * shifted_allocated_power) >> 64) as u64)
+    ::u128::mul_div_u64(allocated_power, total_vote_payment, total_power).ok_or(ErrorCode::InvalidVotePower.into())
 }
 
 // Unit tests

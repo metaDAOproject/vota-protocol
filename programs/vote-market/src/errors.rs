@@ -15,4 +15,6 @@ pub enum ErrorCode {
     InvalidMint,
     #[msg("The initial buyer is the only reward receiver for this epoch")]
     InvalidBuyer,
+    #[msg("Unable to calcualate vote power")]
+    InvalidVotePower,
 }
