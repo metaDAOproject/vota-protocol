@@ -1,12 +1,18 @@
+use crate::accounts::resolve::{get_escrow_address_for_owner, resolve_vote_keys, VoteCreateStep};
+use crate::{GAUGEMEISTER, LOCKER};
 use solana_client::rpc_client::RpcClient;
-use solana_sdk::signer::keypair::Keypair;
 use solana_program::instruction::AccountMeta;
 use solana_program::pubkey::Pubkey;
 use solana_sdk::signature::Signer;
-use crate::accounts::resolve::{get_escrow_address_for_owner, resolve_vote_keys, VoteCreateStep};
-use crate::{GAUGEMEISTER, LOCKER};
+use solana_sdk::signer::keypair::Keypair;
 
-pub fn prepare_vote(client: &RpcClient, owner: &Pubkey, gauge: &Pubkey, payer: &Keypair, epoch: u32) {
+pub fn prepare_vote(
+    client: &RpcClient,
+    owner: &Pubkey,
+    gauge: &Pubkey,
+    payer: &Keypair,
+    epoch: u32,
+) {
     let escrow_address = get_escrow_address_for_owner(&owner);
     println!("Prepare vote for escrow: {:?}", escrow_address);
     let vote_keys = resolve_vote_keys(&escrow_address, gauge, epoch);
@@ -15,8 +21,9 @@ pub fn prepare_vote(client: &RpcClient, owner: &Pubkey, gauge: &Pubkey, payer: &
         match step {
             VoteCreateStep::GaugeVoter(key) => {
                 println!("Creating gauge voter {}", key);
-                let mut data: Vec<u8> =
-                    solana_program::hash::hash(b"global:create_gauge_voter_v2").to_bytes()[..8].to_vec();
+                let mut data: Vec<u8> = solana_program::hash::hash(b"global:create_gauge_voter_v2")
+                    .to_bytes()[..8]
+                    .to_vec();
                 let create_gauge_voter_ix = solana_program::instruction::Instruction {
                     program_id: gauge_state::id(),
                     accounts: vec![
@@ -49,18 +56,21 @@ pub fn prepare_vote(client: &RpcClient, owner: &Pubkey, gauge: &Pubkey, payer: &
                     ],
                     data,
                 };
-                let mut transaction =
-                    solana_sdk::transaction::Transaction::new_with_payer(&[create_gauge_voter_ix], Some(&payer.pubkey()));
+                let mut transaction = solana_sdk::transaction::Transaction::new_with_payer(
+                    &[create_gauge_voter_ix],
+                    Some(&payer.pubkey()),
+                );
                 let latest_blockhash = client.get_latest_blockhash().unwrap();
-                 transaction.sign(&[payer], latest_blockhash);
+                transaction.sign(&[payer], latest_blockhash);
                 let result = client.send_and_confirm_transaction(&transaction).unwrap();
-               println!("result: {:?}", result);
+                println!("result: {:?}", result);
                 println!("transaction: {:?}", transaction.signatures.first().unwrap());
-            },
+            }
             VoteCreateStep::GaugeVote(key) => {
                 println!("Creating gauge vote {}", key);
-                let mut data: Vec<u8> =
-                    solana_program::hash::hash(b"global:create_gauge_vote_v2").to_bytes()[..8].to_vec();
+                let mut data: Vec<u8> = solana_program::hash::hash(b"global:create_gauge_vote_v2")
+                    .to_bytes()[..8]
+                    .to_vec();
                 let create_gauge_vote_ix = solana_program::instruction::Instruction {
                     program_id: gauge_state::id(),
                     accounts: vec![
@@ -93,18 +103,22 @@ pub fn prepare_vote(client: &RpcClient, owner: &Pubkey, gauge: &Pubkey, payer: &
                     ],
                     data,
                 };
-                let mut transaction =
-                    solana_sdk::transaction::Transaction::new_with_payer(&[create_gauge_vote_ix], Some(&payer.pubkey()));
+                let mut transaction = solana_sdk::transaction::Transaction::new_with_payer(
+                    &[create_gauge_vote_ix],
+                    Some(&payer.pubkey()),
+                );
                 let latest_blockhash = client.get_latest_blockhash().unwrap();
                 transaction.sign(&[payer], latest_blockhash);
                 let result = client.send_and_confirm_transaction(&transaction).unwrap();
                 println!("result: {:?}", result);
                 println!("transaction: {:?}", transaction.signatures.first().unwrap());
-            },
+            }
             VoteCreateStep::EpochGaugeVoter(key) => {
                 println!("Creating epoch gauge voter {}", key);
                 let mut data: Vec<u8> =
-                    solana_program::hash::hash(b"global:prepare_epoch_gauge_voter_v2").to_bytes()[..8].to_vec();
+                    solana_program::hash::hash(b"global:prepare_epoch_gauge_voter_v2").to_bytes()
+                        [..8]
+                        .to_vec();
                 let create_epoch_gauge_voter_ix = solana_program::instruction::Instruction {
                     program_id: gauge_state::id(),
                     accounts: vec![
@@ -147,15 +161,16 @@ pub fn prepare_vote(client: &RpcClient, owner: &Pubkey, gauge: &Pubkey, payer: &
                     ],
                     data,
                 };
-                let mut transaction =
-                    solana_sdk::transaction::Transaction::new_with_payer(&[create_epoch_gauge_voter_ix], Some(&payer.pubkey()));
+                let mut transaction = solana_sdk::transaction::Transaction::new_with_payer(
+                    &[create_epoch_gauge_voter_ix],
+                    Some(&payer.pubkey()),
+                );
                 let latest_blockhash = client.get_latest_blockhash().unwrap();
                 transaction.sign(&[payer], latest_blockhash);
                 let result = client.send_and_confirm_transaction(&transaction).unwrap();
                 println!("result: {:?}", result);
                 println!("transaction: {:?}", transaction.signatures.first().unwrap());
-
-            },
+            }
             _ => {}
         }
     }

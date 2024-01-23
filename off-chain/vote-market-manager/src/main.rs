@@ -1,5 +1,5 @@
 use crate::actions::escrows;
-use clap::{value_parser};
+use clap::value_parser;
 use dotenv::dotenv;
 use solana_sdk::pubkey;
 use solana_sdk::pubkey::Pubkey;
@@ -7,8 +7,8 @@ use std::env;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-mod actions;
 mod accounts;
+mod actions;
 
 const ANCHOR_DISCRIMINATOR_SIZE: usize = 8;
 const GAUGEMEISTER: Pubkey = pubkey!("28ZDtf6d2wsYhBvabTxUHTRT6MDxqjmqR7RMCp348tyU");
@@ -86,8 +86,9 @@ fn main() {
                         .required(true)
                         .value_parser(value_parser!(u32))
                         .help("The epoch to vote for"),
-                )
-        ).subcommand(
+                ),
+        )
+        .subcommand(
             clap::command!("vote")
                 .arg(
                     clap::arg!(-k --keypair <FILE> "The delegate keypair")
@@ -110,8 +111,8 @@ fn main() {
                         .required(true)
                         .value_parser(value_parser!(u32))
                         .help("The epoch to vote for"),
-                )
-           );
+                ),
+        );
 
     let matches = cmd.get_matches();
     match matches.subcommand() {
@@ -159,7 +160,7 @@ fn main() {
                 weight: 100,
             }];
             actions::vote::vote(&client, &keypair, &config, &escrow, *epoch, weights);
-        },
+        }
         _ => {
             println!("no subcommand matched")
         }

@@ -4,7 +4,7 @@ import {AnchorProvider, Program, web3} from "@coral-xyz/anchor";
 import {VoteMarket} from "../target/types/vote_market";
 import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet";
 import GAUGE_IDL from "../external-state/idls/gauge.json";
-import {GAUGE, GAUGE_PROGRAM_ID, GAUGEMEISTER, LOCKED_VOTER_PROGRAM_ID} from "./constants";
+import {GAUGE, GAUGE_PROGRAM_ID, GAUGEMEISTER} from "./constants";
 import {Gauge} from "../external-state/types/gauge";
 import {setupTokens} from "./setup-tokens";
 import {setupConfig} from "./test-setup";
@@ -18,8 +18,10 @@ import BN from "bn.js";
 import dotenv from "dotenv";
 import {expect} from "chai";
 import * as crypto from "crypto";
+import {getVoteAccounts} from "./common";
 
 dotenv.config();
+
 
 describe("vote market rewards phase", () => {
     // Configure the client to use the local cluster.
@@ -47,8 +49,6 @@ describe("vote market rewards phase", () => {
         const [voteBuy, _] = anchor.web3.PublicKey.findProgramAddressSync(
             [Buffer.from("vote-buy"), epochBuffer, config.publicKey.toBuffer(), GAUGE.toBuffer()],
             program.programId);
-        const epochBuffer2 = Buffer.alloc(4);
-        epochBuffer2.writeUInt32LE(gaugeMeisterData.currentRewardsEpoch + 2);
         const tokenVault = getAssociatedTokenAddressSync(mint, voteBuy, true);
         await program.methods.increaseVoteBuy(gaugeMeisterData.currentRewardsEpoch + 1, new BN(1_000_000)).accounts(
             {
@@ -65,39 +65,15 @@ describe("vote market rewards phase", () => {
                 associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
                 systemProgram: web3.SystemProgram.programId,
             }).rpc({commitment: "confirmed"});
-
-
-        let [voteDelegate, voteDelegateBump] = anchor.web3.PublicKey.findProgramAddressSync(
-            [Buffer.from("vote-delegate"), config.publicKey.toBuffer()],
-            program.programId
-        );
-
-        let [escrow, escrowBump] = anchor.web3.PublicKey.findProgramAddressSync(
-            [Buffer.from("Escrow"), gaugeMeisterData.locker.toBuffer(), program.provider.publicKey.toBuffer()],
-            LOCKED_VOTER_PROGRAM_ID);
-
-        let [gaugeVoter, gaugeVoterBump] = anchor.web3.PublicKey.findProgramAddressSync(
-            [Buffer.from("GaugeVoter"), GAUGEMEISTER.toBuffer(), escrow.toBuffer()],
-            GAUGE_PROGRAM_ID);
-
-        let [gaugeVote, gaugeVoteBump] = anchor.web3.PublicKey.findProgramAddressSync(
-            [Buffer.from("GaugeVote"), gaugeVoter.toBuffer(), GAUGE.toBuffer()],
-            GAUGE_PROGRAM_ID);
-
-        let [epochGaugeVoter, epochGaugeVoterBump] = anchor.web3.PublicKey.findProgramAddressSync(
-            [Buffer.from("EpochGaugeVoter"), gaugeVoter.toBuffer(), Buffer.from(epochBuffer)],
-            GAUGE_PROGRAM_ID);
-        let [epochGaugeVoter2, epochGaugeVoterBump2] = anchor.web3.PublicKey.findProgramAddressSync(
-            [Buffer.from("EpochGaugeVoter"), gaugeVoter.toBuffer(), Buffer.from(epochBuffer2)],
-            GAUGE_PROGRAM_ID);
-
-        let [epochGaugeVote, epochGaugeVoteBump] = anchor.web3.PublicKey.findProgramAddressSync(
-            [Buffer.from("EpochGaugeVote"), gaugeVote.toBuffer(), Buffer.from(epochBuffer)],
-            GAUGE_PROGRAM_ID);
-
-        let [epochGauge, epochGaugeBump] = anchor.web3.PublicKey.findProgramAddressSync(
-            [Buffer.from("EpochGauge"), GAUGE.toBuffer(), Buffer.from(epochBuffer)],
-            GAUGE_PROGRAM_ID);
+        let {
+            voteDelegate,
+            escrow,
+            gaugeVoter,
+            gaugeVote,
+            epochGaugeVoter,
+            epochGaugeVote,
+            epochGauge
+        } = getVoteAccounts(config, program, gaugeMeisterData, program.provider.publicKey);
 
         try {
             // Claim payment

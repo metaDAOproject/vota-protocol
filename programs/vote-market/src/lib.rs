@@ -14,9 +14,9 @@ declare_id!("CgpagJ94phFKHBKkk4pd4YdKgfNCp5SzsiNwcLe73dc");
 pub mod vote_market {
     use super::*;
     use crate::util::math::get_user_payment;
+    use anchor_lang::solana_program;
     use anchor_lang::solana_program::program::{invoke, invoke_signed};
     use anchor_lang::solana_program::system_instruction;
-    use anchor_lang::solana_program;
     use anchor_spl::token::spl_token;
 
     pub fn create_config(
@@ -268,7 +268,73 @@ pub mod vote_market {
         Ok(())
     }
 
-    pub fn vote(_ctx: Context<Initialize>) -> Result<()> {
+    pub fn vote(ctx: Context<Vote>, weight: u32) -> Result<()> {
+        let mut data: Vec<u8> =
+            solana_program::hash::hash(b"global:gauge_set_vote").to_bytes()[..8].to_vec();
+        data.extend_from_slice(&weight.to_le_bytes());
+        let set_weight_ix = solana_program::instruction::Instruction {
+            program_id: gauge_state::id(),
+            accounts: vec![
+                AccountMeta {
+                    pubkey: ctx.accounts.gaugemeister.key(),
+                    is_signer: false,
+                    is_writable: false,
+                },
+                AccountMeta {
+                    pubkey: ctx.accounts.gauge.key(),
+                    is_signer: false,
+                    is_writable: true,
+                },
+                AccountMeta {
+                    pubkey: ctx.accounts.gauge_voter.key(),
+                    is_signer: false,
+                    is_writable: true,
+                },
+                AccountMeta {
+                    pubkey: ctx.accounts.gauge_vote.key(),
+                    is_signer: false,
+                    is_writable: true,
+                },
+                AccountMeta {
+                    pubkey: ctx.accounts.escrow.key(),
+                    is_signer: false,
+                    is_writable: false,
+                },
+                AccountMeta {
+                    pubkey: ctx.accounts.vote_delegate.key(),
+                    is_signer: true,
+                    is_writable: true,
+                },
+            ],
+            data,
+        };
+        let (expected_vote_delegate, bump) = Pubkey::find_program_address(
+            &[
+                b"vote-delegate".as_ref(),
+                ctx.accounts.config.key().as_ref(),
+            ],
+            ctx.program_id,
+        );
+        if expected_vote_delegate != ctx.accounts.vote_delegate.key() {
+            return Err(ProgramError::InvalidSeeds.into());
+        }
+        msg!("Got here");
+        invoke_signed(
+            &set_weight_ix,
+            &[
+                ctx.accounts.gaugemeister.to_account_info(),
+                ctx.accounts.gauge.to_account_info(),
+                ctx.accounts.gauge_voter.to_account_info(),
+                ctx.accounts.gauge_vote.to_account_info(),
+                ctx.accounts.escrow.to_account_info(),
+                ctx.accounts.vote_delegate.to_account_info(),
+            ],
+            &[&[
+                b"vote-delegate".as_ref(),
+                ctx.accounts.config.key().as_ref(),
+                &[bump],
+            ]],
+        )?;
         Ok(())
     }
 }
@@ -399,4 +465,21 @@ pub struct ClaimVotePayment<'info> {
     pub gauge_program: Program<'info, GaugeProgram>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct Vote<'info> {
+    config: Account<'info, VoteMarketConfig>,
+    gaugemeister: Account<'info, gauge_state::Gaugemeister>,
+    #[account(mut)]
+    gauge: Account<'info, gauge_state::Gauge>,
+    #[account(mut)]
+    gauge_voter: Account<'info, gauge_state::GaugeVoter>,
+    #[account(mut)]
+    gauge_vote: Account<'info, gauge_state::GaugeVote>,
+    #[account(has_one = vote_delegate)]
+    escrow: Account<'info, locked_voter_state::Escrow>,
+    #[account(mut, seeds = [b"vote-delegate", config.key().as_ref()], bump)]
+    vote_delegate: SystemAccount<'info>,
+    gauge_program: Program<'info, GaugeProgram>,
 }

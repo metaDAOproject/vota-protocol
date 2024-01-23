@@ -1,4 +1,4 @@
-use crate::{ANCHOR_DISCRIMINATOR_SIZE};
+use crate::ANCHOR_DISCRIMINATOR_SIZE;
 use anchor_lang::AccountDeserialize;
 use locked_voter_state::Escrow;
 use solana_account_decoder::UiAccountEncoding;

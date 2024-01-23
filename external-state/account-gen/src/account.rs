@@ -76,11 +76,12 @@ impl Root {
     }
 }
 
-pub fn proccess_account<T: AccountDeserialize + AccountSerialize, F>(
+pub fn process_account<T: AccountDeserialize + AccountSerialize, F>(
     account_name: &str,
     new_address: Option<Pubkey>,
     data_update: F,
     accounts_to_update: &mut Vec<AddressInfo>,
+    file_suffix: &str,
 ) -> std::result::Result<(T, Root), Box<dyn std::error::Error>>
 where
     F: Fn(T) -> T,
@@ -89,7 +90,7 @@ where
     let account = Root::from_string(&account_file)?;
     let new_address = new_address.unwrap_or(account.pubkey);
     accounts_to_update.push(AddressInfo {
-        name: account_name.to_string(),
+        name: format!("{}{}", account_name, file_suffix),
         pubkey: new_address,
     });
     let mut account_data = account.get_account_data::<T>()?;
@@ -99,7 +100,7 @@ where
         .unwrap()
         .update_pubkey(&new_address)
         .unwrap();
-    updated_account.write_account_file(account_name)?;
+    updated_account.write_account_file(format!("{}{}", account_name, file_suffix).as_str())?;
     Ok((account_data, account))
 }
 
