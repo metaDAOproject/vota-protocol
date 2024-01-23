@@ -4,7 +4,7 @@ import {AnchorProvider, Program, web3} from "@coral-xyz/anchor";
 import {VoteMarket} from "../target/types/vote_market";
 import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet";
 import GAUGE_IDL from "../external-state/idls/gauge.json";
-import {GAUGE, GAUGE_PROGRAM_ID, GAUGEMEISTER} from "./constants";
+import {GAUGE, GAUGE_PROGRAM_ID, GAUGEMEISTER, LOCKED_VOTER_PROGRAM_ID} from "./constants";
 import {Gauge} from "../external-state/types/gauge";
 import {setupTokens} from "./setup-tokens";
 import {setupConfig} from "./test-setup";
@@ -94,6 +94,7 @@ describe("vote market rewards phase", () => {
                 epochGauge,
                 gauge: GAUGE,
                 gaugeProgram: GAUGE_PROGRAM_ID,
+                lockedVoterProgram: LOCKED_VOTER_PROGRAM_ID,
                 tokenProgram: TOKEN_PROGRAM_ID,
                 systemProgram: web3.SystemProgram.programId,
             }).rpc();
@@ -121,8 +122,13 @@ describe("vote market rewards phase", () => {
         expect(sellerTokenAccountData.amount === BigInt(999_000_000)).to.be.true;
         let tokenVaultData = await getAccount(program.provider.connection, tokenVault);
         expect(tokenVaultData.amount === BigInt(1_000_000)).to.be.true;
-        const gaugeVoteBalance = await program.provider.connection.getBalance(gaugeVote);
-        const sig = await program.methods.claimVotePayment(gaugeMeisterData.currentRewardsEpoch + 1).accounts({
+
+        const nonSellerPayer = web3.Keypair.generate();
+        console.log("non seller payer", nonSellerPayer.publicKey.toBase58());
+        await program.provider.connection.requestAirdrop(nonSellerPayer.publicKey, 1000000000000)
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        const tx = await program.methods.claimVotePayment(gaugeMeisterData.currentRewardsEpoch + 1).accounts({
             seller: program.provider.publicKey,
             sellerTokenAccount: ata,
             tokenVault,
@@ -139,11 +145,25 @@ describe("vote market rewards phase", () => {
             epochGauge,
             gauge: GAUGE,
             gaugeProgram: GAUGE_PROGRAM_ID,
+            lockedVoterProgram: LOCKED_VOTER_PROGRAM_ID,
             tokenProgram: TOKEN_PROGRAM_ID,
             systemProgram: web3.SystemProgram.programId,
-        }).rpc({commitment: "confirmed"});
+        }).transaction();
+        const blockhash = await program.provider.connection.getLatestBlockhash();
+        tx.recentBlockhash = blockhash.blockhash;
+        tx.lastValidBlockHeight = blockhash.lastValidBlockHeight;
+        tx.feePayer = nonSellerPayer.publicKey;
+        tx.sign(nonSellerPayer);
+        const sig = await program.provider.connection.sendRawTransaction(tx.serialize());
+        program.provider.connection.confirmTransaction({
+            signature: sig,
+            ...blockhash
+        }, "confirmed");
+        console.log("sig");
+        await new Promise(resolve => setTimeout(resolve, 10000));
         sellerTokenAccountData = await getAccount(program.provider.connection, ata);
         const expectedRewards = BigInt(18514);
+        console.log("seller token account data", sellerTokenAccountData.amount);
         expect(sellerTokenAccountData.amount === BigInt(999_000_000) + expectedRewards).to.be.true;
         tokenVaultData = await getAccount(program.provider.connection, tokenVault);
         expect(tokenVaultData.amount === BigInt(1_000_000) - expectedRewards).to.be.true;
@@ -171,6 +191,7 @@ describe("vote market rewards phase", () => {
                 epochGauge,
                 gauge: GAUGE,
                 gaugeProgram: GAUGE_PROGRAM_ID,
+                lockedVoterProgram: LOCKED_VOTER_PROGRAM_ID,
                 tokenProgram: TOKEN_PROGRAM_ID,
                 systemProgram: web3.SystemProgram.programId,
             }).rpc({commitment: "confirmed"});

@@ -1,6 +1,14 @@
 use anchor_lang::prelude::*;
 declare_id!("LocktDzaV1W2Bm9DeZeiyz4J9zs4fRqNiYqQyracRXw");
 
+#[derive(Clone)]
+pub struct LockedVoterProgram;
+
+impl Id for LockedVoterProgram {
+    fn id() -> Pubkey {
+        ID
+    }
+}
 const PUBKEY_BYTES: usize = 32;
 /// Locks tokens on behalf of a user.
 #[account]

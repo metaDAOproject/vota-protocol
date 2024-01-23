@@ -7,6 +7,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use gauge_state::GaugeProgram;
+use locked_voter_state::LockedVoterProgram;
 
 declare_id!("CgpagJ94phFKHBKkk4pd4YdKgfNCp5SzsiNwcLe73dc");
 
@@ -428,7 +429,7 @@ pub struct IncreaseVoteBuy<'info> {
 #[instruction(epoch: u32)]
 pub struct ClaimVotePayment<'info> {
     #[account(mut)]
-    pub seller: Signer<'info>,
+    pub seller: SystemAccount<'info>,
     #[account(mut,
     associated_token::mint = mint,
     associated_token::authority = seller,
@@ -447,21 +448,24 @@ pub struct ClaimVotePayment<'info> {
     pub vote_buy: Account<'info, VoteBuy>,
     #[account(mut, seeds = [b"vote-delegate", config.key().as_ref()], bump)]
     pub vote_delegate: SystemAccount<'info>,
-    #[account(has_one = vote_delegate)]
+    #[account(has_one = vote_delegate, constraint = escrow.owner == seller.key(), owner = locked_voter_program.key())]
     pub escrow: Account<'info, locked_voter_state::Escrow>,
+    #[account(owner = gauge_program.key(), constraint = gaugemeister.locker == escrow.locker)]
     pub gaugemeister: Account<'info, gauge_state::Gaugemeister>,
-    #[account(has_one = gaugemeister, has_one = escrow)]
+    #[account(has_one = gaugemeister, has_one = escrow, owner = gauge_program.key())]
     pub gauge_voter: Account<'info, gauge_state::GaugeVoter>,
-    #[account(has_one = gauge_voter, has_one = gauge)]
+    #[account(has_one = gauge_voter, has_one = gauge, owner = gauge_program.key())]
     pub gauge_vote: Account<'info, gauge_state::GaugeVote>,
-    #[account(has_one = gauge_voter)]
+    #[account(has_one = gauge_voter, owner = gauge_program.key())]
     pub epoch_gauge_voter: Account<'info, gauge_state::EpochGaugeVoter>,
-    #[account(has_one = gaugemeister)]
+    #[account(has_one = gaugemeister, owner = gauge_program.key())]
     pub gauge: Account<'info, gauge_state::Gauge>,
+    #[account(has_one = gauge, owner = gauge_program.key())]
     pub epoch_gauge: Account<'info, gauge_state::EpochGauge>,
-    #[account(mut)]
+    #[account(mut, owner = gauge_program.key())]
     pub epoch_gauge_vote: Account<'info, gauge_state::EpochGaugeVote>,
     pub gauge_program: Program<'info, GaugeProgram>,
+    pub locked_voter_program: Program<'info, LockedVoterProgram>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
@@ -469,12 +473,13 @@ pub struct ClaimVotePayment<'info> {
 #[derive(Accounts)]
 pub struct Vote<'info> {
     config: Account<'info, VoteMarketConfig>,
+    #[account(owner = gauge_program.key())]
     gaugemeister: Account<'info, gauge_state::Gaugemeister>,
-    #[account(mut)]
+    #[account(owner = gauge_program.key())]
     gauge: Account<'info, gauge_state::Gauge>,
-    #[account(mut)]
+    #[account(mut, owner = gauge_program.key())]
     gauge_voter: Account<'info, gauge_state::GaugeVoter>,
-    #[account(mut)]
+    #[account(mut, owner = gauge_program.key())]
     gauge_vote: Account<'info, gauge_state::GaugeVote>,
     #[account(has_one = vote_delegate)]
     escrow: Account<'info, locked_voter_state::Escrow>,
