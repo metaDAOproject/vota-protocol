@@ -271,7 +271,7 @@ pub mod vote_market {
     pub fn vote(ctx: Context<Vote>, weight: u32) -> Result<()> {
         let mut data: Vec<u8> =
             solana_program::hash::hash(b"global:gauge_set_vote").to_bytes()[..8].to_vec();
-        data.extend_from_slice(&weight.to_le_bytes());
+        data.extend_from_slice(weight.to_le_bytes().as_ref());
         let set_weight_ix = solana_program::instruction::Instruction {
             program_id: gauge_state::id(),
             accounts: vec![
@@ -283,7 +283,7 @@ pub mod vote_market {
                 AccountMeta {
                     pubkey: ctx.accounts.gauge.key(),
                     is_signer: false,
-                    is_writable: true,
+                    is_writable: false,
                 },
                 AccountMeta {
                     pubkey: ctx.accounts.gauge_voter.key(),
@@ -318,7 +318,6 @@ pub mod vote_market {
         if expected_vote_delegate != ctx.accounts.vote_delegate.key() {
             return Err(ProgramError::InvalidSeeds.into());
         }
-        msg!("Got here");
         invoke_signed(
             &set_weight_ix,
             &[

@@ -1,4 +1,4 @@
-use crate::account::{process_account, Root};
+use crate::account::process_account;
 use crate::toml_update::{update_anchor_toml, AddressInfo};
 use anchor_lang::prelude::*;
 use dotenv::dotenv;
