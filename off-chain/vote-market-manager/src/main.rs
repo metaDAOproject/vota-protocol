@@ -17,8 +17,15 @@ const LOCKER: Pubkey = pubkey!("8erad8kmNrLJDJPe9UkmTHomrMV3EW48sjGeECyVjbYX");
 fn main() {
     dotenv().ok();
     let rpc_url = env::var("RPC_URL").unwrap().to_string();
+    let keypair_path = env::var("KEY_PATH").unwrap().to_string();
     println!("rpc_url: {:?}", rpc_url);
     let client = solana_client::rpc_client::RpcClient::new(rpc_url);
+    let payer = solana_sdk::signature::read_keypair_file(keypair_path).unwrap();
+    let anchor_client = anchor_client::Client::new_with_options(
+        anchor_client::Cluster::Localnet,
+        &payer,
+        solana_sdk::commitment_config::CommitmentConfig::confirmed(),
+    );
     // let args = Args::parse();
     let cmd = clap::Command::new("vote-market-manager")
         .bin_name("vote-market-manager")
@@ -112,7 +119,8 @@ fn main() {
                         .value_parser(value_parser!(u32))
                         .help("The epoch to vote for"),
                 ),
-        );
+        )
+        .subcommand(clap::command!("setup"));
 
     let matches = cmd.get_matches();
     match matches.subcommand() {
@@ -160,6 +168,10 @@ fn main() {
                 weight: 100,
             }];
             actions::vote::vote(&client, &keypair, &config, &escrow, *epoch, weights);
+        }
+        Some(("setup", matches)) => {
+            println!("setup");
+            actions::setup::setup(anchor_client, vec![Pubkey::default()], &payer);
         }
         _ => {
             println!("no subcommand matched")

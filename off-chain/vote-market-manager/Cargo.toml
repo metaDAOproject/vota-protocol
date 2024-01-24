@@ -16,3 +16,5 @@ gauge-state = {path = "../../external-state/gauge-state"}
 vote-market = { path = "../../programs/vote-market" }
 anchor-lang = "0.29.0"
 dotenv = "0.15.0"
+anchor-client = "0.29.0"
+spl-token = "4.0.0"
