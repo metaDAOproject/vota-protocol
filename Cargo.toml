@@ -4,6 +4,7 @@ members = [ "external-state/account-gen", "off-chain/vote-market-manager",
 ]
 resolver = "2"
 
+
 [profile.release]
 overflow-checks = true
 lto = "fat"

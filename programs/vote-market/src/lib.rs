@@ -501,6 +501,7 @@ pub struct Vote<'info> {
 #[instruction(epoch: u32)]
 pub struct SetMaxAmount<'info> {
     pub config: Account<'info, VoteMarketConfig>,
+    // Need to verify seeds to make sure the correct script_authority is used
     #[account(mut, seeds = [b"vote-buy".as_ref(), epoch.to_le_bytes().as_ref(), config.key().as_ref(), gauge.key().as_ref()], bump)]
     pub vote_buy: Account<'info, VoteBuy>,
     pub gauge: Account<'info, gauge_state::Gauge>,

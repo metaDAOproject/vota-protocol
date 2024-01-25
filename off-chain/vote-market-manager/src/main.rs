@@ -184,6 +184,33 @@ fn main() {
                         .value_parser(value_parser!(u64))
                         .help("The amount of tokens to buy votes for"),
                 ),
+        )
+        .subcommand(
+            clap::command!("set-maximum")
+                .arg(
+                    clap::Arg::new("config")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The config for the vote buy accounts"),
+                )
+                .arg(
+                    clap::Arg::new("gauge")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The gauge buy votes for"),
+                )
+                .arg(
+                    clap::Arg::new("max")
+                        .required(true)
+                        .value_parser(value_parser!(u64))
+                        .help("The maximum amount of tokens to buy votes for"),
+                ).
+                arg(
+                    clap::Arg::new("epoch")
+                        .required(true)
+                        .value_parser(value_parser!(u32))
+                        .help("The epoch to vote for"),
+                ),
         );
 
     let matches = cmd.get_matches();
@@ -248,6 +275,7 @@ fn main() {
             actions::create_token::create_token(&client, &payer);
         }
         Some(("buy-votes", matches)) => {
+            //TODO: bring out epoch
             println!("buy-votes");
             let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap()).unwrap();
             let gauge = Pubkey::from_str(matches.get_one::<String>("gauge").unwrap()).unwrap();
@@ -262,6 +290,16 @@ fn main() {
                 96,
                 *amount,
             );
+        }
+        Some(("set-maximum", matches)) => {
+            //TODO: bring out epoch
+            let maximum = matches.get_one::<u64>("max").unwrap();
+            let config =
+                Pubkey::from_str(matches.get_one::<String>("config").unwrap()).unwrap();
+            let gauge =
+                Pubkey::from_str(matches.get_one::<String>("gauge").unwrap()).unwrap();
+            let epoch = matches.get_one::<u32>("epoch").unwrap();
+            actions::vote_market::set_maximum::set_maximum(&anchor_client, &payer, gauge, config , *epoch, *maximum);
         }
         _ => {
             println!("no subcommand matched")

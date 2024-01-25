@@ -52,9 +52,8 @@ pub fn create_token(client: &RpcClient, payer: &Keypair) {
         &[payer, &mint],
         latest_blockhash,
     );
-    let sig = client
+    client
         .send_and_confirm_transaction_with_spinner(&tx)
         .unwrap();
     println!("mint: {}", mint.pubkey());
-    println!("sig: {}", sig);
 }
