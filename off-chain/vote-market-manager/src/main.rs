@@ -1,4 +1,4 @@
-use crate::actions::escrows;
+use crate::actions::queries::escrows;
 use clap::value_parser;
 use dotenv::dotenv;
 use solana_sdk::pubkey;
@@ -171,7 +171,7 @@ fn main() {
         Some(("get-vote-buys", matches)) => {
             let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap()).unwrap();
             let epoch = matches.get_one::<u32>("epoch").unwrap();
-            let vote_buys = actions::vote_buys::get_all_vote_buys(*epoch, config);
+            let vote_buys = actions::queries::vote_buys::get_all_vote_buys(*epoch, config);
             println!("vote buys: {:?}", vote_buys);
         }
         Some(("prepare-vote", matches)) => {
@@ -190,11 +190,11 @@ fn main() {
             let epoch = matches.get_one::<u32>("epoch").unwrap();
             let keypair_path = matches.get_one::<PathBuf>("keypair").unwrap();
             let keypair = solana_sdk::signature::read_keypair_file(keypair_path).unwrap();
-            let weights = vec![actions::vote::WeightInfo {
+            let weights = vec![actions::vote_market::vote::WeightInfo {
                 gauge: Pubkey::from_str("3xC4eW6xhW3Gpb4T5sCKFe73ay2K4aUUfxL57XFdguJx").unwrap(),
                 weight: 100,
             }];
-            actions::vote::vote(&client, &keypair, &config, &escrow, *epoch, weights);
+            actions::vote_market::vote::vote(&client, &keypair, &config, &escrow, *epoch, weights);
         }
         Some(("setup", matches)) => {
             println!("setup");
@@ -202,7 +202,7 @@ fn main() {
             if let Some(mint_vaulues)  = matches.get_many::<String>("mints") {
                 mints = mint_vaulues.map(|mint| Pubkey::from_str(mint).unwrap()).collect();
             }
-            actions::setup::setup(anchor_client, mints, &payer);
+            actions::vote_market::setup::setup(anchor_client, mints, &payer);
         }
         Some(("create-token", _)) => {
             println!("create-token");
