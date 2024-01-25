@@ -7,7 +7,9 @@ use spl_associated_token_account::instruction::create_associated_token_account;
 
 pub fn create_token(client: &RpcClient, payer: &Keypair) {
     let mint = Keypair::new();
-    let lamports = client.get_minimum_balance_for_rent_exemption(spl_token::state::Mint::LEN).unwrap();
+    let lamports = client
+        .get_minimum_balance_for_rent_exemption(spl_token::state::Mint::LEN)
+        .unwrap();
     let init_mint_account_ix = create_account(
         &payer.pubkey(),
         &mint.pubkey(),
@@ -21,7 +23,8 @@ pub fn create_token(client: &RpcClient, payer: &Keypair) {
         &payer.pubkey(),
         None,
         0,
-    ).unwrap();
+    )
+    .unwrap();
 
     let ata = get_associated_token_address(&payer.pubkey(), &mint.pubkey());
 
@@ -39,7 +42,8 @@ pub fn create_token(client: &RpcClient, payer: &Keypair) {
         &payer.pubkey(),
         &[],
         1000000000,
-    ).unwrap();
+    )
+    .unwrap();
 
     let latest_blockhash = client.get_latest_blockhash().unwrap();
     let tx = solana_sdk::transaction::Transaction::new_signed_with_payer(
@@ -48,8 +52,9 @@ pub fn create_token(client: &RpcClient, payer: &Keypair) {
         &[payer, &mint],
         latest_blockhash,
     );
-    let sig = client.send_and_confirm_transaction_with_spinner(&tx).unwrap();
+    let sig = client
+        .send_and_confirm_transaction_with_spinner(&tx)
+        .unwrap();
     println!("mint: {}", mint.pubkey());
     println!("sig: {}", sig);
-
 }

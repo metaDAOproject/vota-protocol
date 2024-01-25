@@ -1,14 +1,14 @@
 use crate::actions::queries::escrows;
+use clap::parser::ValuesRef;
 use clap::value_parser;
 use dotenv::dotenv;
+use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::pubkey;
 use solana_sdk::pubkey::Pubkey;
+use solana_sdk::signature::Signer;
 use std::env;
 use std::path::PathBuf;
 use std::str::FromStr;
-use clap::parser::ValuesRef;
-use solana_sdk::commitment_config::CommitmentConfig;
-use solana_sdk::signature::Signer;
 
 mod accounts;
 mod actions;
@@ -41,9 +41,16 @@ fn main() {
             .request_airdrop(&payer.pubkey(), 100_000_000_000)
             .unwrap();
         let blockhash = program.rpc().get_latest_blockhash().unwrap();
-        program.rpc().confirm_transaction_with_spinner(&sig, &blockhash, CommitmentConfig {
-            commitment: solana_sdk::commitment_config::CommitmentLevel::Finalized,
-        }).unwrap();
+        program
+            .rpc()
+            .confirm_transaction_with_spinner(
+                &sig,
+                &blockhash,
+                CommitmentConfig {
+                    commitment: solana_sdk::commitment_config::CommitmentLevel::Finalized,
+                },
+            )
+            .unwrap();
     }
 
     let cmd = clap::Command::new("vote-market-manager")
@@ -139,15 +146,45 @@ fn main() {
                         .help("The epoch to vote for"),
                 ),
         )
-        .subcommand(clap::command!("setup").
-            arg(clap::Arg::new("mints")
-                .long("mints")
-                .short('m')
-                .required(false)
-                .value_delimiter(',')
-                .value_parser(value_parser!(String))
-                .help("The mints to allow for the vote buys")))
-        .subcommand(clap::command!("create-token"));
+        .subcommand(
+            clap::command!("setup").arg(
+                clap::Arg::new("mints")
+                    .long("mints")
+                    .short('m')
+                    .required(false)
+                    .value_delimiter(',')
+                    .value_parser(value_parser!(String))
+                    .help("The mints to allow for the vote buys"),
+            ),
+        )
+        .subcommand(clap::command!("create-token"))
+        .subcommand(
+            clap::command!("buy-votes")
+                .arg(
+                    clap::Arg::new("config")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The config for the vote buy accounts"),
+                )
+                .arg(
+                    clap::Arg::new("gauge")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The gauge buy votes for"),
+                )
+                .arg(
+                    clap::Arg::new("mint")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The amount of tokens to buy votes for"),
+                )
+                .arg(
+                    clap::Arg::new("amount")
+                        .required(true)
+                        .value_parser(value_parser!(u64))
+                        .help("The amount of tokens to buy votes for"),
+                ),
+        );
 
     let matches = cmd.get_matches();
     match matches.subcommand() {
@@ -199,14 +236,32 @@ fn main() {
         Some(("setup", matches)) => {
             println!("setup");
             let mut mints = vec![Pubkey::default()];
-            if let Some(mint_vaulues)  = matches.get_many::<String>("mints") {
-                mints = mint_vaulues.map(|mint| Pubkey::from_str(mint).unwrap()).collect();
+            if let Some(mint_vaulues) = matches.get_many::<String>("mints") {
+                mints = mint_vaulues
+                    .map(|mint| Pubkey::from_str(mint).unwrap())
+                    .collect();
             }
-            actions::vote_market::setup::setup(anchor_client, mints, &payer);
+            actions::vote_market::setup::setup(&anchor_client, mints, &payer);
         }
         Some(("create-token", _)) => {
             println!("create-token");
             actions::create_token::create_token(&client, &payer);
+        }
+        Some(("buy-votes", matches)) => {
+            println!("buy-votes");
+            let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap()).unwrap();
+            let gauge = Pubkey::from_str(matches.get_one::<String>("gauge").unwrap()).unwrap();
+            let mint = Pubkey::from_str(matches.get_one::<String>("mint").unwrap()).unwrap();
+            let amount = matches.get_one::<u64>("amount").unwrap();
+            actions::vote_market::buy_votes::buy_votes(
+                &anchor_client,
+                &payer,
+                &config,
+                &gauge,
+                &mint,
+                96,
+                *amount,
+            );
         }
         _ => {
             println!("no subcommand matched")

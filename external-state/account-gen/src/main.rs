@@ -75,7 +75,6 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         "",
     )?;
 
-
     let config_file = fs::read_to_string("./tests/config.json").unwrap();
     let config_bytes: Vec<u8> = serde_json::from_str(&config_file).unwrap();
     let config = Keypair::from_bytes(config_bytes.as_slice()).unwrap();
