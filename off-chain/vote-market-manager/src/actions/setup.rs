@@ -13,18 +13,6 @@ pub fn setup(anchor_client: anchor_client::Client<&Keypair>, mints: Vec<Pubkey>,
         &[b"allow-list".as_ref(), config.pubkey().as_ref()],
         &vote_market::id(),
     );
-    let amount = program.rpc().get_balance(&payer.pubkey()).unwrap();
-    if amount == 0 {
-        println!("Airdropping 100 SOL");
-        let sig = program
-            .rpc()
-            .request_airdrop(&payer.pubkey(), 100_000_000_000)
-            .unwrap();
-        let blockhash = program.rpc().get_latest_blockhash().unwrap();
-        program.rpc().confirm_transaction_with_spinner(&sig, &blockhash, CommitmentConfig {
-            commitment: solana_sdk::commitment_config::CommitmentLevel::Confirmed,
-        }).unwrap();
-    }
     program
         .request()
         .signer(payer)

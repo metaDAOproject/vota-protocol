@@ -6,6 +6,9 @@ use solana_sdk::pubkey::Pubkey;
 use std::env;
 use std::path::PathBuf;
 use std::str::FromStr;
+use clap::parser::ValuesRef;
+use solana_sdk::commitment_config::CommitmentConfig;
+use solana_sdk::signature::Signer;
 
 mod accounts;
 mod actions;
@@ -26,7 +29,23 @@ fn main() {
         &payer,
         solana_sdk::commitment_config::CommitmentConfig::confirmed(),
     );
-    // let args = Args::parse();
+    let program = anchor_client.program(vote_market::id()).unwrap();
+
+    // TODO: Can't do this if mainnet
+    // Make sure we have some funds
+    let amount = program.rpc().get_balance(&payer.pubkey()).unwrap();
+    if amount == 0 {
+        println!("Airdropping 100 SOL");
+        let sig = program
+            .rpc()
+            .request_airdrop(&payer.pubkey(), 100_000_000_000)
+            .unwrap();
+        let blockhash = program.rpc().get_latest_blockhash().unwrap();
+        program.rpc().confirm_transaction_with_spinner(&sig, &blockhash, CommitmentConfig {
+            commitment: solana_sdk::commitment_config::CommitmentLevel::Finalized,
+        }).unwrap();
+    }
+
     let cmd = clap::Command::new("vote-market-manager")
         .bin_name("vote-market-manager")
         .subcommand(clap::command!("get-escrows"))
@@ -120,7 +139,15 @@ fn main() {
                         .help("The epoch to vote for"),
                 ),
         )
-        .subcommand(clap::command!("setup"));
+        .subcommand(clap::command!("setup").
+            arg(clap::Arg::new("mints")
+                .long("mints")
+                .short('m')
+                .required(false)
+                .value_delimiter(',')
+                .value_parser(value_parser!(String))
+                .help("The mints to allow for the vote buys")))
+        .subcommand(clap::command!("create-token"));
 
     let matches = cmd.get_matches();
     match matches.subcommand() {
@@ -171,7 +198,15 @@ fn main() {
         }
         Some(("setup", matches)) => {
             println!("setup");
-            actions::setup::setup(anchor_client, vec![Pubkey::default()], &payer);
+            let mut mints = vec![Pubkey::default()];
+            if let Some(mint_vaulues)  = matches.get_many::<String>("mints") {
+                mints = mint_vaulues.map(|mint| Pubkey::from_str(mint).unwrap()).collect();
+            }
+            actions::setup::setup(anchor_client, mints, &payer);
+        }
+        Some(("create-token", _)) => {
+            println!("create-token");
+            actions::create_token::create_token(&client, &payer);
         }
         _ => {
             println!("no subcommand matched")

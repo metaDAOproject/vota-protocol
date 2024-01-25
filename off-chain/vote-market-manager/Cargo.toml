@@ -17,4 +17,5 @@ vote-market = { path = "../../programs/vote-market" }
 anchor-lang = "0.29.0"
 dotenv = "0.15.0"
 anchor-client = "0.29.0"
-spl-token = "4.0.0"
+spl-token = { version = "4.0.0", features = ["no-entrypoint"]}
+spl-associated-token-account =  { version = "2.3.0", features = ["no-entrypoint"]}
