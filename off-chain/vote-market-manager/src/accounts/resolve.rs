@@ -15,6 +15,7 @@ pub struct VoteKeys {
     pub gauge_vote: Pubkey,
     pub epoch_gauge_voter: Pubkey,
     pub epoch_gauge_vote: Pubkey,
+    pub epoch_gauge: Pubkey,
 }
 
 pub enum VoteCreateStep {
@@ -31,6 +32,7 @@ impl VoteKeys {
             self.gauge_vote,
             self.epoch_gauge_voter,
             self.epoch_gauge_vote,
+            self.epoch_gauge,
         ]
     }
     pub fn get_missing_prepare_vote_accounts(&self, client: &RpcClient) -> Vec<VoteCreateStep> {
@@ -57,12 +59,22 @@ pub fn resolve_vote_keys(escrow: &Pubkey, gauge: &Pubkey, epoch: u32) -> VoteKey
     let gauge_vote = get_gauge_vote(&gauge_voter, &gauge);
     let epoch_gauge_voter = get_epoch_gauge_voter(&gauge_voter, epoch);
     let epoch_gauge_vote = get_epoch_gauge_vote(&gauge_vote, epoch);
+    let epoch_gauge = get_epoch_gauge(&gauge, epoch);
     VoteKeys {
         gauge_voter,
         gauge_vote,
         epoch_gauge_voter,
         epoch_gauge_vote,
+        epoch_gauge,
     }
+}
+
+fn get_epoch_gauge(gauge: &Pubkey, epoch: u32) -> Pubkey {
+    Pubkey::find_program_address(
+        &[b"EpochGauge".as_ref(), gauge.as_ref(), epoch.to_le_bytes().as_ref()],
+        &gauge_state::id(),
+    )
+    .0
 }
 
 fn get_gauge_voter(escrow: &Pubkey) -> Pubkey {

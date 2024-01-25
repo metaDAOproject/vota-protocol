@@ -20,7 +20,7 @@ const LOCKER: Pubkey = pubkey!("8erad8kmNrLJDJPe9UkmTHomrMV3EW48sjGeECyVjbYX");
 fn main() {
     dotenv().ok();
     let rpc_url = env::var("RPC_URL").unwrap().to_string();
-    let keypair_path = env::var("KEY_PATH").unwrap().to_string();
+    let keypair_path = env::var("KEY_PATH2").unwrap().to_string();
     println!("rpc_url: {:?}", rpc_url);
     let client = solana_client::rpc_client::RpcClient::new(rpc_url);
     let payer = solana_sdk::signature::read_keypair_file(keypair_path).unwrap();
@@ -251,6 +251,7 @@ fn main() {
             }];
             actions::vote_market::vote::vote(
                 &anchor_client,
+                &client,
                 &payer,
                 &config,
                 &escrow,

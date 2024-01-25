@@ -39,3 +39,47 @@ impl Escrow {
     /// Number of bytes in an [Escrow].
     pub const LEN: usize = PUBKEY_BYTES * 2 + 1 + PUBKEY_BYTES + 8 + 8 + 8 + PUBKEY_BYTES;
 }
+/// A group of [Escrow]s.
+#[account]
+#[derive(Copy, Debug, Default)]
+pub struct Locker {
+    /// Base account used to generate signer seeds.
+    pub base: Pubkey,
+    /// Bump seed.
+    pub bump: u8,
+    /// Mint of the token that must be locked in the [Locker].
+    pub token_mint: Pubkey,
+    /// Total number of tokens locked in [Escrow]s.
+    pub locked_supply: u64,
+    /// Governor associated with the [Locker].
+    pub governor: Pubkey,
+    /// Mutable parameters of how a [Locker] should behave.
+    pub params: LockerParams,
+}
+
+impl Locker {
+    /// Number of bytes in a [Locker].
+    pub const LEN: usize = PUBKEY_BYTES + 1 + PUBKEY_BYTES + 8 + PUBKEY_BYTES + LockerParams::LEN;
+}
+
+/// Contains parameters for the [Locker].
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct LockerParams {
+    /// Whether or not the locking whitelist system is enabled.
+    pub whitelist_enabled: bool,
+    /// The weight of a maximum vote lock relative to the total number of tokens locked.
+    /// For example, veCRV is 10 because 1 CRV locked for 4 years = 10 veCRV.
+    pub max_stake_vote_multiplier: u8,
+    /// Minimum staking duration.
+    pub min_stake_duration: u64,
+    /// Maximum staking duration.
+    pub max_stake_duration: u64,
+    /// Minimum number of votes required to activate a proposal.
+    pub proposal_activation_min_votes: u64,
+}
+
+impl LockerParams {
+    /// Number of bytes in a [LockerParams].
+    pub const LEN: usize = 1 + 1 + 8 + 8 + 8;
+}
+

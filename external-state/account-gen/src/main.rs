@@ -5,7 +5,7 @@ use dotenv::dotenv;
 use gauge_state::{
     EpochGauge, EpochGaugeVote, EpochGaugeVoter, Gauge, GaugeVote, GaugeVoter, Gaugemeister,
 };
-use locked_voter_state::Escrow;
+use locked_voter_state::{Escrow, Locker};
 use solana_sdk::signature::{Keypair, Signer};
 use solana_sdk::signer::keypair::read_keypair_file;
 use std::{env, fs};
@@ -115,6 +115,16 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         "epoch-gauge-vote",
         Some(epoch_gauge_vote_address),
         |x| x,
+        &mut accounts_to_update,
+        "",
+    )?;
+
+    process_account::<Locker,_>(
+        "locker",
+        None,
+        |mut data| {
+            data
+        },
         &mut accounts_to_update,
         "",
     )?;
@@ -232,16 +242,6 @@ fn create_user_votes(
             data.voting_epoch = gaugemeister_data
                 .voting_epoch()
                 .expect("if it deserializes the epoch should be valid");
-            data
-        },
-        &mut accounts_to_update,
-        file_suffix,
-    )?;
-    process_account::<EpochGaugeVoter, _>(
-        "epoch-gauge-voter",
-        Some(epoch_gauge_voter_address),
-        |mut data| {
-            data.gauge_voter = gauge_voter_address;
             data
         },
         &mut accounts_to_update,
