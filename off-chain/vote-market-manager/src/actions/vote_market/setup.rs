@@ -1,8 +1,7 @@
 use crate::GAUGEMEISTER;
-use anchor_lang::Key;
-use solana_client::rpc_config::{RpcRequestAirdropConfig, RpcSendTransactionConfig};
+
 use solana_program::pubkey::Pubkey;
-use solana_sdk::commitment_config::CommitmentConfig;
+
 use solana_sdk::signature::{Keypair, Signer};
 
 pub fn setup(anchor_client: &anchor_client::Client<&Keypair>, mints: Vec<Pubkey>, payer: &Keypair) {

@@ -21,7 +21,7 @@ pub fn prepare_vote(
         match step {
             VoteCreateStep::GaugeVoter(key) => {
                 println!("Creating gauge voter {}", key);
-                let mut data: Vec<u8> = solana_program::hash::hash(b"global:create_gauge_voter_v2")
+                let data: Vec<u8> = solana_program::hash::hash(b"global:create_gauge_voter_v2")
                     .to_bytes()[..8]
                     .to_vec();
                 let create_gauge_voter_ix = solana_program::instruction::Instruction {
@@ -68,7 +68,7 @@ pub fn prepare_vote(
             }
             VoteCreateStep::GaugeVote(key) => {
                 println!("Creating gauge vote {}", key);
-                let mut data: Vec<u8> = solana_program::hash::hash(b"global:create_gauge_vote_v2")
+                let data: Vec<u8> = solana_program::hash::hash(b"global:create_gauge_vote_v2")
                     .to_bytes()[..8]
                     .to_vec();
                 let create_gauge_vote_ix = solana_program::instruction::Instruction {
@@ -115,7 +115,7 @@ pub fn prepare_vote(
             }
             VoteCreateStep::EpochGaugeVoter(key) => {
                 println!("Creating epoch gauge voter {}", key);
-                let mut data: Vec<u8> =
+                let data: Vec<u8> =
                     solana_program::hash::hash(b"global:prepare_epoch_gauge_voter_v2").to_bytes()
                         [..8]
                         .to_vec();

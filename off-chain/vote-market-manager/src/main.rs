@@ -1,5 +1,5 @@
 use crate::actions::queries::escrows;
-use clap::parser::ValuesRef;
+
 use clap::value_parser;
 use dotenv::dotenv;
 use solana_sdk::commitment_config::CommitmentConfig;
@@ -82,18 +82,16 @@ fn main() {
         .subcommand(
             clap::command!("delegate")
                 .arg(
-                    clap::arg!(-k --keypair <FILE> "The escrow owner keypair")
-                        .value_parser(value_parser!(std::path::PathBuf)),
-                )
-                .arg(
-                    clap::arg!(-e --escrow <PUBKEY> "The escrow account to delegate")
-                        .value_parser(value_parser!(String)),
-                )
-                .arg(
-                    clap::Arg::new("delegate")
+                    clap::Arg::new("escrow")
                         .required(true)
                         .value_parser(value_parser!(String))
-                        .help("The delegate to delegate the escrow to"),
+                        .help("The escrow to set the delegate for"),
+                )
+                .arg(
+                    clap::Arg::new("config")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The config to generate the delegate from"),
                 ),
         )
         .subcommand(
@@ -124,20 +122,16 @@ fn main() {
         .subcommand(
             clap::command!("vote")
                 .arg(
-                    clap::arg!(-k --keypair <FILE> "The delegate keypair")
-                        .value_parser(value_parser!(PathBuf)),
+                    clap::Arg::new("escrow")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The escrow to vote for"),
                 )
                 .arg(
                     clap::Arg::new("config")
                         .required(true)
                         .value_parser(value_parser!(String))
                         .help("The config for the vote buy accounts"),
-                )
-                .arg(
-                    clap::Arg::new("escrow")
-                        .required(true)
-                        .value_parser(value_parser!(String))
-                        .help("The escrow to vote for"),
                 )
                 .arg(
                     clap::Arg::new("epoch")
@@ -204,8 +198,8 @@ fn main() {
                         .required(true)
                         .value_parser(value_parser!(u64))
                         .help("The maximum amount of tokens to buy votes for"),
-                ).
-                arg(
+                )
+                .arg(
                     clap::Arg::new("epoch")
                         .required(true)
                         .value_parser(value_parser!(u32))
@@ -221,11 +215,10 @@ fn main() {
         Some(("delegate", matches)) => {
             let escrow = Pubkey::from_str(matches.get_one::<String>("escrow").unwrap()).unwrap();
             // print!("escrow: {:?}", escrow_string);
-            let delegate =
-                Pubkey::from_str(matches.get_one::<String>("delegate").unwrap()).unwrap();
-            let keypair_path = matches.get_one::<PathBuf>("keypair").unwrap();
-            let keypair = solana_sdk::signature::read_keypair_file(keypair_path).unwrap();
-            actions::delegate::delegate(client, &escrow, &delegate, &keypair);
+            let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap()).unwrap();
+            let delegate = accounts::resolve::get_delegate(&config);
+            print!("delegate: {:?}", delegate);
+            actions::delegate::delegate(client, &escrow, &delegate, &payer);
         }
         Some(("get-escrow", matches)) => {
             let owner = Pubkey::from_str(matches.get_one::<String>("owner").unwrap()).unwrap();
@@ -252,13 +245,18 @@ fn main() {
             let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap()).unwrap();
             let escrow = Pubkey::from_str(matches.get_one::<String>("escrow").unwrap()).unwrap();
             let epoch = matches.get_one::<u32>("epoch").unwrap();
-            let keypair_path = matches.get_one::<PathBuf>("keypair").unwrap();
-            let keypair = solana_sdk::signature::read_keypair_file(keypair_path).unwrap();
             let weights = vec![actions::vote_market::vote::WeightInfo {
                 gauge: Pubkey::from_str("3xC4eW6xhW3Gpb4T5sCKFe73ay2K4aUUfxL57XFdguJx").unwrap(),
                 weight: 100,
             }];
-            actions::vote_market::vote::vote(&client, &keypair, &config, &escrow, *epoch, weights);
+            actions::vote_market::vote::vote(
+                &anchor_client,
+                &payer,
+                &config,
+                &escrow,
+                *epoch,
+                weights,
+            );
         }
         Some(("setup", matches)) => {
             println!("setup");
@@ -294,12 +292,17 @@ fn main() {
         Some(("set-maximum", matches)) => {
             //TODO: bring out epoch
             let maximum = matches.get_one::<u64>("max").unwrap();
-            let config =
-                Pubkey::from_str(matches.get_one::<String>("config").unwrap()).unwrap();
-            let gauge =
-                Pubkey::from_str(matches.get_one::<String>("gauge").unwrap()).unwrap();
+            let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap()).unwrap();
+            let gauge = Pubkey::from_str(matches.get_one::<String>("gauge").unwrap()).unwrap();
             let epoch = matches.get_one::<u32>("epoch").unwrap();
-            actions::vote_market::set_maximum::set_maximum(&anchor_client, &payer, gauge, config , *epoch, *maximum);
+            actions::vote_market::set_maximum::set_maximum(
+                &anchor_client,
+                &payer,
+                gauge,
+                config,
+                *epoch,
+                *maximum,
+            );
         }
         _ => {
             println!("no subcommand matched")
