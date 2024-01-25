@@ -143,7 +143,7 @@ describe("vote market voting phase", () => {
         const voteBuyData = await program.account.voteBuy.fetch(voteBuy);
         expect(voteBuyData.amount.eq(new BN(1_000_000))).to.be.true;
         expect(voteBuyData.mint).to.eql(destinationTokenAccountData.mint);
-        expect(voteBuyData.percentToUseBps.eq(new BN(0))).to.be.true;
+        expect(voteBuyData.maxAmount.eq(new BN(0))).to.be.true;
         expect(voteBuyData.rewardReceiver).to.eql(program.provider.publicKey);
         //Add more tokens
         await program.methods.increaseVoteBuy(gaugeMeisterData.currentRewardsEpoch + 1, new BN(1_000_000)).accounts(
@@ -202,6 +202,17 @@ describe("vote market voting phase", () => {
         } catch (e) {
             expect(e.error.errorCode.code).to.equal("InvalidBuyer");
         }
+
+        // Check if the max amount can be set successfully
+        await program.methods.setMaxAmount(gaugeMeisterData.currentRewardsEpoch + 1, new BN(1000)).accounts( {
+                config: config.publicKey,
+                gauge: GAUGE,
+                voteBuy,
+                scriptAuthority: program.provider.publicKey,
+            }
+        ).rpc();
+        const voteBuyDataMax = await program.account.voteBuy.fetch(voteBuy);
+        expect(voteBuyDataMax.maxAmount.eq(new BN(1000))).to.be.true;
     });
     it("Buyers must use mint on allow list", async () => {
         const {mint, ata} = await setupTokens(program, payer);
@@ -233,6 +244,7 @@ describe("vote market voting phase", () => {
         } catch (e) {
             expect(e.error.errorCode.code).to.equal("InvalidMint");
         }
+
     });
     it("Can vote on behalf of the user", async () => {
         const {mint, ata, mintAuth} = await setupTokens(program, payer);
@@ -247,6 +259,12 @@ describe("vote market voting phase", () => {
         ], program.programId)[0];
         program.provider.connection.requestAirdrop(delegate, 1000000000000);
 
+        await program.methods.updateScriptAuthority(payer2.publicKey).accounts(
+            {
+                config: config.publicKey,
+                admin: program.provider.publicKey,
+            }).rpc();
+
         let {
             escrow,
             gaugeVoter,
@@ -255,6 +273,7 @@ describe("vote market voting phase", () => {
         const voteAccount = await gaugeProgram.account.gaugeVote.fetch(gaugeVote);
         expect(voteAccount.weight).to.equal(0);
         const builder = program.methods.vote(100).accounts({
+            scriptAuthority: payer2.publicKey,
             config: config.publicKey,
             gaugemeister: GAUGEMEISTER,
             gauge: GAUGE,
@@ -276,7 +295,5 @@ describe("vote market voting phase", () => {
         const voteAccountAfter = await gaugeProgram.account.gaugeVote.fetch(gaugeVote);
         await new Promise(resolve => setTimeout(resolve, 10000));
         expect(voteAccountAfter.weight).to.equal(100);
-
-
     })
 });

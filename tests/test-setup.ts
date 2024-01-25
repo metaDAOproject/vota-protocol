@@ -19,13 +19,13 @@ export async function setupConfig(program: Program<VoteMarket>, allowedMintList:
     if (!configAccount) {
         const tx = await program.methods.createConfig(
             allowedMintList,
-            gaugemeister,
             new BN(100),
             scriptAuthority,
         ).accounts(
             {
                 config: config.publicKey,
                 payer: program.provider.publicKey,
+                gaugemeister,
                 allowedMints
             }).signers([config]).rpc();
         await new Promise(resolve => setTimeout(resolve, 1000));

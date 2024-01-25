@@ -23,12 +23,11 @@ pub mod vote_market {
     pub fn create_config(
         ctx: Context<CreateConfig>,
         mints: Vec<Pubkey>,
-        gaugemeister: Pubkey,
         efficiency_ratio: u64,
         script_authority: Pubkey,
     ) -> Result<()> {
         ctx.accounts.config.script_authority = script_authority;
-        ctx.accounts.config.gaugemeister = gaugemeister;
+        ctx.accounts.config.gaugemeister = ctx.accounts.gaugemeister.key();
         ctx.accounts.allowed_mints.mints = mints;
         ctx.accounts.config.admin = ctx.accounts.payer.key();
         ctx.accounts.config.efficiency_ratio = efficiency_ratio;
@@ -94,7 +93,7 @@ pub mod vote_market {
         {
             ctx.accounts.vote_buy.reward_receiver = ctx.accounts.buyer.key();
             ctx.accounts.vote_buy.mint = ctx.accounts.mint.key();
-            ctx.accounts.vote_buy.percent_to_use_bps = 0;
+            ctx.accounts.vote_buy.max_amount = 0;
         }
         if ctx.accounts.vote_buy.reward_receiver != ctx.accounts.buyer.key() {
             return err!(errors::ErrorCode::InvalidBuyer);
@@ -337,6 +336,13 @@ pub mod vote_market {
         )?;
         Ok(())
     }
+
+    pub fn set_max_amount(ctx: Context<SetMaxAmount>, epoch: u32, max_amount: u64) -> Result<()> {
+        msg!("setting max amount to {}", max_amount);
+        ctx.accounts.vote_buy.max_amount = max_amount;
+        msg!("The max mount is {:?}", ctx.accounts.vote_buy.max_amount);
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -351,6 +357,7 @@ pub struct CreateConfig<'info> {
         space = VoteMarketConfig::LEN,
         )]
     pub config: Account<'info, VoteMarketConfig>,
+    pub gaugemeister: Account<'info, gauge_state::Gaugemeister>,
     #[account(mut)]
     pub payer: Signer<'info>,
     #[account(
@@ -472,18 +479,31 @@ pub struct ClaimVotePayment<'info> {
 
 #[derive(Accounts)]
 pub struct Vote<'info> {
-    config: Account<'info, VoteMarketConfig>,
+    pub config: Account<'info, VoteMarketConfig>,
+    #[account(address = config.script_authority)]
+    pub script_authority: Signer<'info>,
     #[account(owner = gauge_program.key())]
-    gaugemeister: Account<'info, gauge_state::Gaugemeister>,
+    pub gaugemeister: Account<'info, gauge_state::Gaugemeister>,
     #[account(owner = gauge_program.key())]
-    gauge: Account<'info, gauge_state::Gauge>,
+    pub gauge: Account<'info, gauge_state::Gauge>,
     #[account(mut, owner = gauge_program.key())]
-    gauge_voter: Account<'info, gauge_state::GaugeVoter>,
+    pub gauge_voter: Account<'info, gauge_state::GaugeVoter>,
     #[account(mut, owner = gauge_program.key())]
-    gauge_vote: Account<'info, gauge_state::GaugeVote>,
+    pub gauge_vote: Account<'info, gauge_state::GaugeVote>,
     #[account(has_one = vote_delegate)]
-    escrow: Account<'info, locked_voter_state::Escrow>,
+    pub escrow: Account<'info, locked_voter_state::Escrow>,
     #[account(mut, seeds = [b"vote-delegate", config.key().as_ref()], bump)]
-    vote_delegate: SystemAccount<'info>,
-    gauge_program: Program<'info, GaugeProgram>,
+    pub vote_delegate: SystemAccount<'info>,
+    pub gauge_program: Program<'info, GaugeProgram>,
+}
+
+#[derive(Accounts)]
+#[instruction(epoch: u32)]
+pub struct SetMaxAmount<'info> {
+    pub config: Account<'info, VoteMarketConfig>,
+    #[account(mut, seeds = [b"vote-buy".as_ref(), epoch.to_le_bytes().as_ref(), config.key().as_ref(), gauge.key().as_ref()], bump)]
+    pub vote_buy: Account<'info, VoteBuy>,
+    pub gauge: Account<'info, gauge_state::Gauge>,
+    #[account(address = config.script_authority)]
+    pub script_authority: Signer<'info>,
 }

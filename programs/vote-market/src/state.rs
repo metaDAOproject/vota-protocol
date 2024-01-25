@@ -5,7 +5,8 @@ use anchor_lang::prelude::*;
 pub struct VoteBuy {
     pub mint: Pubkey,
     pub amount: u64,
-    pub percent_to_use_bps: u64,
+    // This amount or the amount field, whichever is less, will be distributed
+    pub max_amount: u64,
     pub reward_receiver: Pubkey,
 }
 

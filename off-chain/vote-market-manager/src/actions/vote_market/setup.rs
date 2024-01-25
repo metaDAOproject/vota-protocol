@@ -20,12 +20,12 @@ pub fn setup(anchor_client: &anchor_client::Client<&Keypair>, mints: Vec<Pubkey>
         .accounts(vote_market::accounts::CreateConfig {
             config: config.pubkey(),
             payer: payer.pubkey(),
+            gaugemeister: GAUGEMEISTER,
             allowed_mints,
             system_program: solana_program::system_program::id(),
         })
         .args(vote_market::instruction::CreateConfig {
             mints,
-            gaugemeister: GAUGEMEISTER,
             efficiency_ratio: 0,
             script_authority: payer.pubkey(),
         })
