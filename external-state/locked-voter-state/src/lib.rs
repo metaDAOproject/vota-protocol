@@ -82,4 +82,3 @@ impl LockerParams {
     /// Number of bytes in a [LockerParams].
     pub const LEN: usize = 1 + 1 + 8 + 8 + 8;
 }
-

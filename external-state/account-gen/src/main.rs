@@ -103,16 +103,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         "-no-vote",
     )?;
 
-
-    process_account::<Locker,_>(
-        "locker",
-        None,
-        |mut data| {
-            data
-        },
-        &mut accounts_to_update,
-        "",
-    )?;
+    process_account::<Locker, _>("locker", None, |mut data| data, &mut accounts_to_update, "")?;
 
     let (escrow_address, _) = Pubkey::find_program_address(
         &[

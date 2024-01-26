@@ -6,13 +6,7 @@ use solana_program::pubkey::Pubkey;
 use solana_sdk::signature::Signer;
 use solana_sdk::signer::keypair::Keypair;
 
-pub fn prepare_vote(
-    client: &RpcClient,
-    owner: Pubkey,
-    gauge: Pubkey,
-    payer: &Keypair,
-    epoch: u32,
-) {
+pub fn prepare_vote(client: &RpcClient, owner: Pubkey, gauge: Pubkey, payer: &Keypair, epoch: u32) {
     let escrow_address = get_escrow_address_for_owner(&owner);
     println!("Prepare vote for escrow: {:?}", escrow_address);
     let vote_keys = resolve_vote_keys(&escrow_address, &gauge, epoch);
@@ -113,8 +107,7 @@ pub fn prepare_vote(
                 println!("result: {:?}", result);
                 println!("transaction: {:?}", transaction.signatures.first().unwrap());
             }
-            VoteCreateStep::EpochGaugeVoter(_key) => {
-            }
+            VoteCreateStep::EpochGaugeVoter(_key) => {}
             _ => {}
         }
     }

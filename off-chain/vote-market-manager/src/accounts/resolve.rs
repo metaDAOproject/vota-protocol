@@ -71,7 +71,11 @@ pub fn resolve_vote_keys(escrow: &Pubkey, gauge: &Pubkey, epoch: u32) -> VoteKey
 
 fn get_epoch_gauge(gauge: &Pubkey, epoch: u32) -> Pubkey {
     Pubkey::find_program_address(
-        &[b"EpochGauge".as_ref(), gauge.as_ref(), epoch.to_le_bytes().as_ref()],
+        &[
+            b"EpochGauge".as_ref(),
+            gauge.as_ref(),
+            epoch.to_le_bytes().as_ref(),
+        ],
         &gauge_state::id(),
     )
     .0
@@ -131,7 +135,12 @@ pub fn get_delegate(config: &Pubkey) -> Pubkey {
 
 pub fn get_vote_buy(config: &Pubkey, gauge: &Pubkey, epoch: u32) -> Pubkey {
     Pubkey::find_program_address(
-        &[b"vote-buy".as_ref(), epoch.to_le_bytes().as_ref(), config.as_ref(), gauge.as_ref()],
+        &[
+            b"vote-buy".as_ref(),
+            epoch.to_le_bytes().as_ref(),
+            config.as_ref(),
+            gauge.as_ref(),
+        ],
         &vote_market::id(),
     )
     .0

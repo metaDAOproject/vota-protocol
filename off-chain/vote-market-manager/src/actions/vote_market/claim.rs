@@ -1,11 +1,19 @@
+use crate::accounts::resolve::{get_delegate, get_vote_buy, resolve_vote_keys};
+use crate::GAUGEMEISTER;
 use solana_program::pubkey::Pubkey;
 use solana_sdk::signature::Keypair;
 use solana_sdk::signer::Signer;
 use spl_associated_token_account::get_associated_token_address;
-use crate::accounts::resolve::{get_delegate, get_vote_buy, resolve_vote_keys};
-use crate::GAUGEMEISTER;
 
-pub fn claim(anchor_client: &anchor_client::Client<&Keypair>, payer: &Keypair, mint: Pubkey, escrow: Pubkey, config: Pubkey, gauge: Pubkey, epoch: u32) {
+pub fn claim(
+    anchor_client: &anchor_client::Client<&Keypair>,
+    payer: &Keypair,
+    mint: Pubkey,
+    escrow: Pubkey,
+    config: Pubkey,
+    gauge: Pubkey,
+    epoch: u32,
+) {
     let program = anchor_client.program(vote_market::id()).unwrap();
     let seller_token_account = get_associated_token_address(&payer.pubkey(), &mint);
     let vote_buy = get_vote_buy(&config, &gauge, epoch);
@@ -15,11 +23,10 @@ pub fn claim(anchor_client: &anchor_client::Client<&Keypair>, payer: &Keypair, m
     let vote_delegate = get_delegate(&config);
     let vote_accounts = resolve_vote_keys(&escrow, &gauge, epoch);
 
-    let result = program.request()
+    let result = program
+        .request()
         .signer(payer)
-        .args(vote_market::instruction::ClaimVotePayment {
-            epoch,
-        })
+        .args(vote_market::instruction::ClaimVotePayment { epoch })
         .accounts(vote_market::accounts::ClaimVotePayment {
             seller: payer.pubkey(),
             seller_token_account,
@@ -40,6 +47,8 @@ pub fn claim(anchor_client: &anchor_client::Client<&Keypair>, payer: &Keypair, m
             locked_voter_program: locked_voter_state::id(),
             token_program: spl_token::id(),
             system_program: solana_program::system_program::id(),
-        }).send().unwrap();
+        })
+        .send()
+        .unwrap();
     println!("result: {:?}", result);
 }

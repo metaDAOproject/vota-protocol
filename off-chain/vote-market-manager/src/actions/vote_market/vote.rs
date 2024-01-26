@@ -51,12 +51,9 @@ pub fn vote(
             .send()
             .unwrap();
 
-
-
-        let data: Vec<u8> =
-            solana_program::hash::hash(b"global:prepare_epoch_gauge_voter_v2").to_bytes()
-                [..8]
-                .to_vec();
+        let data: Vec<u8> = solana_program::hash::hash(b"global:prepare_epoch_gauge_voter_v2")
+            .to_bytes()[..8]
+            .to_vec();
         let create_epoch_gauge_voter_ix = solana_program::instruction::Instruction {
             program_id: gauge_state::id(),
             accounts: vec![
@@ -147,7 +144,7 @@ pub fn vote(
                     is_writable: true,
                 },
                 AccountMeta {
-                    pubkey:  vote_accounts.epoch_gauge_vote,
+                    pubkey: vote_accounts.epoch_gauge_vote,
                     is_signer: false,
                     is_writable: true,
                 },
@@ -170,13 +167,16 @@ pub fn vote(
         );
         let latest_blockhash = client.get_latest_blockhash().unwrap();
         transaction.sign(&[script_authority], latest_blockhash);
-        let result = client.send_and_confirm_transaction_with_spinner_and_config(&transaction,
-        CommitmentConfig::confirmed(),
-        RpcSendTransactionConfig {
-            skip_preflight: true,
-            ..RpcSendTransactionConfig::default()
-        }).unwrap();
+        let result = client
+            .send_and_confirm_transaction_with_spinner_and_config(
+                &transaction,
+                CommitmentConfig::confirmed(),
+                RpcSendTransactionConfig {
+                    skip_preflight: true,
+                    ..RpcSendTransactionConfig::default()
+                },
+            )
+            .unwrap();
         println!("Vote committed {}", result);
     }
-
 }

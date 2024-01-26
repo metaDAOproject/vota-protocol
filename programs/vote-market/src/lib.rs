@@ -143,7 +143,8 @@ pub mod vote_market {
         if ctx.accounts.vote_buy.max_amount == 0 {
             return err!(errors::ErrorCode::MaxVoteBuyAmountNotSet);
         }
-        let total_vote_payment = if ctx.accounts.vote_buy.amount < ctx.accounts.vote_buy.max_amount {
+        let total_vote_payment = if ctx.accounts.vote_buy.amount < ctx.accounts.vote_buy.max_amount
+        {
             ctx.accounts.vote_buy.amount
         } else {
             ctx.accounts.vote_buy.max_amount

@@ -1,23 +1,19 @@
-
+use crate::GAUGEMEISTER;
 use solana_client::rpc_client::RpcClient;
 use solana_program::instruction::AccountMeta;
 use solana_sdk::signature::Keypair;
 use solana_sdk::signer::Signer;
-use crate::GAUGEMEISTER;
 
 pub(crate) fn trigger_epoch(client: &RpcClient, payer: &Keypair) {
-
     let data: Vec<u8> =
         solana_program::hash::hash(b"global:trigger_next_epoch").to_bytes()[..8].to_vec();
     let close_ix = solana_program::instruction::Instruction {
         program_id: gauge_state::id(),
-        accounts: vec![
-            AccountMeta {
-                pubkey: GAUGEMEISTER,
-                is_signer: false,
-                is_writable: true,
-            },
-        ],
+        accounts: vec![AccountMeta {
+            pubkey: GAUGEMEISTER,
+            is_signer: false,
+            is_writable: true,
+        }],
         data,
     };
     let mut transaction =

@@ -20,7 +20,6 @@ const LOCKER: Pubkey = pubkey!("8erad8kmNrLJDJPe9UkmTHomrMV3EW48sjGeECyVjbYX");
 fn main() {
     dotenv().ok();
 
-
     let cmd = clap::Command::new("vote-market-manager")
         .bin_name("vote-market-manager")
         .arg(
@@ -155,7 +154,7 @@ fn main() {
                         .required(true)
                         .value_parser(value_parser!(u64))
                         .help("The amount of tokens to buy votes for"),
-                )
+                ),
         )
         .subcommand(
             clap::command!("set-maximum")
@@ -184,9 +183,7 @@ fn main() {
                         .help("The epoch to vote for"),
                 ),
         )
-        .subcommand(
-            clap::command!("trigger-epoch")
-        )
+        .subcommand(clap::command!("trigger-epoch"))
         .subcommand(
             clap::command!("claim")
                 .arg(
@@ -218,19 +215,14 @@ fn main() {
                         .required(true)
                         .value_parser(value_parser!(u32))
                         .help("The epoch to vote for"),
-                )
-
+                ),
         );
 
     let matches = cmd.get_matches();
     let keypair = matches.get_one::<String>("keypair");
     let keypair_path = match keypair {
-        Some(keypair) => {
-             keypair.to_string()
-        },
-        None => {
-            env::var("KEY_PATH2").unwrap().to_string()
-        }
+        Some(keypair) => keypair.to_string(),
+        None => env::var("KEY_PATH2").unwrap().to_string(),
     };
     let rpc_url = env::var("RPC_URL").unwrap().to_string();
     println!("rpc_url: {:?}", rpc_url);
@@ -342,7 +334,6 @@ fn main() {
                 &config,
                 &gauge,
                 &mint,
-
                 *epoch,
                 *amount,
             );
@@ -379,7 +370,8 @@ fn main() {
                 escrow,
                 config,
                 gauge,
-                *epoch,);
+                *epoch,
+            );
         }
         _ => {
             println!("no subcommand matched")
