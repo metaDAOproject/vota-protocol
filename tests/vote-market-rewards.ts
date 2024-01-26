@@ -128,6 +128,15 @@ describe("vote market rewards phase", () => {
         await program.provider.connection.requestAirdrop(nonSellerPayer.publicKey, 1000000000000)
         await new Promise(resolve => setTimeout(resolve, 1000));
 
+        // Can't claim until a max amount is set
+        await program.methods.setMaxAmount(gaugeMeisterData.currentRewardsEpoch + 1, new BN(1_000_000)).accounts( {
+                config: config.publicKey,
+                gauge: GAUGE,
+                voteBuy,
+                scriptAuthority: program.provider.publicKey,
+            }
+        ).rpc();
+
         const tx = await program.methods.claimVotePayment(gaugeMeisterData.currentRewardsEpoch + 1).accounts({
             seller: program.provider.publicKey,
             sellerTokenAccount: ata,
@@ -159,18 +168,17 @@ describe("vote market rewards phase", () => {
             signature: sig,
             ...blockhash
         }, "confirmed");
-        console.log("sig");
         await new Promise(resolve => setTimeout(resolve, 10000));
         sellerTokenAccountData = await getAccount(program.provider.connection, ata);
         const expectedRewards = BigInt(18514);
         console.log("seller token account data", sellerTokenAccountData.amount);
-        expect(sellerTokenAccountData.amount === BigInt(999_000_000) + expectedRewards).to.be.true;
+
+        expect(sellerTokenAccountData.amount).to.equal(BigInt(999_000_000) + expectedRewards);
         tokenVaultData = await getAccount(program.provider.connection, tokenVault);
-        expect(tokenVaultData.amount === BigInt(1_000_000) - expectedRewards).to.be.true;
+        expect(tokenVaultData.amount).to.equal(BigInt(1_000_000) - expectedRewards);
         const voteDelegateBalance = await program.provider.connection.getBalance(voteDelegate);
         const expectedGaugeVoteRent = await program.provider.connection.getMinimumBalanceForRentExemption(16)
-        expect(voteDelegateBalance === expectedGaugeVoteRent).to.be.true;
-        console.log("claim sig", sig);
+        expect(voteDelegateBalance).to.equal(expectedGaugeVoteRent);
 
         //Should not be able to claim again
         try {

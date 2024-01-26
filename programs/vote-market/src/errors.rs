@@ -17,4 +17,6 @@ pub enum ErrorCode {
     InvalidBuyer,
     #[msg("Unable to calcualate vote power")]
     InvalidVotePower,
+    #[msg("Max vote buy amount not set")]
+    MaxVoteBuyAmountNotSet,
 }

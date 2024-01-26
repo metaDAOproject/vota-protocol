@@ -139,7 +139,15 @@ pub mod vote_market {
         }
         let total_power = ctx.accounts.epoch_gauge.total_power;
         let allocated_power = ctx.accounts.epoch_gauge_vote.allocated_power;
-        let total_vote_payment = ctx.accounts.vote_buy.amount;
+        msg!("Max amount is {:?}", ctx.accounts.vote_buy.max_amount);
+        if ctx.accounts.vote_buy.max_amount == 0 {
+            return err!(errors::ErrorCode::MaxVoteBuyAmountNotSet);
+        }
+        let total_vote_payment = if ctx.accounts.vote_buy.amount < ctx.accounts.vote_buy.max_amount {
+            ctx.accounts.vote_buy.amount
+        } else {
+            ctx.accounts.vote_buy.max_amount
+        };
         let voter_share = get_user_payment(total_power, total_vote_payment, allocated_power)?;
         let transfer_ix = spl_token::instruction::transfer(
             &ctx.accounts.token_program.key(),
