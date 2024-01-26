@@ -19,42 +19,18 @@ const LOCKER: Pubkey = pubkey!("8erad8kmNrLJDJPe9UkmTHomrMV3EW48sjGeECyVjbYX");
 
 fn main() {
     dotenv().ok();
-    let rpc_url = env::var("RPC_URL").unwrap().to_string();
-    let keypair_path = env::var("KEY_PATH2").unwrap().to_string();
-    println!("rpc_url: {:?}", rpc_url);
-    let client = solana_client::rpc_client::RpcClient::new(rpc_url);
-    let payer = solana_sdk::signature::read_keypair_file(keypair_path).unwrap();
-    let anchor_client = anchor_client::Client::new_with_options(
-        anchor_client::Cluster::Localnet,
-        &payer,
-        solana_sdk::commitment_config::CommitmentConfig::confirmed(),
-    );
-    let program = anchor_client.program(vote_market::id()).unwrap();
 
-    // TODO: Can't do this if mainnet
-    // Make sure we have some funds
-    let amount = program.rpc().get_balance(&payer.pubkey()).unwrap();
-    if amount == 0 {
-        println!("Airdropping 100 SOL");
-        let sig = program
-            .rpc()
-            .request_airdrop(&payer.pubkey(), 100_000_000_000)
-            .unwrap();
-        let blockhash = program.rpc().get_latest_blockhash().unwrap();
-        program
-            .rpc()
-            .confirm_transaction_with_spinner(
-                &sig,
-                &blockhash,
-                CommitmentConfig {
-                    commitment: solana_sdk::commitment_config::CommitmentLevel::Finalized,
-                },
-            )
-            .unwrap();
-    }
 
     let cmd = clap::Command::new("vote-market-manager")
         .bin_name("vote-market-manager")
+        .arg(
+            clap::Arg::new("keypair")
+                .long("keypair")
+                .short('k')
+                .required(false)
+                .value_parser(value_parser!(String))
+                .help("The keypair to use for the payer"),
+        )
         .subcommand(clap::command!("get-escrows"))
         .subcommand(
             clap::command!("get-vote-buys")
@@ -251,6 +227,48 @@ fn main() {
         );
 
     let matches = cmd.get_matches();
+    let keypair = matches.get_one::<String>("keypair");
+    let keypair_path = match keypair {
+        Some(keypair) => {
+             keypair.to_string()
+        },
+        None => {
+            env::var("KEY_PATH2").unwrap().to_string()
+        }
+    };
+    let rpc_url = env::var("RPC_URL").unwrap().to_string();
+    println!("rpc_url: {:?}", rpc_url);
+    let client = solana_client::rpc_client::RpcClient::new(&rpc_url);
+    let payer = solana_sdk::signature::read_keypair_file(keypair_path).unwrap();
+    println!("payer: {:?}", payer.pubkey());
+    let anchor_client = anchor_client::Client::new_with_options(
+        anchor_client::Cluster::Localnet,
+        &payer,
+        CommitmentConfig::confirmed(),
+    );
+    let program = anchor_client.program(vote_market::id()).unwrap();
+    if rpc_url == "http://127.0.0.1:8899" || rpc_url == "http://localhost:8899" {
+        // Make sure we have some funds
+        let amount = program.rpc().get_balance(&payer.pubkey()).unwrap();
+        if amount == 0 {
+            println!("Airdropping 100 SOL");
+            let sig = program
+                .rpc()
+                .request_airdrop(&payer.pubkey(), 100_000_000_000)
+                .unwrap();
+            let blockhash = program.rpc().get_latest_blockhash().unwrap();
+            program
+                .rpc()
+                .confirm_transaction_with_spinner(
+                    &sig,
+                    &blockhash,
+                    CommitmentConfig {
+                        commitment: solana_sdk::commitment_config::CommitmentLevel::Finalized,
+                    },
+                )
+                .unwrap();
+        }
+    }
     match matches.subcommand() {
         Some(("get-escrows", _)) => {
             escrows::get_delegated_escrows(client);
