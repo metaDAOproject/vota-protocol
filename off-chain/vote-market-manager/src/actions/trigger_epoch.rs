@@ -1,4 +1,4 @@
-use anchor_client::Client;
+
 use solana_client::rpc_client::RpcClient;
 use solana_program::instruction::AccountMeta;
 use solana_sdk::signature::Keypair;
@@ -7,7 +7,7 @@ use crate::GAUGEMEISTER;
 
 pub(crate) fn trigger_epoch(client: &RpcClient, payer: &Keypair) {
 
-    let mut data: Vec<u8> =
+    let data: Vec<u8> =
         solana_program::hash::hash(b"global:trigger_next_epoch").to_bytes()[..8].to_vec();
     let close_ix = solana_program::instruction::Instruction {
         program_id: gauge_state::id(),

@@ -281,7 +281,7 @@ fn main() {
             let epoch = matches.get_one::<u32>("epoch").unwrap();
             let keypair_path = matches.get_one::<PathBuf>("keypair").unwrap();
             let keypair = solana_sdk::signature::read_keypair_file(keypair_path).unwrap();
-            actions::prepare_vote::prepare_vote(&client, &owner, &gauge, &keypair, *epoch);
+            actions::prepare_vote::prepare_vote(&client, owner, gauge, &keypair, *epoch);
         }
         Some(("vote", matches)) => {
             println!("vote");
@@ -296,8 +296,8 @@ fn main() {
                 &anchor_client,
                 &client,
                 &payer,
-                &config,
-                &escrow,
+                config,
+                escrow,
                 *epoch,
                 weights,
             );
@@ -363,10 +363,10 @@ fn main() {
             actions::vote_market::claim::claim(
                 &anchor_client,
                 &payer,
-                &mint,
-                &escrow,
-                &config,
-                &gauge,
+                mint,
+                escrow,
+                config,
+                gauge,
                 *epoch,);
         }
         _ => {

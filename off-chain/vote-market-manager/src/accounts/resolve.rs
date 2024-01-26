@@ -55,11 +55,11 @@ impl VoteKeys {
 }
 
 pub fn resolve_vote_keys(escrow: &Pubkey, gauge: &Pubkey, epoch: u32) -> VoteKeys {
-    let gauge_voter = get_gauge_voter(&escrow);
-    let gauge_vote = get_gauge_vote(&gauge_voter, &gauge);
+    let gauge_voter = get_gauge_voter(escrow);
+    let gauge_vote = get_gauge_vote(&gauge_voter, gauge);
     let epoch_gauge_voter = get_epoch_gauge_voter(&gauge_voter, epoch);
     let epoch_gauge_vote = get_epoch_gauge_vote(&gauge_vote, epoch);
-    let epoch_gauge = get_epoch_gauge(&gauge, epoch);
+    let epoch_gauge = get_epoch_gauge(gauge, epoch);
     VoteKeys {
         gauge_voter,
         gauge_vote,

@@ -29,7 +29,7 @@ pub(crate) fn buy_votes(
         .signer(payer)
         .accounts(vote_market::accounts::IncreaseVoteBuy {
             buyer: (*payer).pubkey(),
-            buyer_token_account: buyer_token_account,
+            buyer_token_account,
             token_vault,
             mint: *mint,
             config: *config,

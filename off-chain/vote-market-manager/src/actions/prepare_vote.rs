@@ -1,5 +1,5 @@
 use crate::accounts::resolve::{get_escrow_address_for_owner, resolve_vote_keys, VoteCreateStep};
-use crate::{GAUGEMEISTER, LOCKER};
+use crate::GAUGEMEISTER;
 use solana_client::rpc_client::RpcClient;
 use solana_program::instruction::AccountMeta;
 use solana_program::pubkey::Pubkey;
@@ -8,14 +8,14 @@ use solana_sdk::signer::keypair::Keypair;
 
 pub fn prepare_vote(
     client: &RpcClient,
-    owner: &Pubkey,
-    gauge: &Pubkey,
+    owner: Pubkey,
+    gauge: Pubkey,
     payer: &Keypair,
     epoch: u32,
 ) {
     let escrow_address = get_escrow_address_for_owner(&owner);
     println!("Prepare vote for escrow: {:?}", escrow_address);
-    let vote_keys = resolve_vote_keys(&escrow_address, gauge, epoch);
+    let vote_keys = resolve_vote_keys(&escrow_address, &gauge, epoch);
     let steps = vote_keys.get_missing_prepare_vote_accounts(client);
     for step in steps {
         match step {
@@ -86,7 +86,7 @@ pub fn prepare_vote(
                             is_writable: false,
                         },
                         AccountMeta {
-                            pubkey: *gauge,
+                            pubkey: gauge,
                             is_signer: false,
                             is_writable: false,
                         },
@@ -113,7 +113,7 @@ pub fn prepare_vote(
                 println!("result: {:?}", result);
                 println!("transaction: {:?}", transaction.signatures.first().unwrap());
             }
-            VoteCreateStep::EpochGaugeVoter(key) => {
+            VoteCreateStep::EpochGaugeVoter(_key) => {
             }
             _ => {}
         }
