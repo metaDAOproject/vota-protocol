@@ -73,10 +73,6 @@ fn main() {
         .subcommand(
             clap::command!("prepare-vote")
                 .arg(
-                    clap::arg!(-k --keypair <FILE> "The payer keypair")
-                        .value_parser(value_parser!(PathBuf)),
-                )
-                .arg(
                     clap::Arg::new("owner")
                         .required(true)
                         .value_parser(value_parser!(String))
@@ -297,9 +293,7 @@ fn main() {
             let owner = Pubkey::from_str(matches.get_one::<String>("owner").unwrap()).unwrap();
             let gauge = Pubkey::from_str(matches.get_one::<String>("gauge").unwrap()).unwrap();
             let epoch = matches.get_one::<u32>("epoch").unwrap();
-            let keypair_path = matches.get_one::<PathBuf>("keypair").unwrap();
-            let keypair = solana_sdk::signature::read_keypair_file(keypair_path).unwrap();
-            actions::prepare_vote::prepare_vote(&client, owner, gauge, &keypair, *epoch);
+            actions::prepare_vote::prepare_vote(&client, owner, gauge, &payer, *epoch);
         }
         Some(("vote", matches)) => {
             println!("vote");
