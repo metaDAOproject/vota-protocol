@@ -3,6 +3,7 @@ use anchor_client::Client;
 use solana_program::pubkey::Pubkey;
 use solana_sdk::signature::{Keypair, Signer};
 use spl_associated_token_account::get_associated_token_address;
+use crate::accounts::resolve::get_vote_buy;
 
 pub(crate) fn buy_votes(
     anchor_client: &Client<&Keypair>,
@@ -15,17 +16,10 @@ pub(crate) fn buy_votes(
 ) {
     let program = anchor_client.program(vote_market::id()).unwrap();
     let buyer_token_account = get_associated_token_address(&payer.pubkey(), mint);
-    let (vote_buy, _) = Pubkey::find_program_address(
-        &[
-            b"vote-buy".as_ref(),
-            epoch.to_le_bytes().as_ref(),
-            config.as_ref(),
-            gauge.to_bytes().as_ref(),
-        ],
-        &vote_market::id(),
-    );
+    let vote_buy = get_vote_buy(config, gauge, epoch);
     let token_vault = get_associated_token_address(&vote_buy, mint);
-
+    println!("vote buy {}", vote_buy);
+    println!("token vault {}", token_vault);
     let (allowed_mints, _) = Pubkey::find_program_address(
         &[b"allow-list".as_ref(), config.as_ref()],
         &vote_market::id(),

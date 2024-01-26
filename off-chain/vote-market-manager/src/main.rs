@@ -173,11 +173,17 @@ fn main() {
                         .help("The amount of tokens to buy votes for"),
                 )
                 .arg(
+                    clap::Arg::new("epoch")
+                        .required(true)
+                        .value_parser(value_parser!(u32))
+                        .help("The epoch to vote for"),
+                )
+                .arg(
                     clap::Arg::new("amount")
                         .required(true)
                         .value_parser(value_parser!(u64))
                         .help("The amount of tokens to buy votes for"),
-                ),
+                )
         )
         .subcommand(
             clap::command!("set-maximum")
@@ -205,6 +211,43 @@ fn main() {
                         .value_parser(value_parser!(u32))
                         .help("The epoch to vote for"),
                 ),
+        )
+        .subcommand(
+            clap::command!("trigger-epoch")
+        )
+        .subcommand(
+            clap::command!("claim")
+                .arg(
+                    clap::Arg::new("mint")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The mint for the token to claim"),
+                )
+                .arg(
+                    clap::Arg::new("escrow")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The escrow to claim for"),
+                )
+                .arg(
+                    clap::Arg::new("config")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The config for the vote buy accounts"),
+                )
+                .arg(
+                    clap::Arg::new("gauge")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The gauge claim vote payments for"),
+                )
+                .arg(
+                    clap::Arg::new("epoch")
+                        .required(true)
+                        .value_parser(value_parser!(u32))
+                        .help("The epoch to vote for"),
+                )
+
         );
 
     let matches = cmd.get_matches();
@@ -279,6 +322,7 @@ fn main() {
             let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap()).unwrap();
             let gauge = Pubkey::from_str(matches.get_one::<String>("gauge").unwrap()).unwrap();
             let mint = Pubkey::from_str(matches.get_one::<String>("mint").unwrap()).unwrap();
+            let epoch = matches.get_one::<u32>("epoch").unwrap();
             let amount = matches.get_one::<u64>("amount").unwrap();
             actions::vote_market::buy_votes::buy_votes(
                 &anchor_client,
@@ -286,7 +330,8 @@ fn main() {
                 &config,
                 &gauge,
                 &mint,
-                96,
+
+                *epoch,
                 *amount,
             );
         }
@@ -304,6 +349,25 @@ fn main() {
                 *epoch,
                 *maximum,
             );
+        }
+        Some(("trigger-epoch", _)) => {
+            actions::trigger_epoch::trigger_epoch(&client, &payer);
+        }
+        Some(("claim", matches)) => {
+            let mint = Pubkey::from_str(matches.get_one::<String>("mint").unwrap()).unwrap();
+            let escrow = Pubkey::from_str(matches.get_one::<String>("escrow").unwrap()).unwrap();
+            let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap()).unwrap();
+            let gauge = Pubkey::from_str(matches.get_one::<String>("gauge").unwrap()).unwrap();
+            let epoch = matches.get_one::<u32>("epoch").unwrap();
+
+            actions::vote_market::claim::claim(
+                &anchor_client,
+                &payer,
+                &mint,
+                &escrow,
+                &config,
+                &gauge,
+                *epoch,);
         }
         _ => {
             println!("no subcommand matched")

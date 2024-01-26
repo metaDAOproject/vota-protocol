@@ -33,6 +33,7 @@ pub fn vote(
     for weight in weights {
         // Set weight
         let vote_accounts = resolve_vote_keys(&escrow, &weight.gauge, epoch);
+        println!("Epoch the votes are for: {}", epoch);
 
         let sig = program
             .request()
@@ -56,12 +57,14 @@ pub fn vote(
 
 
 
-        let mut data: Vec<u8> =
-            solana_program::hash::hash(b"global:reset_epoch_gauge_voter").to_bytes()[..8].to_vec();
-        data.extend_from_slice(&weight.weight.to_le_bytes());
-        let reset_ix = solana_program::instruction::Instruction {
+        let data: Vec<u8> =
+            solana_program::hash::hash(b"global:prepare_epoch_gauge_voter_v2").to_bytes()
+                [..8]
+                .to_vec();
+        let create_epoch_gauge_voter_ix = solana_program::instruction::Instruction {
             program_id: gauge_state::id(),
             accounts: vec![
+                //Gauge vote account
                 AccountMeta {
                     pubkey: GAUGEMEISTER,
                     is_signer: false,
@@ -87,17 +90,28 @@ pub fn vote(
                     is_signer: false,
                     is_writable: true,
                 },
+                AccountMeta {
+                    pubkey: script_authority.pubkey(),
+                    is_signer: true,
+                    is_writable: true,
+                },
+                AccountMeta {
+                    pubkey: solana_program::system_program::id(),
+                    is_signer: false,
+                    is_writable: false,
+                },
             ],
             data,
         };
         let mut transaction = solana_sdk::transaction::Transaction::new_with_payer(
-            &[reset_ix],
+            &[create_epoch_gauge_voter_ix],
             Some(&script_authority.pubkey()),
         );
         let latest_blockhash = client.get_latest_blockhash().unwrap();
         transaction.sign(&[script_authority], latest_blockhash);
         let result = client.send_and_confirm_transaction(&transaction).unwrap();
-        println!("reset epoch gauge voter result: {:?}", result);
+        println!("prepare epoch gauge voter result: {:?}", result);
+        println!("transaction: {:?}", transaction.signatures.first().unwrap());
         // Commit vote
 
         let mut data: Vec<u8> =
@@ -160,15 +174,13 @@ pub fn vote(
         );
         let latest_blockhash = client.get_latest_blockhash().unwrap();
         transaction.sign(&[script_authority], latest_blockhash);
-        println!("Trying to send with skipping preflight");
         let result = client.send_and_confirm_transaction_with_spinner_and_config(&transaction,
         CommitmentConfig::confirmed(),
         RpcSendTransactionConfig {
             skip_preflight: true,
             ..RpcSendTransactionConfig::default()
         }).unwrap();
-        println!("result: {:?}", result);
-        println!("transaction: {:?}", transaction.signatures.first().unwrap());
+        println!("Vote committed {}", result);
     }
 
 }

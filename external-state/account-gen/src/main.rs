@@ -79,7 +79,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let config_bytes: Vec<u8> = serde_json::from_str(&config_file).unwrap();
     let config = Keypair::from_bytes(config_bytes.as_slice()).unwrap();
     // Create voting user
-    let (gauge_vote_address, epoch_gauge_voter_data) = create_user_votes(
+    let gauge_vote_address = create_user_votes(
         &mut accounts_to_update,
         &payer,
         &gaugemeister_data,
@@ -103,6 +103,55 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         "-no-vote",
     )?;
 
+
+    process_account::<Locker,_>(
+        "locker",
+        None,
+        |mut data| {
+            data
+        },
+        &mut accounts_to_update,
+        "",
+    )?;
+
+    let (escrow_address, _) = Pubkey::find_program_address(
+        &[
+            b"Escrow",
+            gaugemeister_data.locker.to_bytes().as_ref(),
+            payer.pubkey().to_bytes().as_ref(),
+        ],
+        &locked_voter_state::id(),
+    );
+    let (gauge_voter_address, _) = Pubkey::find_program_address(
+        &[
+            b"GaugeVoter",
+            gaugemeister_account.pubkey.to_bytes().as_ref(),
+            escrow_address.to_bytes().as_ref(),
+        ],
+        &gauge_state::id(),
+    );
+    let (epoch_gauge_voter_address, _) = Pubkey::find_program_address(
+        &[
+            b"EpochGaugeVoter",
+            gauge_voter_address.to_bytes().as_ref(),
+            gaugemeister_data.voting_epoch()?.to_le_bytes().as_ref(),
+        ],
+        &gauge_state::id(),
+    );
+    let (epoch_gauge_voter_data, _) = process_account::<EpochGaugeVoter, _>(
+        "epoch-gauge-voter",
+        Some(epoch_gauge_voter_address),
+        |mut data| {
+            data.gauge_voter = gauge_voter_address;
+            data.voting_epoch = gaugemeister_data
+                .voting_epoch()
+                .expect("if it deserializes the epoch should be valid");
+            data
+        },
+        &mut accounts_to_update,
+        "",
+    )?;
+
     let (epoch_gauge_vote_address, _) = Pubkey::find_program_address(
         &[
             b"EpochGaugeVote",
@@ -115,16 +164,6 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         "epoch-gauge-vote",
         Some(epoch_gauge_vote_address),
         |x| x,
-        &mut accounts_to_update,
-        "",
-    )?;
-
-    process_account::<Locker,_>(
-        "locker",
-        None,
-        |mut data| {
-            data
-        },
         &mut accounts_to_update,
         "",
     )?;
@@ -157,7 +196,7 @@ fn create_user_votes(
     gauge: &Pubkey,
     config: &Pubkey,
     file_suffix: &str,
-) -> std::result::Result<(Pubkey, EpochGaugeVoter), Box<dyn std::error::Error>> {
+) -> std::result::Result<Pubkey, Box<dyn std::error::Error>> {
     let (escrow_address, _) = Pubkey::find_program_address(
         &[
             b"Escrow",
@@ -226,26 +265,5 @@ fn create_user_votes(
         file_suffix,
     )?;
 
-    let (epoch_gauge_voter_address, _) = Pubkey::find_program_address(
-        &[
-            b"EpochGaugeVoter",
-            gauge_voter_address.to_bytes().as_ref(),
-            gaugemeister_data.voting_epoch()?.to_le_bytes().as_ref(),
-        ],
-        &gauge_state::id(),
-    );
-    let (epoch_gauge_voter_data, _) = process_account::<EpochGaugeVoter, _>(
-        "epoch-gauge-voter",
-        Some(epoch_gauge_voter_address),
-        |mut data| {
-            data.gauge_voter = gauge_voter_address;
-            data.voting_epoch = gaugemeister_data
-                .voting_epoch()
-                .expect("if it deserializes the epoch should be valid");
-            data
-        },
-        &mut accounts_to_update,
-        file_suffix,
-    )?;
-    Ok((gauge_vote_address, epoch_gauge_voter_data))
+    Ok((gauge_vote_address))
 }

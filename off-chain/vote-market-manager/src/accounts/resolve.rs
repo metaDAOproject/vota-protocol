@@ -128,3 +128,11 @@ pub fn get_delegate(config: &Pubkey) -> Pubkey {
     )
     .0
 }
+
+pub fn get_vote_buy(config: &Pubkey, gauge: &Pubkey, epoch: u32) -> Pubkey {
+    Pubkey::find_program_address(
+        &[b"vote-buy".as_ref(), epoch.to_le_bytes().as_ref(), config.as_ref(), gauge.as_ref()],
+        &vote_market::id(),
+    )
+    .0
+}
