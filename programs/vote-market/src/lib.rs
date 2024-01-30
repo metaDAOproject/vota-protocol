@@ -134,6 +134,25 @@ pub mod vote_market {
     }
 
     pub fn claim_vote_payment(ctx: Context<ClaimVotePayment>, epoch: u32) -> Result<()> {
+        //seed checks. Doing this on the Accounts struct uses too much stack space
+        let (expected_epoch_gauge, _) = Pubkey::find_program_address(
+            &[
+                b"EpochGauge".as_ref(),
+                ctx.accounts.gauge.key().as_ref(),
+                epoch.to_le_bytes().as_ref(),
+            ],
+            &gauge_state::id(),
+        );
+        require_eq!(expected_epoch_gauge, ctx.accounts.epoch_gauge.key());
+        let (expected_epoch_guage_vote, _) = Pubkey::find_program_address(
+            &[
+                b"EpochGaugeVote".as_ref(),
+                ctx.accounts.gauge_vote.key().as_ref(),
+                epoch.to_le_bytes().as_ref(),
+            ],
+            &gauge_state::id(),
+        );
+        require_eq!(expected_epoch_guage_vote, ctx.accounts.epoch_gauge_vote.key());
         if epoch > ctx.accounts.gaugemeister.current_rewards_epoch {
             return err!(errors::VoteMarketError::EpochVotingNotCompleted);
         }
@@ -231,14 +250,6 @@ pub mod vote_market {
         Ok(())
     }
 
-    pub fn claim_rewards_as_vote_seller(_ctx: Context<Initialize>) -> Result<()> {
-        Ok(())
-    }
-
-    pub fn claim_rewards_as_vote_buyer(_ctx: Context<Initialize>) -> Result<()> {
-        Ok(())
-    }
-
     pub fn vote(ctx: Context<Vote>, weight: u32) -> Result<()> {
         let mut data: Vec<u8> =
             solana_program::hash::hash(b"global:gauge_set_vote").to_bytes()[..8].to_vec();
@@ -287,6 +298,46 @@ pub mod vote_market {
     #[allow(unused_variables)]
     pub fn set_max_amount(ctx: Context<SetMaxAmount>, epoch: u32, max_amount: u64) -> Result<()> {
         ctx.accounts.vote_buy.max_amount = Some(max_amount);
+        Ok(())
+    }
+
+    pub fn vote_buy_refund(ctx: Context<VoteBuyRefund>, epoch: u32) -> Result<()> {
+        if let Some(max_amount) = ctx.accounts.vote_buy.max_amount {
+            let refund_amount = ctx.accounts.vote_buy.amount - max_amount;
+            let transfer_ix = spl_token::instruction::transfer(
+                &ctx.accounts.token_program.key(),
+                &ctx.accounts.token_vault.key(),
+                &ctx.accounts.buyer_token_account.key(),
+                &ctx.accounts.vote_buy.key(),
+                &[],
+                refund_amount,
+            )?;
+            let (_, bump) = Pubkey::find_program_address(
+                &[
+                    b"vote-buy".as_ref(),
+                    epoch.to_le_bytes().as_ref(),
+                    ctx.accounts.config.key().as_ref(),
+                    ctx.accounts.gauge.key().as_ref(),
+                ],
+                ctx.program_id,
+            );
+            invoke_signed(
+                &transfer_ix,
+                &[
+                    ctx.accounts.token_vault.to_account_info(),
+                    ctx.accounts.buyer_token_account.to_account_info(),
+                    ctx.accounts.vote_buy.to_account_info(),
+                    ctx.accounts.token_program.to_account_info(),
+                ],
+                &[&[
+                    b"vote-buy".as_ref(),
+                    epoch.to_le_bytes().as_ref(),
+                    ctx.accounts.config.key().as_ref(),
+                    ctx.accounts.gauge.key().as_ref(),
+                    &[bump],
+                ]],
+            )?;
+        }
         Ok(())
     }
 }
@@ -448,15 +499,11 @@ pub struct ClaimVotePayment<'info> {
     pub epoch_gauge_voter: Account<'info, gauge_state::EpochGaugeVoter>,
     #[account(has_one = gaugemeister, constraint = !gauge.is_disabled)]
     pub gauge: Account<'info, gauge_state::Gauge>,
-    #[account(has_one = gauge, owner = gauge_program.key(),
-    // seeds=[b"EpochGauge",
-    //     gauge.key().as_ref(),
-    //     epoch.to_le_bytes().as_ref()],
-    // bump,
-    // seeds::program = gauge_program.key(),
-    )]
+    #[account(has_one = gauge, owner = gauge_program.key())]
+    // Seeds checked in instruction body
     pub epoch_gauge: Account<'info, gauge_state::EpochGauge>,
     #[account(mut, owner = gauge_program.key())]
+    // Seeds checked in instruction body
     pub epoch_gauge_vote: Account<'info, gauge_state::EpochGaugeVote>,
     pub gauge_program: Program<'info, GaugeProgram>,
     pub locked_voter_program: Program<'info, LockedVoterProgram>,
@@ -521,4 +568,33 @@ pub struct SetMaxAmount<'info> {
     pub gauge: Account<'info, gauge_state::Gauge>,
     #[account(address = config.script_authority)]
     pub script_authority: Signer<'info>,
+}
+#[derive(Accounts)]
+#[instruction(epoch: u32)]
+pub struct VoteBuyRefund<'info> {
+    pub buyer: Signer<'info>,
+    #[account(mut,
+    associated_token::mint = mint,
+    associated_token::authority = buyer,
+    )]
+    pub buyer_token_account: Account<'info, TokenAccount>,
+    #[account(mut,
+    associated_token::mint = mint,
+    associated_token::authority = vote_buy
+    )]
+    pub token_vault: Account<'info, TokenAccount>,
+    #[account(
+    has_one = mint,
+    seeds = [
+    b"vote-buy".as_ref(),
+    epoch.to_le_bytes().as_ref(),
+    config.key().as_ref(),
+    gauge.key().as_ref()],
+    bump
+    )]
+    pub vote_buy: Account<'info, VoteBuy>,
+    pub mint: Account<'info, Mint>,
+    pub config: Account<'info, VoteMarketConfig>,
+    pub gauge: Account<'info, gauge_state::Gauge>,
+    pub token_program: Program<'info, Token>,
 }

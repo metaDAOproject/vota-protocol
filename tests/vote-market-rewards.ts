@@ -102,7 +102,6 @@ describe("vote market rewards phase", () => {
             }).rpc();
             expect.fail("Should have thrown an error when withdrawing vote payment before voting is complete");
         } catch (e) {
-            console.log(e)
             expect(e.error.errorCode.code).to.equal("EpochVotingNotCompleted");
         }
 
