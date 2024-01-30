@@ -82,7 +82,7 @@ pub fn process_account<T: AccountDeserialize + AccountSerialize, F>(
     data_update: F,
     accounts_to_update: &mut Vec<AddressInfo>,
     file_suffix: &str,
-) -> std::result::Result<(T, Root), Box<dyn std::error::Error>>
+) -> Result<(T, Root), Box<dyn std::error::Error>>
 where
     F: Fn(T) -> T,
 {

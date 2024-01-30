@@ -11,16 +11,8 @@ pub fn delegate(client: RpcClient, escrow: &Pubkey, delegate: &Pubkey, owner: &K
     let close_ix = solana_program::instruction::Instruction {
         program_id: locked_voter_state::id(),
         accounts: vec![
-            AccountMeta {
-                pubkey: *escrow,
-                is_signer: false,
-                is_writable: true,
-            },
-            AccountMeta {
-                pubkey: owner.pubkey(),
-                is_signer: true,
-                is_writable: false,
-            },
+            AccountMeta::new(*escrow, false),
+            AccountMeta::new_readonly(owner.pubkey(), true),
         ],
         data,
     };

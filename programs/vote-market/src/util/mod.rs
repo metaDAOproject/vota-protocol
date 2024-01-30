@@ -1,1 +1,1 @@
-pub mod math;
+pub mod vote_math;

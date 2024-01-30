@@ -58,41 +58,13 @@ pub fn vote(
             program_id: gauge_state::id(),
             accounts: vec![
                 //Gauge vote account
-                AccountMeta {
-                    pubkey: GAUGEMEISTER,
-                    is_signer: false,
-                    is_writable: false,
-                },
-                AccountMeta {
-                    pubkey: LOCKER,
-                    is_signer: false,
-                    is_writable: false,
-                },
-                AccountMeta {
-                    pubkey: escrow,
-                    is_signer: false,
-                    is_writable: false,
-                },
-                AccountMeta {
-                    pubkey: vote_accounts.gauge_voter,
-                    is_signer: false,
-                    is_writable: false,
-                },
-                AccountMeta {
-                    pubkey: vote_accounts.epoch_gauge_voter,
-                    is_signer: false,
-                    is_writable: true,
-                },
-                AccountMeta {
-                    pubkey: script_authority.pubkey(),
-                    is_signer: true,
-                    is_writable: true,
-                },
-                AccountMeta {
-                    pubkey: solana_program::system_program::id(),
-                    is_signer: false,
-                    is_writable: false,
-                },
+                AccountMeta::new_readonly(GAUGEMEISTER, false),
+                AccountMeta::new_readonly(LOCKER, false),
+                AccountMeta::new_readonly(escrow, false),
+                AccountMeta::new_readonly(vote_accounts.gauge_voter, false),
+                AccountMeta::new(vote_accounts.epoch_gauge_voter, false),
+                AccountMeta::new(script_authority.pubkey(), true),
+                AccountMeta::new_readonly(solana_program::system_program::id(), false),
             ],
             data,
         };
@@ -113,51 +85,15 @@ pub fn vote(
         let commit_vote_ix = solana_program::instruction::Instruction {
             program_id: gauge_state::id(),
             accounts: vec![
-                AccountMeta {
-                    pubkey: GAUGEMEISTER,
-                    is_signer: false,
-                    is_writable: false,
-                },
-                AccountMeta {
-                    pubkey: weight.gauge,
-                    is_signer: false,
-                    is_writable: false,
-                },
-                AccountMeta {
-                    pubkey: vote_accounts.gauge_voter,
-                    is_signer: false,
-                    is_writable: false,
-                },
-                AccountMeta {
-                    pubkey: vote_accounts.gauge_vote,
-                    is_signer: false,
-                    is_writable: false,
-                },
-                AccountMeta {
-                    pubkey: vote_accounts.epoch_gauge,
-                    is_signer: false,
-                    is_writable: true,
-                },
-                AccountMeta {
-                    pubkey: vote_accounts.epoch_gauge_voter,
-                    is_signer: false,
-                    is_writable: true,
-                },
-                AccountMeta {
-                    pubkey: vote_accounts.epoch_gauge_vote,
-                    is_signer: false,
-                    is_writable: true,
-                },
-                AccountMeta {
-                    pubkey: script_authority.pubkey(),
-                    is_signer: true,
-                    is_writable: true,
-                },
-                AccountMeta {
-                    pubkey: solana_program::system_program::id(),
-                    is_signer: false,
-                    is_writable: false,
-                },
+                AccountMeta::new_readonly(GAUGEMEISTER, false),
+                AccountMeta::new_readonly(weight.gauge, false),
+                AccountMeta::new_readonly(vote_accounts.gauge_voter, false),
+                AccountMeta::new_readonly(vote_accounts.gauge_vote, false),
+                AccountMeta::new(vote_accounts.epoch_gauge, false),
+                AccountMeta::new(vote_accounts.epoch_gauge_voter, false),
+                AccountMeta::new(vote_accounts.epoch_gauge_vote, false),
+                AccountMeta::new(script_authority.pubkey(), true),
+                AccountMeta::new_readonly(solana_program::system_program::id(), false),
             ],
             data,
         };

@@ -22,31 +22,11 @@ pub fn prepare_vote(client: &RpcClient, owner: Pubkey, gauge: Pubkey, payer: &Ke
                     program_id: gauge_state::id(),
                     accounts: vec![
                         //Gauge voter account
-                        AccountMeta {
-                            pubkey: key,
-                            is_signer: false,
-                            is_writable: true,
-                        },
-                        AccountMeta {
-                            pubkey: GAUGEMEISTER,
-                            is_signer: false,
-                            is_writable: false,
-                        },
-                        AccountMeta {
-                            pubkey: escrow_address,
-                            is_signer: false,
-                            is_writable: false,
-                        },
-                        AccountMeta {
-                            pubkey: payer.pubkey(),
-                            is_signer: true,
-                            is_writable: true,
-                        },
-                        AccountMeta {
-                            pubkey: solana_program::system_program::id(),
-                            is_signer: false,
-                            is_writable: false,
-                        },
+                        AccountMeta::new(key, false),
+                        AccountMeta::new_readonly(GAUGEMEISTER, false),
+                        AccountMeta::new_readonly(escrow_address, false),
+                        AccountMeta::new(payer.pubkey(), true),
+                        AccountMeta::new_readonly(solana_program::system_program::id(), false),
                     ],
                     data,
                 };
@@ -69,31 +49,11 @@ pub fn prepare_vote(client: &RpcClient, owner: Pubkey, gauge: Pubkey, payer: &Ke
                     program_id: gauge_state::id(),
                     accounts: vec![
                         //Gauge vote account
-                        AccountMeta {
-                            pubkey: key,
-                            is_signer: false,
-                            is_writable: true,
-                        },
-                        AccountMeta {
-                            pubkey: vote_keys.gauge_voter,
-                            is_signer: false,
-                            is_writable: false,
-                        },
-                        AccountMeta {
-                            pubkey: gauge,
-                            is_signer: false,
-                            is_writable: false,
-                        },
-                        AccountMeta {
-                            pubkey: payer.pubkey(),
-                            is_signer: true,
-                            is_writable: true,
-                        },
-                        AccountMeta {
-                            pubkey: solana_program::system_program::id(),
-                            is_signer: false,
-                            is_writable: false,
-                        },
+                        AccountMeta::new(key, false),
+                        AccountMeta::new_readonly(vote_keys.gauge_voter, false),
+                        AccountMeta::new_readonly(gauge, false),
+                        AccountMeta::new(payer.pubkey(), true),
+                        AccountMeta::new_readonly(solana_program::system_program::id(), false),
                     ],
                     data,
                 };
@@ -108,7 +68,6 @@ pub fn prepare_vote(client: &RpcClient, owner: Pubkey, gauge: Pubkey, payer: &Ke
                 println!("transaction: {:?}", transaction.signatures.first().unwrap());
             }
             VoteCreateStep::EpochGaugeVoter(_key) => {}
-            _ => {}
         }
     }
 }

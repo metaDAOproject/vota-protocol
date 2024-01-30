@@ -33,7 +33,6 @@ describe("vote market rewards phase", () => {
     const program = anchor.workspace.VoteMarket as Program<VoteMarket>;
     before(async () => {
         await program.provider.connection.requestAirdrop(payer.publicKey, 1000000000000)
-        await new Promise(resolve => setTimeout(resolve, 1000));
     });
     const gaugeProgram = new Program(GAUGE_IDL as any, GAUGE_PROGRAM_ID) as Program<Gauge>;
     it("Vote sellers can withdraw vote payment", async () => {
@@ -50,6 +49,8 @@ describe("vote market rewards phase", () => {
             [Buffer.from("vote-buy"), epochBuffer, config.publicKey.toBuffer(), GAUGE.toBuffer()],
             program.programId);
         const tokenVault = getAssociatedTokenAddressSync(mint, voteBuy, true);
+
+
         await program.methods.increaseVoteBuy(gaugeMeisterData.currentRewardsEpoch + 1, new BN(1_000_000)).accounts(
             {
                 buyer: program.provider.publicKey,
@@ -78,6 +79,7 @@ describe("vote market rewards phase", () => {
         try {
             // Claim payment
             await program.methods.claimVotePayment(gaugeMeisterData.currentRewardsEpoch + 1).accounts({
+                scriptAuthority: program.provider.publicKey,
                 seller: program.provider.publicKey,
                 sellerTokenAccount: ata,
                 tokenVault,
@@ -100,6 +102,7 @@ describe("vote market rewards phase", () => {
             }).rpc();
             expect.fail("Should have thrown an error when withdrawing vote payment before voting is complete");
         } catch (e) {
+            console.log(e)
             expect(e.error.errorCode.code).to.equal("EpochVotingNotCompleted");
         }
 
@@ -124,20 +127,32 @@ describe("vote market rewards phase", () => {
         expect(tokenVaultData.amount === BigInt(1_000_000)).to.be.true;
 
         const nonSellerPayer = web3.Keypair.generate();
-        console.log("non seller payer", nonSellerPayer.publicKey.toBase58());
         await program.provider.connection.requestAirdrop(nonSellerPayer.publicKey, 1000000000000)
-        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        const updateScriptAuthSig = await program.methods.updateScriptAuthority(nonSellerPayer.publicKey).accounts(
+            {
+                config: config.publicKey,
+                admin: program.provider.publicKey,
+            }).rpc();
+        const latestBlockhash = await program.provider.connection.getLatestBlockhash();
+        await connection.confirmTransaction( {
+                signature: updateScriptAuthSig,
+                ...latestBlockhash
+            }, "confirmed");
+        const configData = await program.account.voteMarketConfig.fetch(config.publicKey);
+
 
         // Can't claim until a max amount is set
         await program.methods.setMaxAmount(gaugeMeisterData.currentRewardsEpoch + 1, new BN(1_000_000)).accounts( {
                 config: config.publicKey,
                 gauge: GAUGE,
                 voteBuy,
-                scriptAuthority: program.provider.publicKey,
+                scriptAuthority: nonSellerPayer.publicKey
             }
-        ).rpc();
+        ).signers([nonSellerPayer]).rpc();
 
         const tx = await program.methods.claimVotePayment(gaugeMeisterData.currentRewardsEpoch + 1).accounts({
+            scriptAuthority: nonSellerPayer.publicKey,
             seller: program.provider.publicKey,
             sellerTokenAccount: ata,
             tokenVault,
@@ -157,21 +172,20 @@ describe("vote market rewards phase", () => {
             lockedVoterProgram: LOCKED_VOTER_PROGRAM_ID,
             tokenProgram: TOKEN_PROGRAM_ID,
             systemProgram: web3.SystemProgram.programId,
-        }).transaction();
-        const blockhash = await program.provider.connection.getLatestBlockhash();
-        tx.recentBlockhash = blockhash.blockhash;
-        tx.lastValidBlockHeight = blockhash.lastValidBlockHeight;
-        tx.feePayer = nonSellerPayer.publicKey;
-        tx.sign(nonSellerPayer);
-        const sig = await program.provider.connection.sendRawTransaction(tx.serialize());
-        program.provider.connection.confirmTransaction({
-            signature: sig,
-            ...blockhash
-        }, "confirmed");
-        await new Promise(resolve => setTimeout(resolve, 10000));
+        }).signers([nonSellerPayer]).rpc();
+        // }).transaction();
+        // tx.recentBlockhash = latestBlockhash.blockhash;
+        // tx.lastValidBlockHeight = latestBlockhash.lastValidBlockHeight;
+        // tx.feePayer = nonSellerPayer.publicKey;
+        // tx.sign(nonSellerPayer);
+        // const sig = await program.provider.connection.sendRawTransaction(tx.serialize());
+        // program.provider.connection.confirmTransaction({
+        //     signature: sig,
+        //     ...latestBlockhash
+        // }, "confirmed");
+//        await new Promise((resolve) => setTimeout(resolve, 10000));
         sellerTokenAccountData = await getAccount(program.provider.connection, ata);
         const expectedRewards = BigInt(18514);
-        console.log("seller token account data", sellerTokenAccountData.amount);
 
         expect(sellerTokenAccountData.amount).to.equal(BigInt(999_000_000) + expectedRewards);
         tokenVaultData = await getAccount(program.provider.connection, tokenVault);
@@ -183,6 +197,7 @@ describe("vote market rewards phase", () => {
         //Should not be able to claim again
         try {
             await program.methods.claimVotePayment(gaugeMeisterData.currentRewardsEpoch + 1).accounts({
+                scriptAuthority: nonSellerPayer.publicKey,
                 seller: program.provider.publicKey,
                 sellerTokenAccount: ata,
                 tokenVault,
@@ -202,7 +217,7 @@ describe("vote market rewards phase", () => {
                 lockedVoterProgram: LOCKED_VOTER_PROGRAM_ID,
                 tokenProgram: TOKEN_PROGRAM_ID,
                 systemProgram: web3.SystemProgram.programId,
-            }).rpc({commitment: "confirmed"});
+            }).signers([nonSellerPayer]).rpc({commitment: "confirmed"});
             expect.fail("Claimed vote payment twice");
         } catch (e) {
             expect(e.error.errorCode.code).to.equal("AccountNotInitialized");

@@ -4908,6 +4908,7 @@ dependencies = [
  "ahash 0.8.4",
  "anchor-lang",
  "anchor-spl",
+ "bytemuck",
  "gauge-state",
  "locked-voter-state",
  "u128",

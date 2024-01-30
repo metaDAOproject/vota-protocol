@@ -1,4 +1,4 @@
-use crate::errors::ErrorCode;
+use crate::errors::VoteMarketError;
 use anchor_lang::err;
 use anchor_lang::error::Error;
 
@@ -11,10 +11,10 @@ pub fn get_user_payment(
         return Ok(0);
     }
     if allocated_power > total_power {
-        return err!(ErrorCode::InvalidAllocatedVoteAmount);
+        return err!(VoteMarketError::InvalidAllocatedVoteAmount);
     }
     ::u128::mul_div_u64(allocated_power, total_vote_payment, total_power)
-        .ok_or(ErrorCode::InvalidVotePower.into())
+        .ok_or(VoteMarketError::InvalidVotePower.into())
 }
 
 // Unit tests

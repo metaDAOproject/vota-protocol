@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 #[error_code]
 #[derive(PartialEq)]
-pub enum ErrorCode {
+pub enum VoteMarketError {
     #[msg("Cannot modify completed epochs")]
     CompletedEpoch,
     #[msg("Epoch voting not completed")]

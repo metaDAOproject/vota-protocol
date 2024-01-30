@@ -36,7 +36,6 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         fs::create_dir(test_accounts_dir)?;
     }
 
-
     let config_file = fs::read_to_string("./tests/config.json").unwrap();
     let config_bytes: Vec<u8> = serde_json::from_str(&config_file).unwrap();
     let config = Keypair::from_bytes(config_bytes.as_slice()).unwrap();
@@ -75,7 +74,8 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         "",
     )?;
 
-    let config_file = fs::read_to_string("./tests/config.json").unwrap();
+    let config_file = fs::read_to_string("./tests/config.json")
+        .expect("test config key should be provided in the repo");
     let config_bytes: Vec<u8> = serde_json::from_str(&config_file).unwrap();
     let config = Keypair::from_bytes(config_bytes.as_slice()).unwrap();
     // Create voting user
@@ -103,7 +103,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         "-no-vote",
     )?;
 
-    process_account::<Locker, _>("locker", None, |mut data| data, &mut accounts_to_update, "")?;
+    process_account::<Locker, _>("locker", None, |data| data, &mut accounts_to_update, "")?;
 
     let (escrow_address, _) = Pubkey::find_program_address(
         &[
@@ -256,5 +256,5 @@ fn create_user_votes(
         file_suffix,
     )?;
 
-    Ok((gauge_vote_address))
+    Ok(gauge_vote_address)
 }

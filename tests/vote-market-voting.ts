@@ -17,7 +17,6 @@ import {
 } from "@solana/spl-token";
 import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet";
 import {expect} from "chai";
-import {exec} from "child_process";
 import {getVoteAccounts} from "./common";
 
 dotenv.config();
@@ -28,9 +27,9 @@ describe("vote market voting phase", () => {
     const payer = web3.Keypair.fromSecretKey(Uint8Array.from(JSON.parse(rawKey)));
     const payer2RawKey = fs.readFileSync(process.env.KEY_PATH2, 'utf-8');
     // Payer owning the escrow that hasn't voted yet
-    const payer2 = web3.Keypair.fromSecretKey(Uint8Array.from(JSON.parse(payer2RawKey)));
+    const scriptAuthorityPayer = web3.Keypair.fromSecretKey(Uint8Array.from(JSON.parse(payer2RawKey)));
     const connection = new web3.Connection("http://127.0.0.1:8899", "confirmed");
-    connection.requestAirdrop(payer2.publicKey, 1000000000000);
+    connection.requestAirdrop(scriptAuthorityPayer.publicKey, 1000000000000);
     anchor.setProvider(new AnchorProvider(connection, new NodeWallet(payer), {
         ...AnchorProvider.defaultOptions(),
         commitment: "confirmed"
@@ -143,7 +142,7 @@ describe("vote market voting phase", () => {
         const voteBuyData = await program.account.voteBuy.fetch(voteBuy);
         expect(voteBuyData.amount.eq(new BN(1_000_000))).to.be.true;
         expect(voteBuyData.mint).to.eql(destinationTokenAccountData.mint);
-        expect(voteBuyData.maxAmount.eq(new BN(0))).to.be.true;
+        expect(voteBuyData.maxAmount).is.null;
         expect(voteBuyData.rewardReceiver).to.eql(program.provider.publicKey);
         //Add more tokens
         await program.methods.increaseVoteBuy(gaugeMeisterData.currentRewardsEpoch + 1, new BN(1_000_000)).accounts(
@@ -259,7 +258,7 @@ describe("vote market voting phase", () => {
         ], program.programId)[0];
         program.provider.connection.requestAirdrop(delegate, 1000000000000);
 
-        await program.methods.updateScriptAuthority(payer2.publicKey).accounts(
+        await program.methods.updateScriptAuthority(scriptAuthorityPayer.publicKey).accounts(
             {
                 config: config.publicKey,
                 admin: program.provider.publicKey,
@@ -269,11 +268,11 @@ describe("vote market voting phase", () => {
             escrow,
             gaugeVoter,
             gaugeVote,
-        } = getVoteAccounts(config, program, gaugeMeisterData, payer2.publicKey);
+        } = getVoteAccounts(config, program, gaugeMeisterData, scriptAuthorityPayer.publicKey);
         const voteAccount = await gaugeProgram.account.gaugeVote.fetch(gaugeVote);
         expect(voteAccount.weight).to.equal(0);
         const builder = program.methods.vote(100).accounts({
-            scriptAuthority: payer2.publicKey,
+            scriptAuthority: scriptAuthorityPayer.publicKey,
             config: config.publicKey,
             gaugemeister: GAUGEMEISTER,
             gauge: GAUGE,
@@ -285,7 +284,8 @@ describe("vote market voting phase", () => {
         });
         const tx = await builder.transaction();
 
-        const sig = await program.provider.connection.sendTransaction(tx, [payer2], {
+        const sig = await program.provider.connection.sendTransaction(tx, [scriptAuthorityPayer], {
+            skipPreflight: true,
         });
         const latestBlockhash = await program.provider.connection.getLatestBlockhash();
         await program.provider.connection.confirmTransaction({

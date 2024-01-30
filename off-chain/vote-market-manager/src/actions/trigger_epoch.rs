@@ -9,11 +9,7 @@ pub(crate) fn trigger_epoch(client: &RpcClient, payer: &Keypair) {
         solana_program::hash::hash(b"global:trigger_next_epoch").to_bytes()[..8].to_vec();
     let close_ix = solana_program::instruction::Instruction {
         program_id: gauge_state::id(),
-        accounts: vec![AccountMeta {
-            pubkey: GAUGEMEISTER,
-            is_signer: false,
-            is_writable: true,
-        }],
+        accounts: vec![AccountMeta::new(GAUGEMEISTER, false)],
         data,
     };
     let mut transaction =

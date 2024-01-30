@@ -7,7 +7,6 @@ use solana_sdk::pubkey;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Signer;
 use std::env;
-use std::path::PathBuf;
 use std::str::FromStr;
 
 mod accounts;

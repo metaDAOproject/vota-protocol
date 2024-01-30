@@ -22,7 +22,6 @@ pub enum VoteCreateStep {
     GaugeVoter(Pubkey),
     GaugeVote(Pubkey),
     EpochGaugeVoter(Pubkey),
-    EpochGaugeVote(Pubkey),
 }
 
 impl VoteKeys {

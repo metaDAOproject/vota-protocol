@@ -28,6 +28,7 @@ pub fn claim(
         .signer(payer)
         .args(vote_market::instruction::ClaimVotePayment { epoch })
         .accounts(vote_market::accounts::ClaimVotePayment {
+            script_authority: payer.pubkey(),
             seller: payer.pubkey(),
             seller_token_account,
             token_vault,

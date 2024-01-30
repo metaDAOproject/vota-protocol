@@ -21,7 +21,7 @@ pub fn set_maximum(
     .0;
 
     let program = anchor_client.program(vote_market::id()).unwrap();
-    program
+    let result = program
         .request()
         .signer(payer)
         .accounts(vote_market::accounts::SetMaxAmount {
@@ -33,4 +33,5 @@ pub fn set_maximum(
         .args(vote_market::instruction::SetMaxAmount { epoch, max_amount })
         .send()
         .unwrap();
+    println!("result: {:?}", result);
 }
