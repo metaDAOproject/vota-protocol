@@ -1,15 +1,17 @@
 use anchor_lang::prelude::*;
 
 #[account]
+#[derive(Debug)]
 pub struct VoteBuy {
     pub mint: Pubkey,
     pub amount: u64,
-    pub percent_to_use_bps: u64,
+    // This amount or the amount field, whichever is less, will be distributed
+    pub max_amount: Option<u64>,
     pub reward_receiver: Pubkey,
 }
 
 impl VoteBuy {
-    pub const LEN: usize = 8 + 32 + 8 + 8 + 32;
+    pub const LEN: usize = 8 + 32 + 8 + 1 + 8 + 32;
 }
 
 #[account]

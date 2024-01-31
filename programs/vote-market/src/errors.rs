@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 #[error_code]
 #[derive(PartialEq)]
-pub enum ErrorCode {
+pub enum VoteMarketError {
     #[msg("Cannot modify completed epochs")]
     CompletedEpoch,
     #[msg("Epoch voting not completed")]
@@ -15,4 +15,8 @@ pub enum ErrorCode {
     InvalidMint,
     #[msg("The initial buyer is the only reward receiver for this epoch")]
     InvalidBuyer,
+    #[msg("Unable to calcualate vote power")]
+    InvalidVotePower,
+    #[msg("Max vote buy amount not set")]
+    MaxVoteBuyAmountNotSet,
 }

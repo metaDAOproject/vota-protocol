@@ -1,16 +1,20 @@
-use anchor_lang::{err};
+use crate::errors::VoteMarketError;
+use anchor_lang::err;
 use anchor_lang::error::Error;
-use crate::errors::ErrorCode;
 
-pub fn get_user_payment(total_power: u64, allocated_power: u64, total_vote_payment: u64) -> Result<u64, Error> {
-    if total_power == 0  || allocated_power == 0 || total_vote_payment == 0 {
+pub fn get_user_payment(
+    total_power: u64,
+    allocated_power: u64,
+    total_vote_payment: u64,
+) -> Result<u64, Error> {
+    if total_power == 0 || allocated_power == 0 || total_vote_payment == 0 {
         return Ok(0);
     }
     if allocated_power > total_power {
-        return err!(ErrorCode::InvalidAllocatedVoteAmount)
+        return err!(VoteMarketError::InvalidAllocatedVoteAmount);
     }
-    let shifted_allocated_power= ((allocated_power as u128) << 64) / (total_power as u128);
-    Ok((((total_vote_payment as u128) * shifted_allocated_power) >> 64) as u64)
+    ::u128::mul_div_u64(allocated_power, total_vote_payment, total_power)
+        .ok_or(VoteMarketError::InvalidVotePower.into())
 }
 
 // Unit tests

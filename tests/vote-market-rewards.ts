@@ -18,6 +18,7 @@ import BN from "bn.js";
 import dotenv from "dotenv";
 import {expect} from "chai";
 import * as crypto from "crypto";
+import {getVoteAccounts} from "./common";
 
 dotenv.config();
 
@@ -30,8 +31,12 @@ describe("vote market rewards phase", () => {
     anchor.setProvider(new AnchorProvider(connection, new NodeWallet(payer), AnchorProvider.defaultOptions()));
     const program = anchor.workspace.VoteMarket as Program<VoteMarket>;
     before(async () => {
-        await program.provider.connection.requestAirdrop(payer.publicKey, 1000000000000)
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        const latestBlockhash = await program.provider.connection.getLatestBlockhash();
+        const sig =  await program.provider.connection.requestAirdrop(payer.publicKey, 1000000000000);
+        await program.provider.connection.confirmTransaction({
+            signature: sig,
+            ...latestBlockhash
+        });
     });
     const gaugeProgram = new Program(GAUGE_IDL as any, GAUGE_PROGRAM_ID) as Program<Gauge>;
     it("Vote sellers can withdraw vote payment", async () => {
@@ -47,9 +52,9 @@ describe("vote market rewards phase", () => {
         const [voteBuy, _] = anchor.web3.PublicKey.findProgramAddressSync(
             [Buffer.from("vote-buy"), epochBuffer, config.publicKey.toBuffer(), GAUGE.toBuffer()],
             program.programId);
-        const epochBuffer2 = Buffer.alloc(4);
-        epochBuffer2.writeUInt32LE(gaugeMeisterData.currentRewardsEpoch + 2);
         const tokenVault = getAssociatedTokenAddressSync(mint, voteBuy, true);
+
+
         await program.methods.increaseVoteBuy(gaugeMeisterData.currentRewardsEpoch + 1, new BN(1_000_000)).accounts(
             {
                 buyer: program.provider.publicKey,
@@ -65,43 +70,20 @@ describe("vote market rewards phase", () => {
                 associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
                 systemProgram: web3.SystemProgram.programId,
             }).rpc({commitment: "confirmed"});
-
-
-        let [voteDelegate, voteDelegateBump] = anchor.web3.PublicKey.findProgramAddressSync(
-            [Buffer.from("vote-delegate"), config.publicKey.toBuffer()],
-            program.programId
-        );
-
-        let [escrow, escrowBump] = anchor.web3.PublicKey.findProgramAddressSync(
-            [Buffer.from("Escrow"), gaugeMeisterData.locker.toBuffer(), program.provider.publicKey.toBuffer()],
-            LOCKED_VOTER_PROGRAM_ID);
-
-        let [gaugeVoter, gaugeVoterBump] = anchor.web3.PublicKey.findProgramAddressSync(
-            [Buffer.from("GaugeVoter"), GAUGEMEISTER.toBuffer(), escrow.toBuffer()],
-            GAUGE_PROGRAM_ID);
-
-        let [gaugeVote, gaugeVoteBump] = anchor.web3.PublicKey.findProgramAddressSync(
-            [Buffer.from("GaugeVote"), gaugeVoter.toBuffer(), GAUGE.toBuffer()],
-            GAUGE_PROGRAM_ID);
-
-        let [epochGaugeVoter, epochGaugeVoterBump] = anchor.web3.PublicKey.findProgramAddressSync(
-            [Buffer.from("EpochGaugeVoter"), gaugeVoter.toBuffer(), Buffer.from(epochBuffer)],
-            GAUGE_PROGRAM_ID);
-        let [epochGaugeVoter2, epochGaugeVoterBump2] = anchor.web3.PublicKey.findProgramAddressSync(
-            [Buffer.from("EpochGaugeVoter"), gaugeVoter.toBuffer(), Buffer.from(epochBuffer2)],
-            GAUGE_PROGRAM_ID);
-
-        let [epochGaugeVote, epochGaugeVoteBump] = anchor.web3.PublicKey.findProgramAddressSync(
-            [Buffer.from("EpochGaugeVote"), gaugeVote.toBuffer(), Buffer.from(epochBuffer)],
-            GAUGE_PROGRAM_ID);
-
-        let [epochGauge, epochGaugeBump] = anchor.web3.PublicKey.findProgramAddressSync(
-            [Buffer.from("EpochGauge"), GAUGE.toBuffer(), Buffer.from(epochBuffer)],
-            GAUGE_PROGRAM_ID);
+        let {
+            voteDelegate,
+            escrow,
+            gaugeVoter,
+            gaugeVote,
+            epochGaugeVoter,
+            epochGaugeVote,
+            epochGauge
+        } = getVoteAccounts(config, program, gaugeMeisterData, program.provider.publicKey);
 
         try {
             // Claim payment
             await program.methods.claimVotePayment(gaugeMeisterData.currentRewardsEpoch + 1).accounts({
+                scriptAuthority: program.provider.publicKey,
                 seller: program.provider.publicKey,
                 sellerTokenAccount: ata,
                 tokenVault,
@@ -118,6 +100,7 @@ describe("vote market rewards phase", () => {
                 epochGauge,
                 gauge: GAUGE,
                 gaugeProgram: GAUGE_PROGRAM_ID,
+                lockedVoterProgram: LOCKED_VOTER_PROGRAM_ID,
                 tokenProgram: TOKEN_PROGRAM_ID,
                 systemProgram: web3.SystemProgram.programId,
             }).rpc();
@@ -145,8 +128,34 @@ describe("vote market rewards phase", () => {
         expect(sellerTokenAccountData.amount === BigInt(999_000_000)).to.be.true;
         let tokenVaultData = await getAccount(program.provider.connection, tokenVault);
         expect(tokenVaultData.amount === BigInt(1_000_000)).to.be.true;
-        const gaugeVoteBalance = await program.provider.connection.getBalance(gaugeVote);
-        const sig = await program.methods.claimVotePayment(gaugeMeisterData.currentRewardsEpoch + 1).accounts({
+
+        const nonSellerPayer = web3.Keypair.generate();
+        await program.provider.connection.requestAirdrop(nonSellerPayer.publicKey, 1000000000000)
+
+        const updateScriptAuthSig = await program.methods.updateScriptAuthority(nonSellerPayer.publicKey).accounts(
+            {
+                config: config.publicKey,
+                admin: program.provider.publicKey,
+            }).rpc();
+        const latestBlockhash = await program.provider.connection.getLatestBlockhash();
+        await connection.confirmTransaction( {
+                signature: updateScriptAuthSig,
+                ...latestBlockhash
+            }, "confirmed");
+        const configData = await program.account.voteMarketConfig.fetch(config.publicKey);
+
+
+        // Can't claim until a max amount is set
+        await program.methods.setMaxAmount(gaugeMeisterData.currentRewardsEpoch + 1, new BN(1_000_000)).accounts( {
+                config: config.publicKey,
+                gauge: GAUGE,
+                voteBuy,
+                scriptAuthority: nonSellerPayer.publicKey
+            }
+        ).signers([nonSellerPayer]).rpc();
+
+        const tx = await program.methods.claimVotePayment(gaugeMeisterData.currentRewardsEpoch + 1).accounts({
+            scriptAuthority: nonSellerPayer.publicKey,
             seller: program.provider.publicKey,
             sellerTokenAccount: ata,
             tokenVault,
@@ -163,21 +172,24 @@ describe("vote market rewards phase", () => {
             epochGauge,
             gauge: GAUGE,
             gaugeProgram: GAUGE_PROGRAM_ID,
+            lockedVoterProgram: LOCKED_VOTER_PROGRAM_ID,
             tokenProgram: TOKEN_PROGRAM_ID,
             systemProgram: web3.SystemProgram.programId,
-        }).rpc({commitment: "confirmed"});
+        }).signers([nonSellerPayer]).rpc({commitment: "confirmed"});
         sellerTokenAccountData = await getAccount(program.provider.connection, ata);
         const expectedRewards = BigInt(18514);
-        expect(sellerTokenAccountData.amount === BigInt(999_000_000) + expectedRewards).to.be.true;
+
+        expect(sellerTokenAccountData.amount).to.equal(BigInt(999_000_000) + expectedRewards);
         tokenVaultData = await getAccount(program.provider.connection, tokenVault);
-        expect(tokenVaultData.amount === BigInt(1_000_000) - expectedRewards).to.be.true;
+        expect(tokenVaultData.amount).to.equal(BigInt(1_000_000) - expectedRewards);
         const voteDelegateBalance = await program.provider.connection.getBalance(voteDelegate);
         const expectedGaugeVoteRent = await program.provider.connection.getMinimumBalanceForRentExemption(16)
-        expect(voteDelegateBalance === expectedGaugeVoteRent).to.be.true;
+        expect(voteDelegateBalance).to.equal(expectedGaugeVoteRent);
 
         //Should not be able to claim again
         try {
             await program.methods.claimVotePayment(gaugeMeisterData.currentRewardsEpoch + 1).accounts({
+                scriptAuthority: nonSellerPayer.publicKey,
                 seller: program.provider.publicKey,
                 sellerTokenAccount: ata,
                 tokenVault,
@@ -194,16 +206,71 @@ describe("vote market rewards phase", () => {
                 epochGauge,
                 gauge: GAUGE,
                 gaugeProgram: GAUGE_PROGRAM_ID,
+                lockedVoterProgram: LOCKED_VOTER_PROGRAM_ID,
                 tokenProgram: TOKEN_PROGRAM_ID,
                 systemProgram: web3.SystemProgram.programId,
-            }).rpc({commitment: "confirmed"});
+            }).signers([nonSellerPayer]).rpc({commitment: "confirmed"});
             expect.fail("Claimed vote payment twice");
         } catch (e) {
             expect(e.error.errorCode.code).to.equal("AccountNotInitialized");
         }
     });
-    it("Buyers can withdraw rewards", async () => {
-    });
-    it("Sellers can withdraw rewards", async () => {
+    it("Buyers can get refund of excess vote buy tokens", async () => {
+
+        const {mint, ata} = await setupTokens(program, payer);
+
+        const {allowedMints, config} = await setupConfig(program, [mint]);
+
+        var gaugeMeisterData = await gaugeProgram.account.gaugemeister.fetch(GAUGEMEISTER);
+        const epochBuffer = Buffer.alloc(4);
+        epochBuffer.writeUInt32LE(gaugeMeisterData.currentRewardsEpoch + 1);
+        const [voteBuy, _] = anchor.web3.PublicKey.findProgramAddressSync(
+            [Buffer.from("vote-buy"), epochBuffer, config.publicKey.toBuffer(), GAUGE.toBuffer()],
+            program.programId);
+        const tokenVault = getAssociatedTokenAddressSync(mint, voteBuy, true);
+
+
+        await program.methods.increaseVoteBuy(gaugeMeisterData.currentRewardsEpoch + 1, new BN(1_000_000)).accounts(
+            {
+                buyer: program.provider.publicKey,
+                buyerTokenAccount: ata,
+                tokenVault,
+                mint,
+                config: config.publicKey,
+                gaugemeister: GAUGEMEISTER,
+                voteBuy,
+                gauge: GAUGE,
+                allowedMints,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+                systemProgram: web3.SystemProgram.programId,
+            }).rpc({commitment: "confirmed"});
+        let buyerTokenAccountData = await getAccount(program.provider.connection, ata);
+        expect(buyerTokenAccountData.amount).to.equal(BigInt(999_000_000));
+        await program.methods.setMaxAmount(gaugeMeisterData.currentRewardsEpoch + 1, new BN(700_000)).accounts( {
+                config: config.publicKey,
+                gauge: GAUGE,
+                voteBuy,
+                scriptAuthority: program.provider.publicKey
+            }
+        ).rpc({commitment: "confirmed"});
+
+        const sig = await program.methods.voteBuyRefund(gaugeMeisterData.currentRewardsEpoch + 1).accounts({
+            buyer: program.provider.publicKey,
+            buyerTokenAccount: ata,
+            tokenVault,
+            voteBuy,
+            mint,
+            config: config.publicKey,
+            gauge: GAUGE,
+            tokenProgram: TOKEN_PROGRAM_ID,
+        }).rpc();
+        let blockHash = await program.provider.connection.getLatestBlockhash();
+        await program.provider.connection.confirmTransaction({
+            signature: sig,
+            ...blockHash
+        }, "confirmed");
+        buyerTokenAccountData = await getAccount(program.provider.connection, ata);
+        expect(buyerTokenAccountData.amount).to.equal(BigInt(999_000_000 + 300_000));
     });
 });

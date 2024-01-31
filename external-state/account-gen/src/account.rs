@@ -1,12 +1,11 @@
+use crate::errors::AccountGenError::InvalidAccountData;
+use crate::toml_update::AddressInfo;
+use crate::utils::{deserialize_pubkey, serialize_pubkey};
+use anchor_lang::prelude::Pubkey;
 use anchor_lang::{AccountDeserialize, AccountSerialize};
 use base64::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::{fs, io};
-use anchor_lang::prelude::Pubkey;
-use crate::errors::AccountGenError::InvalidAccountData;
-use crate::toml_update::AddressInfo;
-use crate::utils::{deserialize_pubkey, serialize_pubkey};
-
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Root {
@@ -19,6 +18,7 @@ pub struct Root {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[allow(non_snake_case)]
 pub struct Account {
     pub lamports: u64,
     pub data: Vec<String>,
@@ -76,19 +76,23 @@ impl Root {
     }
 }
 
-pub fn proccess_account<T: AccountDeserialize + AccountSerialize, F>(
+pub fn process_account<T: AccountDeserialize + AccountSerialize, F>(
     account_name: &str,
     new_address: Option<Pubkey>,
     data_update: F,
     accounts_to_update: &mut Vec<AddressInfo>,
-) -> std::result::Result<(T, Root), Box<dyn std::error::Error>>
+    file_suffix: &str,
+) -> Result<(T, Root), Box<dyn std::error::Error>>
 where
     F: Fn(T) -> T,
 {
     let account_file = get_account_file(account_name)?;
     let account = Root::from_string(&account_file)?;
     let new_address = new_address.unwrap_or(account.pubkey);
-    accounts_to_update.push(AddressInfo { name: account_name.to_string(), pubkey: new_address});
+    accounts_to_update.push(AddressInfo {
+        name: format!("{}{}", account_name, file_suffix),
+        pubkey: new_address,
+    });
     let mut account_data = account.get_account_data::<T>()?;
     account_data = data_update(account_data);
     let updated_account = account
@@ -96,7 +100,7 @@ where
         .unwrap()
         .update_pubkey(&new_address)
         .unwrap();
-    updated_account.write_account_file(account_name)?;
+    updated_account.write_account_file(format!("{}{}", account_name, file_suffix).as_str())?;
     Ok((account_data, account))
 }
 
@@ -106,4 +110,3 @@ fn get_account_file(account_name: &str) -> io::Result<String> {
         account_name
     ))
 }
-

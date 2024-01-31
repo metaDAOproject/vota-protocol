@@ -23,6 +23,14 @@ address = "28ZDtf6d2wsYhBvabTxUHTRT6MDxqjmqR7RMCp348tyU"
 filename = "./test-accounts/gaugemeister.json"
 
 [[test.validator.account]]
+address = "3xC4eW6xhW3Gpb4T5sCKFe73ay2K4aUUfxL57XFdguJx"
+filename = "./test-accounts/gauge.json"
+
+[[test.validator.account]]
+address = "2AtXU77mwCTgEEnpAvz9uFUWBNmt7f4rCCGQVKwQBGpw"
+filename = "./test-accounts/epoch-gauge.json"
+
+[[test.validator.account]]
 address = "FXLMDGpLirbot2DY9JCmeKZtvu1TFaWSszE1Bd1kQAn"
 filename = "./test-accounts/escrow.json"
 
@@ -31,20 +39,24 @@ address = "2VshMQTveehVLKvE6mMtxazzz2geq9DKtMJLTqFf79YN"
 filename = "./test-accounts/gauge-voter.json"
 
 [[test.validator.account]]
-address = "3xC4eW6xhW3Gpb4T5sCKFe73ay2K4aUUfxL57XFdguJx"
-filename = "./test-accounts/gauge.json"
-
-[[test.validator.account]]
 address = "3KQwaioayMgkUkrKsDCkQUS7cKrKkqVFko5EhDqhjZjt"
 filename = "./test-accounts/gauge-vote.json"
 
 [[test.validator.account]]
-address = "2AtXU77mwCTgEEnpAvz9uFUWBNmt7f4rCCGQVKwQBGpw"
-filename = "./test-accounts/epoch-gauge.json"
+address = "C8CMP5RkRQneDtYruTNWbRXihorfXpYh7JdEXjia1DJL"
+filename = "./test-accounts/escrow-no-vote.json"
 
 [[test.validator.account]]
-address = "3FeuhCpKsU8ETqgoKUhTfmVb1LqHkhEehrFxQyABzRbi"
-filename = "./test-accounts/epoch-gauge-voter.json"
+address = "5mMpr6k2AzWVcAPjoJTgfQfbe9HCHTjTUPJm8TxragF"
+filename = "./test-accounts/gauge-voter-no-vote.json"
+
+[[test.validator.account]]
+address = "E3NpYfVxUJbUH375vC6MpZE54NZrqc79hvE4U3pUgvou"
+filename = "./test-accounts/gauge-vote-no-vote.json"
+
+[[test.validator.account]]
+address = "8erad8kmNrLJDJPe9UkmTHomrMV3EW48sjGeECyVjbYX"
+filename = "./test-accounts/locker.json"
 
 [[test.validator.account]]
 address = "3FeuhCpKsU8ETqgoKUhTfmVb1LqHkhEehrFxQyABzRbi"
@@ -56,3 +68,6 @@ filename = "./test-accounts/epoch-gauge-vote.json"
 
 [[test.validator.clone]]
 address = "GaugesLJrnVjNNWLReiw3Q7xQhycSBRgeHGTMDUaX231"
+
+[[test.validator.clone]]
+address = "LocktDzaV1W2Bm9DeZeiyz4J9zs4fRqNiYqQyracRXw"
