@@ -171,7 +171,7 @@ fn create_payer(key_path: &str) -> std::result::Result<Keypair, Box<dyn std::err
     let path = match env::var(key_path) {
         Ok(path) => path,
         Err(e) => {
-            println!("No KEY_PATH env variable set");
+            println!("No {} env variable set", key_path);
             return Err(Box::new(e));
         }
     };
