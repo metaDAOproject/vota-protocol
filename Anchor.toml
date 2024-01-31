@@ -7,7 +7,7 @@ vote_market = "CgpagJ94phFKHBKkk4pd4YdKgfNCp5SzsiNwcLe73dc"
 
 [provider]
 cluster = "Localnet"
-wallet = "/home/fzzyyti/.config/solana/burner.json"
+wallet = "~/.config/solana/id.json"
 
 [registry]
 url = "https://api.apr.dev"
