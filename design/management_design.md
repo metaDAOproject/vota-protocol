@@ -31,7 +31,7 @@ and input and produce a json file with key value pairs
 of gauge address and weight.
 
 `find-max-vote-buy` - This will compare E = (A + D) * emissions_per_vote with B. It will find 
-MAX_VOTE_BUY = min(E/efficiency_ratio,B), then set the VoteBuy::max_amount to VoteBuy::amount * B/MAX_VOTE_BUY.
+MAX_VOTE_BUY = min(E/efficiency_ratio,B), then set the VoteBuy::max_amount to VoteBuy::amount * MAX_VOTE_BUY/B.
 
 `execute-votes` - This will accept the output of `find-weights` as an input then 
 vote for each delegated account for each gauge. It will use the same weights for each user.
