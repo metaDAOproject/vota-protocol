@@ -11,6 +11,7 @@ use std::str::FromStr;
 
 mod accounts;
 mod actions;
+mod management;
 
 const ANCHOR_DISCRIMINATOR_SIZE: usize = 8;
 const GAUGEMEISTER: Pubkey = pubkey!("28ZDtf6d2wsYhBvabTxUHTRT6MDxqjmqR7RMCp348tyU");
@@ -215,6 +216,9 @@ fn main() {
                         .value_parser(value_parser!(u32))
                         .help("The epoch to vote for"),
                 ),
+        )
+        .subcommand(
+            clap::command!("calculate-inputs")
         );
 
     let matches = cmd.get_matches();
@@ -371,6 +375,9 @@ fn main() {
                 gauge,
                 *epoch,
             );
+        }
+        Some(("calculate-inputs", _)) => {
+            management::calculate_inputs::calculate_inputs(&client);
         }
         _ => {
             println!("no subcommand matched")

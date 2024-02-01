@@ -4919,10 +4919,13 @@ version = "0.1.0"
 dependencies = [
  "anchor-client",
  "anchor-lang",
+ "chrono",
  "clap 4.4.18",
  "dotenv",
  "gauge-state",
  "locked-voter-state",
+ "serde",
+ "serde_json",
  "solana-account-decoder",
  "solana-client",
  "solana-program",
