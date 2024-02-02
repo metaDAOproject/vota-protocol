@@ -28,9 +28,17 @@ fn main() {
                 .short('k')
                 .required(false)
                 .value_parser(value_parser!(String))
-                .help("The keypair to use for the payer"),
+                .help("The keypair to use for the payer")
+                .global(true),
         )
-        .subcommand(clap::command!("get-escrows"))
+        .subcommand(clap::command!("get-escrows")
+            .arg(
+                clap::Arg::new("config")
+                    .required(true)
+                    .value_parser(value_parser!(String))
+                    .help("The config to calculate the escrow delegate"),
+            )
+        )
         .subcommand(
             clap::command!("get-vote-buys")
                 .arg(
@@ -219,6 +227,12 @@ fn main() {
         )
         .subcommand(
             clap::command!("calculate-inputs")
+                .arg(
+                    clap::Arg::new("epoch")
+                        .required(true)
+                        .value_parser(value_parser!(u32))
+                        .help("The epoch to calculate inputs for"),
+                ),
         );
 
     let matches = cmd.get_matches();
@@ -228,12 +242,13 @@ fn main() {
         None => env::var("KEY_PATH2").unwrap().to_string(),
     };
     let rpc_url = env::var("RPC_URL").unwrap().to_string();
+    let rpc_wss_url = env::var("RPC_WSS_URL").unwrap().to_string();
     println!("rpc_url: {:?}", rpc_url);
     let client = solana_client::rpc_client::RpcClient::new(&rpc_url);
     let payer = solana_sdk::signature::read_keypair_file(keypair_path).unwrap();
     println!("payer: {:?}", payer.pubkey());
     let anchor_client = anchor_client::Client::new_with_options(
-        anchor_client::Cluster::Localnet,
+        anchor_client::Cluster::Custom(rpc_url.clone(), rpc_wss_url),
         &payer,
         CommitmentConfig::confirmed(),
     );
@@ -261,8 +276,16 @@ fn main() {
         }
     }
     match matches.subcommand() {
-        Some(("get-escrows", _)) => {
-            escrows::get_delegated_escrows(client);
+        Some(("get-escrows", matches)) => {
+            let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap()).unwrap();
+            let (delegate, _) = Pubkey::find_program_address(
+                &[
+                    b"vote-delegate",
+                    config.as_ref(),
+                ],
+                &vote_market::id(),
+            );
+            escrows::get_delegated_escrows(client, &delegate);
         }
         Some(("delegate", matches)) => {
             let escrow = Pubkey::from_str(matches.get_one::<String>("escrow").unwrap()).unwrap();
@@ -376,8 +399,9 @@ fn main() {
                 *epoch,
             );
         }
-        Some(("calculate-inputs", _)) => {
-            management::calculate_inputs::calculate_inputs(&client);
+        Some(("calculate-inputs", matches)) => {
+            let epoch = matches.get_one::<u32>("epoch").unwrap();
+            management::calculate_inputs::calculate_inputs(&client, *epoch);
         }
         _ => {
             println!("no subcommand matched")

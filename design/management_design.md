@@ -13,7 +13,7 @@ the results can be monitored.
 `calculate-inputs` This will produce a json file, useful for auditing,
 with inputs to be used in other steps. It will find the following.
 ```text
-b_i - the number of bribes for each gauge in USD value
+b_i - the number of vote buys for each gauge in USD value
 a_i - the number of algorithmic votes for each gauge
 d_i - the number of direct votes for each gauge
 B - the sum of all b_i
