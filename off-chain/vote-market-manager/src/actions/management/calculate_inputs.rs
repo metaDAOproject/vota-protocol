@@ -1,26 +1,27 @@
-use std::collections::HashMap;
-use std::fs;
-use anchor_lang::AnchorDeserialize;
-use solana_client::rpc_client::RpcClient;
-use chrono::Utc;
-use solana_account_decoder::UiAccountEncoding;
-use solana_client::rpc_config::{RpcAccountInfoConfig, RpcProgramAccountsConfig};
-use solana_client::rpc_filter::{Memcmp, MemcmpEncodedBytes, RpcFilterType};
-use solana_client::rpc_filter::RpcFilterType::DataSize;
-use solana_program::pubkey;
-use solana_program::pubkey::Pubkey;
-use gauge_state::EpochGauge;
+use crate::actions::management::data::{EpochInput, GaugeVoteInfo, VoteInfo};
+use crate::actions::management::oracle::{fetch_token_prices, KnownTokens};
 use crate::actions::queries::vote_buys::get_all_vote_buys;
 use crate::ANCHOR_DISCRIMINATOR_SIZE;
-use crate::actions::management::data::{EpochStats, EpochInput, GaugeStats, GaugeVoteInfo, VoteInfo};
-use crate::actions::management::oracle::{fetch_token_prices, KnownTokens};
+use anchor_lang::AnchorDeserialize;
+use chrono::Utc;
+use gauge_state::EpochGauge;
+use solana_account_decoder::UiAccountEncoding;
+use solana_client::rpc_client::RpcClient;
+use solana_client::rpc_config::{RpcAccountInfoConfig, RpcProgramAccountsConfig};
+use solana_client::rpc_filter::RpcFilterType::DataSize;
+use solana_client::rpc_filter::{Memcmp, MemcmpEncodedBytes, RpcFilterType};
+use solana_program::pubkey::Pubkey;
+use std::collections::HashMap;
+use std::fs;
 
-pub(crate) fn calculate_inputs(client: &RpcClient, config: &Pubkey, epoch: u32) -> Result<(), Box<dyn std::error::Error>> {
+pub(crate) fn calculate_inputs(
+    client: &RpcClient,
+    config: &Pubkey,
+    epoch: u32,
+) -> Result<(), Box<dyn std::error::Error>> {
     println!("calculate_inputs");
 
-
     // Find direct votes
-
 
     let accounts = client
         .get_program_accounts_with_config(
@@ -47,24 +48,17 @@ pub(crate) fn calculate_inputs(client: &RpcClient, config: &Pubkey, epoch: u32) 
     let mut total_power: u64 = 0;
     let mut gauges: Vec<GaugeVoteInfo> = Vec::new();
     for (addr, account) in accounts {
-        let epoch_guage = EpochGauge::deserialize(& mut &account.data[8..]);
-        match epoch_guage {
-            Ok(epoch_guage) => {
-                println!("epoch_guage: {:?}", epoch_guage);
-                total_power += epoch_guage.total_power;
-                gauges.push(GaugeVoteInfo {
-                    gauge: addr,
-                    info: VoteInfo {
-                        buys: 0,
-                        delegated_votes: 0,
-                        direct_votes: epoch_guage.total_power,
-                    }
-                });
-            }
-            Err(e) => {
-                println!("error deserailzing: {:?}", addr);
-            }
-        }
+        let epoch_guage = EpochGauge::deserialize(&mut &account.data[8..])?;
+        println!("epoch_guage: {:?}", epoch_guage);
+        total_power += epoch_guage.total_power;
+        gauges.push(GaugeVoteInfo {
+            gauge: addr,
+            info: VoteInfo {
+                buys: 0,
+                delegated_votes: 0,
+                direct_votes: epoch_guage.total_power,
+            },
+        });
     }
 
     //Get the vote buy accounts
@@ -79,13 +73,13 @@ pub(crate) fn calculate_inputs(client: &RpcClient, config: &Pubkey, epoch: u32) 
 
     println!("total_power: {:?}", total_power);
     // get tokens used in vote buys
-    let mut tokens : Vec<KnownTokens> = vote_buys.iter().map(|x| x.mint.into()).collect();
+    let mut tokens: Vec<KnownTokens> = vote_buys.iter().map(|x| x.mint.into()).collect();
 
     // Add SBR price
     tokens.push(KnownTokens::SBR);
 
     // Get USD values of relevant tokens
-    let mut prices: HashMap<KnownTokens,f64> = HashMap::new();
+    let mut prices: HashMap<KnownTokens, f64> = HashMap::new();
     fetch_token_prices(&mut prices, tokens)?;
 
     // epoch stats
@@ -101,6 +95,13 @@ pub(crate) fn calculate_inputs(client: &RpcClient, config: &Pubkey, epoch: u32) 
         prices,
     };
     let epoch_stats_json = serde_json::to_string(&epoch_votes).unwrap();
-    fs::write(format!("./epoch_{}_vote_info{}.json", epoch, Utc::now().format("%Y-%m-%d-%H_%M" )), epoch_stats_json);
+    fs::write(
+        format!(
+            "./epoch_{}_vote_info{}.json",
+            epoch,
+            Utc::now().format("%Y-%m-%d-%H_%M")
+        ),
+        epoch_stats_json,
+    )?;
     Ok(())
 }

@@ -31,13 +31,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .help("The keypair to use for the payer")
                 .global(true),
         )
-        .subcommand(clap::command!("get-escrows")
-            .arg(
+        .subcommand(
+            clap::command!("get-escrows").arg(
                 clap::Arg::new("config")
                     .required(true)
                     .value_parser(value_parser!(String))
                     .help("The config to calculate the escrow delegate"),
-            )
+            ),
         )
         .subcommand(
             clap::command!("get-vote-buys")
@@ -268,25 +268,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .rpc()
                 .request_airdrop(&payer.pubkey(), 100_000_000_000)?;
             let blockhash = program.rpc().get_latest_blockhash()?;
-            program
-                .rpc()
-                .confirm_transaction_with_spinner(
-                    &sig,
-                    &blockhash,
-                    CommitmentConfig {
-                        commitment: solana_sdk::commitment_config::CommitmentLevel::Finalized,
-                    },
-                )?;
+            program.rpc().confirm_transaction_with_spinner(
+                &sig,
+                &blockhash,
+                CommitmentConfig {
+                    commitment: solana_sdk::commitment_config::CommitmentLevel::Finalized,
+                },
+            )?;
         }
     }
     match matches.subcommand() {
         Some(("get-escrows", matches)) => {
             let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap())?;
             let (delegate, _) = Pubkey::find_program_address(
-                &[
-                    b"vote-delegate",
-                    config.as_ref(),
-                ],
+                &[b"vote-delegate", config.as_ref()],
                 &vote_market::id(),
             );
             escrows::get_delegated_escrows(client, &delegate);

@@ -143,7 +143,7 @@ pub mod vote_market {
             ],
             &gauge_state::id(),
         );
-        require_eq!(expected_epoch_gauge, ctx.accounts.epoch_gauge.key());
+        require_keys_eq!(expected_epoch_gauge, ctx.accounts.epoch_gauge.key());
         let (expected_epoch_guage_vote, _) = Pubkey::find_program_address(
             &[
                 b"EpochGaugeVote".as_ref(),
@@ -152,7 +152,10 @@ pub mod vote_market {
             ],
             &gauge_state::id(),
         );
-        require_eq!(expected_epoch_guage_vote, ctx.accounts.epoch_gauge_vote.key());
+        require_keys_eq!(
+            expected_epoch_guage_vote,
+            ctx.accounts.epoch_gauge_vote.key()
+        );
         if epoch > ctx.accounts.gaugemeister.current_rewards_epoch {
             return err!(errors::VoteMarketError::EpochVotingNotCompleted);
         }
@@ -161,9 +164,7 @@ pub mod vote_market {
 
         let vote_buy = &ctx.accounts.vote_buy;
         let total_vote_payment = match vote_buy.max_amount {
-            Some(max_amount) => {
-                min(max_amount, vote_buy.amount)
-            }
+            Some(max_amount) => min(max_amount, vote_buy.amount),
             None => {
                 return err!(errors::VoteMarketError::MaxVoteBuyAmountNotSet);
             }

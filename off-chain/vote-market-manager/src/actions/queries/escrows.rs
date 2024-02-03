@@ -17,9 +17,7 @@ pub fn get_delegated_escrows(client: RpcClient, delegate: &Pubkey) {
                     DataSize((ANCHOR_DISCRIMINATOR_SIZE + Escrow::LEN) as u64),
                     RpcFilterType::Memcmp(Memcmp::new(
                         129,
-                        MemcmpEncodedBytes::Bytes(
-                            delegate.to_bytes().to_vec()
-                        ),
+                        MemcmpEncodedBytes::Bytes(delegate.to_bytes().to_vec()),
                     )),
                 ]),
                 account_config: RpcAccountInfoConfig {

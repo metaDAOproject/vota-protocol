@@ -1,17 +1,11 @@
-use std::collections::HashMap;
-use std::str::FromStr;
-use reqwest::blocking::Client;
-use serde::{Deserialize, Serialize};
-use solana_program::pubkey::Pubkey;
 use crate::errors::VoteMarketManagerError;
-
-#[derive(Debug, Deserialize)]
-struct TokenPrice {
-    usd: f64,
-}
-
+use reqwest::blocking::Client;
+use serde::Serialize;
+use solana_program::pubkey::Pubkey;
+use std::collections::HashMap;
 
 #[derive(Debug, Eq, Hash, PartialEq, Clone, Copy, Serialize)]
+#[allow(non_camel_case_types)]
 pub enum KnownTokens {
     UXD,
     mSOL,
@@ -29,14 +23,14 @@ impl From<String> for KnownTokens {
             "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So" => KnownTokens::mSOL,
             "BLZEEuZUBVqFhj8adcCFPJvPVCiCyVmh3hkJMrU8KuJA" => KnownTokens::BLZE,
             "Saber2gLauYim4Mvftnrasomsv6NvAuncvMEZwcLpD1" => KnownTokens::SBR,
-            _ => panic!("Unknown token")
+            _ => panic!("Unknown token"),
         }
     }
 }
 
 impl From<Pubkey> for KnownTokens {
     fn from(key: Pubkey) -> Self {
-       key.to_string().into()
+        key.to_string().into()
     }
 }
 
@@ -51,20 +45,15 @@ impl From<KnownTokens> for String {
     }
 }
 
-
 pub fn fetch_token_prices(
     token_prices: &mut HashMap<KnownTokens, f64>,
     tokens: Vec<KnownTokens>,
 ) -> Result<(), Box<dyn std::error::Error + 'static>> {
     let mints: Vec<String> = tokens.iter().map(|x| (*x).into()).collect();
-    // API URL
     let api_url = format!(
         "https://api.coingecko.com/api/v3/simple/token_price/solana?contract_addresses={}&vs_currencies=usd",
         mints.join("%2C")
     );
-
-    // Make the GET request
-
     let client = Client::new();
     let response = client.get(&api_url).send()?;
     let json_response: serde_json::Value = response.json()?;
