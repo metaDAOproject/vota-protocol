@@ -8,11 +8,9 @@ use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Signer;
 use std::env;
 use std::str::FromStr;
-use crate::errors::VoteMarketManagerError;
 
 mod accounts;
 mod actions;
-mod management;
 mod errors;
 
 const ANCHOR_DISCRIMINATOR_SIZE: usize = 8;
@@ -408,7 +406,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(("calculate-inputs", matches)) => {
             let epoch = matches.get_one::<u32>("epoch").unwrap();
             let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap())?;
-            management::calculate_inputs::calculate_inputs(&client, &config, *epoch);
+            actions::management::calculate_inputs::calculate_inputs(&client, &config, *epoch)?;
         }
         _ => {
             println!("no subcommand matched")

@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs;
 use anchor_lang::AnchorDeserialize;
 use solana_client::rpc_client::RpcClient;
@@ -6,14 +7,15 @@ use solana_account_decoder::UiAccountEncoding;
 use solana_client::rpc_config::{RpcAccountInfoConfig, RpcProgramAccountsConfig};
 use solana_client::rpc_filter::{Memcmp, MemcmpEncodedBytes, RpcFilterType};
 use solana_client::rpc_filter::RpcFilterType::DataSize;
+use solana_program::pubkey;
 use solana_program::pubkey::Pubkey;
 use gauge_state::EpochGauge;
-use locked_voter_state::Escrow;
 use crate::actions::queries::vote_buys::get_all_vote_buys;
 use crate::ANCHOR_DISCRIMINATOR_SIZE;
-use crate::management::data::{EpochStats, EpochVoteInfo, GaugeStats, GaugeVoteInfo, VoteInfo};
+use crate::actions::management::data::{EpochStats, EpochInput, GaugeStats, GaugeVoteInfo, VoteInfo};
+use crate::actions::management::oracle::{fetch_token_prices, KnownTokens};
 
-pub(crate) fn calculate_inputs(client: &RpcClient,config: &Pubkey, epoch: u32) {
+pub(crate) fn calculate_inputs(client: &RpcClient, config: &Pubkey, epoch: u32) -> Result<(), Box<dyn std::error::Error>> {
     println!("calculate_inputs");
 
 
@@ -76,10 +78,19 @@ pub(crate) fn calculate_inputs(client: &RpcClient,config: &Pubkey, epoch: u32) {
     //To get algorithmic votes subtract votes that are already used from the total of all epoch gauges
 
     println!("total_power: {:?}", total_power);
+    // get tokens used in vote buys
+    let mut tokens : Vec<KnownTokens> = vote_buys.iter().map(|x| x.mint.into()).collect();
+
+    // Add SBR price
+    tokens.push(KnownTokens::SBR);
+
+    // Get USD values of relevant tokens
+    let mut prices: HashMap<KnownTokens,f64> = HashMap::new();
+    fetch_token_prices(&mut prices, tokens)?;
 
     // epoch stats
 
-    let epoch_votes = EpochVoteInfo {
+    let epoch_votes = EpochInput {
         epoch,
         totals: VoteInfo {
             buys: 100,
@@ -87,7 +98,9 @@ pub(crate) fn calculate_inputs(client: &RpcClient,config: &Pubkey, epoch: u32) {
             direct_votes: total_power,
         },
         gauges,
+        prices,
     };
     let epoch_stats_json = serde_json::to_string(&epoch_votes).unwrap();
     fs::write(format!("./epoch_{}_vote_info{}.json", epoch, Utc::now().format("%Y-%m-%d-%H_%M" )), epoch_stats_json);
+    Ok(())
 }

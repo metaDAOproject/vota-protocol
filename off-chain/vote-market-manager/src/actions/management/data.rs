@@ -1,7 +1,9 @@
+use std::collections::HashMap;
 use serde::Serialize;
 use solana_program::pubkey::Pubkey;
 use gauge_state::GaugeVote;
 use vote_market::Vote;
+use crate::actions::management::oracle::KnownTokens;
 
 #[derive(Serialize, Debug)]
 pub struct VoteInfo {
@@ -20,11 +22,13 @@ pub struct GaugeVoteInfo {
     pub info: VoteInfo,
 }
 
+
 #[derive(Serialize, Debug)]
-pub struct EpochVoteInfo {
+pub struct EpochInput {
    pub epoch: u32,
    pub totals: VoteInfo,
    pub gauges: Vec<GaugeVoteInfo>,
+   pub prices: HashMap<KnownTokens, f64>
 }
 
 
