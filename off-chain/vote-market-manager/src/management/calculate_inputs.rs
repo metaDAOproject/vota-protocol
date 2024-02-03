@@ -9,12 +9,16 @@ use solana_client::rpc_filter::RpcFilterType::DataSize;
 use solana_program::pubkey::Pubkey;
 use gauge_state::EpochGauge;
 use locked_voter_state::Escrow;
+use crate::actions::queries::vote_buys::get_all_vote_buys;
 use crate::ANCHOR_DISCRIMINATOR_SIZE;
 use crate::management::data::{EpochStats, EpochVoteInfo, GaugeStats, GaugeVoteInfo, VoteInfo};
 
-pub(crate) fn calculate_inputs(client: &RpcClient, epoch: u32) {
+pub(crate) fn calculate_inputs(client: &RpcClient,config: &Pubkey, epoch: u32) {
     println!("calculate_inputs");
+
+
     // Find direct votes
+
 
     let accounts = client
         .get_program_accounts_with_config(
@@ -60,14 +64,21 @@ pub(crate) fn calculate_inputs(client: &RpcClient, epoch: u32) {
             }
         }
     }
+
+    //Get the vote buy accounts
+    let vote_buys = get_all_vote_buys(epoch, config);
+    println!("vote_buys: {:?}", vote_buys);
+
+    //Create an epoch guage if one doesn't already exist for any of the vote buys
+
+    // Find delegated votes and get totals for gauges that have already voted.
+
+    //To get algorithmic votes subtract votes that are already used from the total of all epoch gauges
+
     println!("total_power: {:?}", total_power);
-    // let epoch_guage= client.get_account(&Pubkey::new_from_array([0; 32]));
-    // let direct_votes_data = EpochGauge::try_deserialize(direct_votes_account.data);
-    //
-    // Find delegated escrows without votes
 
+    // epoch stats
 
-    // mock epoch stats
     let epoch_votes = EpochVoteInfo {
         epoch,
         totals: VoteInfo {

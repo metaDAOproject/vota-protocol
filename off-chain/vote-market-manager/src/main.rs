@@ -8,16 +8,18 @@ use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Signer;
 use std::env;
 use std::str::FromStr;
+use crate::errors::VoteMarketManagerError;
 
 mod accounts;
 mod actions;
 mod management;
+mod errors;
 
 const ANCHOR_DISCRIMINATOR_SIZE: usize = 8;
 const GAUGEMEISTER: Pubkey = pubkey!("28ZDtf6d2wsYhBvabTxUHTRT6MDxqjmqR7RMCp348tyU");
 const LOCKER: Pubkey = pubkey!("8erad8kmNrLJDJPe9UkmTHomrMV3EW48sjGeECyVjbYX");
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
 
     let cmd = clap::Command::new("vote-market-manager")
@@ -228,6 +230,12 @@ fn main() {
         .subcommand(
             clap::command!("calculate-inputs")
                 .arg(
+                    clap::Arg::new("config")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The config for the vote buy accounts"),
+                )
+                .arg(
                     clap::Arg::new("epoch")
                         .required(true)
                         .value_parser(value_parser!(u32))
@@ -239,30 +247,29 @@ fn main() {
     let keypair = matches.get_one::<String>("keypair");
     let keypair_path = match keypair {
         Some(keypair) => keypair.to_string(),
-        None => env::var("KEY_PATH2").unwrap().to_string(),
+        None => env::var("KEY_PATH2")?.to_string(),
     };
     let rpc_url = env::var("RPC_URL").unwrap().to_string();
     let rpc_wss_url = env::var("RPC_WSS_URL").unwrap().to_string();
     println!("rpc_url: {:?}", rpc_url);
     let client = solana_client::rpc_client::RpcClient::new(&rpc_url);
-    let payer = solana_sdk::signature::read_keypair_file(keypair_path).unwrap();
+    let payer = solana_sdk::signature::read_keypair_file(keypair_path)?;
     println!("payer: {:?}", payer.pubkey());
     let anchor_client = anchor_client::Client::new_with_options(
         anchor_client::Cluster::Custom(rpc_url.clone(), rpc_wss_url),
         &payer,
         CommitmentConfig::confirmed(),
     );
-    let program = anchor_client.program(vote_market::id()).unwrap();
+    let program = anchor_client.program(vote_market::id())?;
     if rpc_url == "http://127.0.0.1:8899" || rpc_url == "http://localhost:8899" {
         // Make sure we have some funds
-        let amount = program.rpc().get_balance(&payer.pubkey()).unwrap();
+        let amount = program.rpc().get_balance(&payer.pubkey())?;
         if amount == 0 {
             println!("Airdropping 100 SOL");
             let sig = program
                 .rpc()
-                .request_airdrop(&payer.pubkey(), 100_000_000_000)
-                .unwrap();
-            let blockhash = program.rpc().get_latest_blockhash().unwrap();
+                .request_airdrop(&payer.pubkey(), 100_000_000_000)?;
+            let blockhash = program.rpc().get_latest_blockhash()?;
             program
                 .rpc()
                 .confirm_transaction_with_spinner(
@@ -271,13 +278,12 @@ fn main() {
                     CommitmentConfig {
                         commitment: solana_sdk::commitment_config::CommitmentLevel::Finalized,
                     },
-                )
-                .unwrap();
+                )?;
         }
     }
     match matches.subcommand() {
         Some(("get-escrows", matches)) => {
-            let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap()).unwrap();
+            let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap())?;
             let (delegate, _) = Pubkey::find_program_address(
                 &[
                     b"vote-delegate",
@@ -288,38 +294,38 @@ fn main() {
             escrows::get_delegated_escrows(client, &delegate);
         }
         Some(("delegate", matches)) => {
-            let escrow = Pubkey::from_str(matches.get_one::<String>("escrow").unwrap()).unwrap();
+            let escrow = Pubkey::from_str(matches.get_one::<String>("escrow").unwrap())?;
             // print!("escrow: {:?}", escrow_string);
-            let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap()).unwrap();
+            let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap())?;
             let delegate = accounts::resolve::get_delegate(&config);
             print!("delegate: {:?}", delegate);
             actions::delegate::delegate(client, &escrow, &delegate, &payer);
         }
         Some(("get-escrow", matches)) => {
-            let owner = Pubkey::from_str(matches.get_one::<String>("owner").unwrap()).unwrap();
+            let owner = Pubkey::from_str(matches.get_one::<String>("owner").unwrap())?;
             let escrow = accounts::resolve::get_escrow_address_for_owner(&owner);
             println!("{}", escrow);
         }
         Some(("get-vote-buys", matches)) => {
-            let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap()).unwrap();
+            let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap())?;
             let epoch = matches.get_one::<u32>("epoch").unwrap();
-            let vote_buys = actions::queries::vote_buys::get_all_vote_buys(*epoch, config);
+            let vote_buys = actions::queries::vote_buys::get_all_vote_buys(*epoch, &config);
             println!("vote buys: {:?}", vote_buys);
         }
         Some(("prepare-vote", matches)) => {
             println!("prepare-vote");
-            let owner = Pubkey::from_str(matches.get_one::<String>("owner").unwrap()).unwrap();
-            let gauge = Pubkey::from_str(matches.get_one::<String>("gauge").unwrap()).unwrap();
+            let owner = Pubkey::from_str(matches.get_one::<String>("owner").unwrap())?;
+            let gauge = Pubkey::from_str(matches.get_one::<String>("gauge").unwrap())?;
             let epoch = matches.get_one::<u32>("epoch").unwrap();
             actions::prepare_vote::prepare_vote(&client, owner, gauge, &payer, *epoch);
         }
         Some(("vote", matches)) => {
             println!("vote");
-            let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap()).unwrap();
-            let escrow = Pubkey::from_str(matches.get_one::<String>("escrow").unwrap()).unwrap();
+            let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap())?;
+            let escrow = Pubkey::from_str(matches.get_one::<String>("escrow").unwrap())?;
             let epoch = matches.get_one::<u32>("epoch").unwrap();
             let weights = vec![actions::vote_market::vote::WeightInfo {
-                gauge: Pubkey::from_str("3xC4eW6xhW3Gpb4T5sCKFe73ay2K4aUUfxL57XFdguJx").unwrap(),
+                gauge: Pubkey::from_str("3xC4eW6xhW3Gpb4T5sCKFe73ay2K4aUUfxL57XFdguJx")?,
                 weight: 100,
             }];
             actions::vote_market::vote::vote(
@@ -349,9 +355,9 @@ fn main() {
         Some(("buy-votes", matches)) => {
             //TODO: bring out epoch
             println!("buy-votes");
-            let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap()).unwrap();
-            let gauge = Pubkey::from_str(matches.get_one::<String>("gauge").unwrap()).unwrap();
-            let mint = Pubkey::from_str(matches.get_one::<String>("mint").unwrap()).unwrap();
+            let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap())?;
+            let gauge = Pubkey::from_str(matches.get_one::<String>("gauge").unwrap())?;
+            let mint = Pubkey::from_str(matches.get_one::<String>("mint").unwrap())?;
             let epoch = matches.get_one::<u32>("epoch").unwrap();
             let amount = matches.get_one::<u64>("amount").unwrap();
             actions::vote_market::buy_votes::buy_votes(
@@ -367,8 +373,8 @@ fn main() {
         Some(("set-maximum", matches)) => {
             //TODO: bring out epoch
             let maximum = matches.get_one::<u64>("max").unwrap();
-            let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap()).unwrap();
-            let gauge = Pubkey::from_str(matches.get_one::<String>("gauge").unwrap()).unwrap();
+            let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap())?;
+            let gauge = Pubkey::from_str(matches.get_one::<String>("gauge").unwrap())?;
             let epoch = matches.get_one::<u32>("epoch").unwrap();
             actions::vote_market::set_maximum::set_maximum(
                 &anchor_client,
@@ -383,10 +389,10 @@ fn main() {
             actions::trigger_epoch::trigger_epoch(&client, &payer);
         }
         Some(("claim", matches)) => {
-            let mint = Pubkey::from_str(matches.get_one::<String>("mint").unwrap()).unwrap();
-            let escrow = Pubkey::from_str(matches.get_one::<String>("escrow").unwrap()).unwrap();
-            let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap()).unwrap();
-            let gauge = Pubkey::from_str(matches.get_one::<String>("gauge").unwrap()).unwrap();
+            let mint = Pubkey::from_str(matches.get_one::<String>("mint").unwrap())?;
+            let escrow = Pubkey::from_str(matches.get_one::<String>("escrow").unwrap())?;
+            let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap())?;
+            let gauge = Pubkey::from_str(matches.get_one::<String>("gauge").unwrap())?;
             let epoch = matches.get_one::<u32>("epoch").unwrap();
 
             actions::vote_market::claim::claim(
@@ -401,10 +407,12 @@ fn main() {
         }
         Some(("calculate-inputs", matches)) => {
             let epoch = matches.get_one::<u32>("epoch").unwrap();
-            management::calculate_inputs::calculate_inputs(&client, *epoch);
+            let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap())?;
+            management::calculate_inputs::calculate_inputs(&client, &config, *epoch);
         }
         _ => {
             println!("no subcommand matched")
         }
     };
+    Ok(())
 }

@@ -9,7 +9,7 @@ use solana_program::pubkey::Pubkey;
 use std::env;
 use vote_market::state::VoteBuy;
 
-pub fn get_all_vote_buys(epoch: u32, config: Pubkey) -> Vec<VoteBuy> {
+pub fn get_all_vote_buys(epoch: u32, config: &Pubkey) -> Vec<VoteBuy> {
     let rpc_url = env::var("RPC_URL").unwrap().to_string();
     let client = solana_client::rpc_client::RpcClient::new(rpc_url);
     let accounts = client
