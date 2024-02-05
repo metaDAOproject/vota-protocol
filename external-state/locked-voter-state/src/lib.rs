@@ -1,3 +1,4 @@
+use num_traits::cast::ToPrimitive;
 use anchor_lang::prelude::*;
 declare_id!("LocktDzaV1W2Bm9DeZeiyz4J9zs4fRqNiYqQyracRXw");
 
@@ -38,7 +39,13 @@ pub struct Escrow {
 impl Escrow {
     /// Number of bytes in an [Escrow].
     pub const LEN: usize = PUBKEY_BYTES * 2 + 1 + PUBKEY_BYTES + 8 + 8 + 8 + PUBKEY_BYTES;
+
+    pub fn voting_power_at_time(&self, locker: &LockerParams, timestamp: i64) -> Option<u64> {
+        locker.calculate_voter_power(self, timestamp)
+    }
 }
+
+
 /// A group of [Escrow]s.
 #[account]
 #[derive(Copy, Debug, Default)]
@@ -81,4 +88,38 @@ pub struct LockerParams {
 impl LockerParams {
     /// Number of bytes in a [LockerParams].
     pub const LEN: usize = 1 + 1 + 8 + 8 + 8;
+        /// Calculates the amount of voting power an [Escrow] has.
+        pub fn calculate_voter_power(&self, escrow: &Escrow, now: i64) -> Option<u64> {
+            // invalid `now` argument, should never happen.
+            if now == 0 {
+                return None;
+            }
+            if escrow.escrow_started_at == 0 {
+                return Some(0);
+            }
+            // Lockup had zero power before the start time.
+            // at the end time, lockup also has zero power.
+            if now < escrow.escrow_started_at || now >= escrow.escrow_ends_at {
+                return Some(0);
+            }
+
+            let seconds_until_lockup_expiry = escrow.escrow_ends_at.checked_sub(now)?;
+            // elapsed seconds, clamped to the maximum duration
+            let relevant_seconds_until_lockup_expiry = seconds_until_lockup_expiry
+                .to_u64()?
+                .min(self.max_stake_duration);
+
+            // voting power at max lockup
+            let power_if_max_lockup = escrow
+                .amount
+                .checked_mul(self.max_stake_vote_multiplier.into())?;
+
+            // multiply the max lockup power by the fraction of the max stake duration
+            let power = (power_if_max_lockup as u128)
+                .checked_mul(relevant_seconds_until_lockup_expiry.into())?
+                .checked_div(self.max_stake_duration.into())?
+                .to_u64()?;
+
+            Some(power)
+        }
 }

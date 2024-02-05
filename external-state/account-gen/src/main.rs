@@ -14,7 +14,6 @@ use toml::{Table, Value};
 mod account;
 mod errors;
 mod toml_update;
-mod utils;
 
 fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();

@@ -8,7 +8,7 @@ use solana_client::rpc_filter::RpcFilterType::DataSize;
 use solana_client::rpc_filter::{Memcmp, MemcmpEncodedBytes, RpcFilterType};
 use solana_program::pubkey::Pubkey;
 
-pub fn get_delegated_escrows(client: RpcClient, delegate: &Pubkey) {
+pub fn get_delegated_escrows(client: &RpcClient, delegate: &Pubkey) -> Vec<(Pubkey, Escrow)> {
     let accounts = client
         .get_program_accounts_with_config(
             &locked_voter_state::id(),
@@ -31,12 +31,11 @@ pub fn get_delegated_escrows(client: RpcClient, delegate: &Pubkey) {
         )
         .unwrap();
     println!("account len: {:?}", accounts.len());
-    for (_, account) in accounts {
-        println!("account: {:?}", account);
-        //parse escrow data
-        let parsed_account = Escrow::try_deserialize(&mut account.data.as_slice()).unwrap();
-        println!("parsed account: {:?}", parsed_account);
+    let mut escrows: Vec<(Pubkey, Escrow)> = Vec::new();
+    for (key, account) in accounts {
+        if let Ok(parsed_account) = Escrow::try_deserialize(&mut account.data.as_slice()) {
+            escrows.push((key, parsed_account));
+        }
     }
-
-    println!("get gauges");
+    escrows
 }

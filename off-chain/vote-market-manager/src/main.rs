@@ -8,6 +8,7 @@ use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Signer;
 use std::env;
 use std::str::FromStr;
+use crate::accounts::resolve::get_delegate;
 
 mod accounts;
 mod actions;
@@ -280,11 +281,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     match matches.subcommand() {
         Some(("get-escrows", matches)) => {
             let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap())?;
-            let (delegate, _) = Pubkey::find_program_address(
-                &[b"vote-delegate", config.as_ref()],
-                &vote_market::id(),
-            );
-            escrows::get_delegated_escrows(client, &delegate);
+            let delegate = get_delegate(&config);
+            let escrows = escrows::get_delegated_escrows(&client, &delegate);
+            println!("escrows: {:?}", escrows);
         }
         Some(("delegate", matches)) => {
             let escrow = Pubkey::from_str(matches.get_one::<String>("escrow").unwrap())?;

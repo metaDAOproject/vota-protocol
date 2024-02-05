@@ -80,7 +80,7 @@ fn get_epoch_gauge(gauge: &Pubkey, epoch: u32) -> Pubkey {
     .0
 }
 
-fn get_gauge_voter(escrow: &Pubkey) -> Pubkey {
+pub fn get_gauge_voter(escrow: &Pubkey) -> Pubkey {
     Pubkey::find_program_address(
         &[
             b"GaugeVoter".as_ref(),
@@ -112,7 +112,7 @@ fn get_epoch_gauge_vote(gauge_vote: &Pubkey, epoch: u32) -> Pubkey {
     .0
 }
 
-fn get_epoch_gauge_voter(gauge_voter: &Pubkey, epoch: u32) -> Pubkey {
+pub fn get_epoch_gauge_voter(gauge_voter: &Pubkey, epoch: u32) -> Pubkey {
     Pubkey::find_program_address(
         &[
             b"EpochGaugeVoter".as_ref(),
