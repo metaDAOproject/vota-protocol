@@ -1,15 +1,15 @@
 use crate::actions::management::data::{EpochInput, GaugeInfo};
 use crate::actions::management::oracle::{fetch_token_prices, KnownTokens};
 use crate::actions::queries::vote_buys::get_all_vote_buys;
-use crate::{ANCHOR_DISCRIMINATOR_SIZE, GAUGEMEISTER, LOCKER};
+use crate::{GAUGEMEISTER, LOCKER};
 use anchor_lang::AnchorDeserialize;
 use chrono::Utc;
-use gauge_state::{EpochGauge, Gaugemeister};
-use solana_account_decoder::UiAccountEncoding;
+use gauge_state::{Gaugemeister};
+
 use solana_client::rpc_client::RpcClient;
-use solana_client::rpc_config::{RpcAccountInfoConfig, RpcProgramAccountsConfig};
-use solana_client::rpc_filter::RpcFilterType::DataSize;
-use solana_client::rpc_filter::{Memcmp, MemcmpEncodedBytes, RpcFilterType};
+
+
+
 use solana_program::pubkey::Pubkey;
 use std::collections::HashMap;
 use std::fs;

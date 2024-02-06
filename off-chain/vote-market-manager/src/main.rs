@@ -1,4 +1,4 @@
-use crate::actions::queries::{direct_votes, escrows};
+use crate::actions::queries::{escrows};
 
 use clap::value_parser;
 use dotenv::dotenv;

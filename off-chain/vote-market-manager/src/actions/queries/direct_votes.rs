@@ -30,7 +30,7 @@ pub(crate) fn get_direct_votes(client: &RpcClient, epoch: u32)  -> Result<Vec<Ep
             },
         )?;
 
-    accounts.iter().map(|(pubkey, account)| {
+    accounts.iter().map(|(_pubkey, account)| {
         let epoch_guage = EpochGauge::deserialize(&mut &account.data[8..])?;
         Ok(epoch_guage)
     }).collect()
