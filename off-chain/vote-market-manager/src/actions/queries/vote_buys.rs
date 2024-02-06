@@ -57,7 +57,7 @@ pub fn get_all_vote_buys(epoch: u32, config: &Pubkey) -> Vec<VoteBuy> {
     let vote_buy_accounts = client.get_multiple_accounts(&vote_buy_addresses).unwrap();
     for vote_buy_account in vote_buy_accounts.into_iter().flatten() {
         let parsed_vote_buy =
-            VoteBuy::try_deserialize(&mut vote_buy_account.data.as_slice()).unwrap();
+            VoteBuy::try_deserialize(&mut &vote_buy_account.data[..]).unwrap();
         vote_buy_parsed_accounts.push(parsed_vote_buy);
     }
     vote_buy_parsed_accounts

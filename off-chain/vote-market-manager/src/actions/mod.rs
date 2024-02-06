@@ -6,3 +6,4 @@ pub mod management;
 pub(crate) mod queries;
 pub(crate) mod trigger_epoch;
 pub(crate) mod vote_market;
+pub(crate) mod create_epoch_gauge;

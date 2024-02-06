@@ -130,6 +130,7 @@ pub mod vote_market {
             ],
         )?;
         ctx.accounts.vote_buy.amount += amount;
+        ctx.accounts.vote_buy.gauge = ctx.accounts.gauge.key();
         Ok(())
     }
 

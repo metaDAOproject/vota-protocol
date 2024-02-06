@@ -1,4 +1,4 @@
-use crate::actions::queries::escrows;
+use crate::actions::queries::{direct_votes, escrows};
 
 use clap::value_parser;
 use dotenv::dotenv;
@@ -38,6 +38,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .required(true)
                     .value_parser(value_parser!(String))
                     .help("The config to calculate the escrow delegate"),
+            ),
+        )
+        .subcommand(
+            clap::command!("get-direct-votes").arg(
+                clap::Arg::new("epoch")
+                    .required(true)
+                    .value_parser(value_parser!(u32))
+                    .help("The epoch to get the direct votes for"),
             ),
         )
         .subcommand(
@@ -97,6 +105,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .required(true)
                         .value_parser(value_parser!(u32))
                         .help("The epoch to vote for"),
+                ),
+        )
+        .subcommand(
+            clap::command!("create-epoch-gauge")
+                .arg(
+                    clap::Arg::new("gauge")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The gauge to create the epoch gauge for"),
+                )
+                .arg(
+                    clap::Arg::new("epoch")
+                        .required(true)
+                        .value_parser(value_parser!(u32))
+                        .help("The epoch to create the gauge for"),
                 ),
         )
         .subcommand(
@@ -298,6 +321,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let escrow = accounts::resolve::get_escrow_address_for_owner(&owner);
             println!("{}", escrow);
         }
+        Some(("get-direct-votes", matches)) => {
+            let epoch = matches.get_one::<u32>("epoch").unwrap();
+            let direct_votes = actions::queries::direct_votes::get_direct_votes(&client, *epoch)?;
+            println!("direct votes: {:?}", direct_votes);
+        }
         Some(("get-vote-buys", matches)) => {
             let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap())?;
             let epoch = matches.get_one::<u32>("epoch").unwrap();
@@ -310,6 +338,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let gauge = Pubkey::from_str(matches.get_one::<String>("gauge").unwrap())?;
             let epoch = matches.get_one::<u32>("epoch").unwrap();
             actions::prepare_vote::prepare_vote(&client, owner, gauge, &payer, *epoch);
+        }
+        Some(("create-epoch-gauge", matches)) => {
+            println!("create-epoch-gauge");
+            let gauge = Pubkey::from_str(matches.get_one::<String>("gauge").unwrap())?;
+            let epoch = matches.get_one::<u32>("epoch").unwrap();
+            actions::create_epoch_gauge::create_epoch_gauge(&client, &payer, gauge, *epoch);
         }
         Some(("vote", matches)) => {
             println!("vote");
