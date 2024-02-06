@@ -1,5 +1,6 @@
-use crate::actions::queries::{escrows};
+use crate::actions::queries::escrows;
 
+use crate::accounts::resolve::get_delegate;
 use clap::value_parser;
 use dotenv::dotenv;
 use solana_sdk::commitment_config::CommitmentConfig;
@@ -8,7 +9,6 @@ use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Signer;
 use std::env;
 use std::str::FromStr;
-use crate::accounts::resolve::get_delegate;
 
 mod accounts;
 mod actions;

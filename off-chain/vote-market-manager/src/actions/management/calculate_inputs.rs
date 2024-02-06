@@ -4,20 +4,18 @@ use crate::actions::queries::vote_buys::get_all_vote_buys;
 use crate::{GAUGEMEISTER, LOCKER};
 use anchor_lang::AnchorDeserialize;
 use chrono::Utc;
-use gauge_state::{Gaugemeister};
+use gauge_state::Gaugemeister;
 
 use solana_client::rpc_client::RpcClient;
 
-
-
-use solana_program::pubkey::Pubkey;
-use std::collections::HashMap;
-use std::fs;
-use solana_program::program_pack::Pack;
-use spl_token::state::Mint;
-use locked_voter_state::Locker;
 use crate::accounts::resolve::{get_delegate, get_epoch_gauge_voter, get_gauge_voter};
 use crate::actions::queries::direct_votes::get_direct_votes;
+use locked_voter_state::Locker;
+use solana_program::program_pack::Pack;
+use solana_program::pubkey::Pubkey;
+use spl_token::state::Mint;
+use std::collections::HashMap;
+use std::fs;
 
 pub(crate) fn calculate_inputs(
     client: &RpcClient,
@@ -55,7 +53,7 @@ pub(crate) fn calculate_inputs(
         if let Some(vote_buy) = vote_buys.iter().find(|x| x.gauge == epoch_gauge.gauge) {
             println!("found vote buy: {:?}", vote_buy);
             let mint_account = client.get_account(&vote_buy.mint).unwrap();
-            let decimals  = Mint::unpack(mint_account.data.as_slice())?.decimals;
+            let decimals = Mint::unpack(mint_account.data.as_slice())?.decimals;
             let amount = spl_token::amount_to_ui_amount(vote_buy.amount, decimals);
             let price = prices.get(&vote_buy.mint.into()).unwrap();
             payment = amount * price;
@@ -77,24 +75,37 @@ pub(crate) fn calculate_inputs(
     let locker_account = client.get_account(&LOCKER).unwrap();
     let locker_data = Locker::deserialize(&mut &locker_account.data[8..]).unwrap();
     let gaugemeister_account = client.get_account(&GAUGEMEISTER).unwrap();
-    let gaugemeister_data = Gaugemeister::deserialize(&mut &gaugemeister_account.data[8..]).unwrap();
+    let gaugemeister_data =
+        Gaugemeister::deserialize(&mut &gaugemeister_account.data[8..]).unwrap();
     let mut already_voted_count = 0;
     let mut total_delegated_votes: u64 = 0;
     for (key, escrow) in &delegated_voters {
         // check if escrow is already voting
-        let gauge_voter_address = get_gauge_voter(&key);
+        let gauge_voter_address = get_gauge_voter(key);
         let epoch_gauge_voter_address = get_epoch_gauge_voter(&gauge_voter_address, epoch);
         match client.get_account(&epoch_gauge_voter_address) {
             Err(_) => {
-                let voting_power = escrow.voting_power_at_time(&locker_data.params, gaugemeister_data.next_epoch_starts_at as i64).unwrap();
+                let voting_power = escrow
+                    .voting_power_at_time(
+                        &locker_data.params,
+                        gaugemeister_data.next_epoch_starts_at as i64,
+                    )
+                    .unwrap();
                 total_delegated_votes += voting_power;
-                println!("escrow: {:?}",escrow.voting_power_at_time(&locker_data.params, gaugemeister_data.next_epoch_starts_at as i64).unwrap());
-            },
+                println!(
+                    "escrow: {:?}",
+                    escrow
+                        .voting_power_at_time(
+                            &locker_data.params,
+                            gaugemeister_data.next_epoch_starts_at as i64
+                        )
+                        .unwrap()
+                );
+            }
             Ok(_) => {
                 already_voted_count += 1;
             }
         }
-
 
         // if not, prep it
     }
@@ -103,7 +114,6 @@ pub(crate) fn calculate_inputs(
     //To get algorithmic votes subtract votes that are already used from the total of all epoch gauges
 
     println!("total_power: {:?}", total_power);
-
 
     // epoch stats
 

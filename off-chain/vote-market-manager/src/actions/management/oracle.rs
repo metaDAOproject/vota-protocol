@@ -55,7 +55,7 @@ pub fn fetch_token_prices(
         mints.join("%2C")
     );
     let client = Client::new();
-    let response = client.get(&api_url).send()?;
+    let response = client.get(api_url).send()?;
     let json_response: serde_json::Value = response.json()?;
     for mint_address in mints {
         let price = json_response.get(mint_address.clone());
