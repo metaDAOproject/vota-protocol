@@ -1,9 +1,9 @@
 use crate::errors::AccountGenError::InvalidAccountData;
 use crate::toml_update::AddressInfo;
-use crate::utils::{deserialize_pubkey, serialize_pubkey};
 use anchor_lang::prelude::Pubkey;
 use anchor_lang::{AccountDeserialize, AccountSerialize};
 use base64::prelude::*;
+use common::{deserialize_pubkey, serialize_pubkey};
 use serde::{Deserialize, Serialize};
 use std::{fs, io};
 

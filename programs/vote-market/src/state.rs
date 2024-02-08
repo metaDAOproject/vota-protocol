@@ -3,6 +3,7 @@ use anchor_lang::prelude::*;
 #[account]
 #[derive(Debug)]
 pub struct VoteBuy {
+    pub gauge: Pubkey,
     pub mint: Pubkey,
     pub amount: u64,
     // This amount or the amount field, whichever is less, will be distributed
@@ -11,7 +12,7 @@ pub struct VoteBuy {
 }
 
 impl VoteBuy {
-    pub const LEN: usize = 8 + 32 + 8 + 1 + 8 + 32;
+    pub const LEN: usize = 8 + 32 + 32 + 8 + 1 + 8 + 32;
 }
 
 #[account]
