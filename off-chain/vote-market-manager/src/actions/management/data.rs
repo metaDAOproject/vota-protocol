@@ -4,7 +4,7 @@ use solana_program::pubkey::Pubkey;
 use std::collections::HashMap;
 
 #[derive(Serialize, Debug)]
-pub struct EpochInput {
+pub struct EpochData {
     pub epoch: u32,
     pub direct_votes: u64,
     pub delegated_votes: u64,

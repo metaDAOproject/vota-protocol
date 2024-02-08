@@ -1,4 +1,4 @@
-use crate::actions::management::data::{EpochInput, GaugeInfo};
+use crate::actions::management::data::{EpochData, GaugeInfo};
 use crate::actions::management::oracle::{fetch_token_prices, KnownTokens};
 use crate::actions::queries::vote_buys::get_all_vote_buys;
 use crate::{GAUGEMEISTER, LOCKER};
@@ -17,6 +17,32 @@ use spl_token::state::Mint;
 use std::collections::HashMap;
 use std::fs;
 
+/// Creates a json file containing all the data needed to calculate algorithmic
+/// vote weights and the maximum amount of bribes that meet the efficiency
+/// ratio requirements for one epoch and one [`vote_market::state::VoteMarketConfig`]
+///
+/// The json file will be named `epoch_{epoch}_vote_info{timestamp}.json`
+/// and have the following format
+/// ```
+///{
+///   "epoch": 98,
+///   "direct_votes": 0,
+///   "delegated_votes": 5970510976,
+///   "total_vote_buy_value": 5717.58,
+///   "gauges": [
+///     {
+///       "gauge": "3V7SVqXAMGzezRfe3LGhELZFNMCH2jVsu5TmT8CawK5y",
+///       "payment": 5717.58,
+///       "votes": 0
+///     }
+///   ],
+///   "prices": {
+///     "BLZE": 0.00285879,
+///     "SBR": 0.00290758
+///   },
+///   "escrows": "[BEwbnYCmqQ8pi59s7E6uK26hMhy1GJivqsRaeWU4PHUW,DyBaLYzwbbWnPBAa23LyrAw2sHxYS2C2DDmq711yg5on,9uVg1hWhmn7qPaMT8pAeNV1yFFSwmFPTNyJ9xT5SaQgf]"
+/// }
+/// ```
 pub(crate) fn calculate_inputs(
     client: &RpcClient,
     config: &Pubkey,
@@ -117,7 +143,7 @@ pub(crate) fn calculate_inputs(
 
     // epoch stats
 
-    let epoch_votes = EpochInput {
+    let epoch_votes = EpochData {
         epoch,
         direct_votes: total_power,
         delegated_votes: total_delegated_votes,

@@ -108,6 +108,7 @@ impl LockerParams {
             .to_u64()?
             .min(self.max_stake_duration);
 
+        // voting power declines linearly over time from this maximum to 0.
         // voting power at max lockup
         let power_if_max_lockup = escrow
             .amount

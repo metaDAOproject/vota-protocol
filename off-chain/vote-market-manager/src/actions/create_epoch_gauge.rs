@@ -17,10 +17,6 @@ pub(crate) fn create_epoch_gauge(client: &RpcClient, payer: &Keypair, gauge: Pub
 
     data.extend_from_slice(&bump.to_le_bytes());
     data.extend_from_slice(&epoch.to_le_bytes());
-    // pub gauge: Account<'info, Gauge>,
-    // pub epoch_gauge: Account<'info, EpochGauge>,
-    // pub payer: Signer<'info>,
-    // pub system_program: Program<'info, System>,
     let create_epoch_gauge_ix = solana_program::instruction::Instruction {
         program_id: gauge_state::id(),
         accounts: vec![
