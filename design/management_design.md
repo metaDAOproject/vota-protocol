@@ -26,7 +26,7 @@ efficiency_ratio - the ratio of emission value to bribes
 ```
 The amounts with the i subscript will be stored in a map with index of the gauge address.
 
-`find-weights` - This will accept the output of `calculate-inputs` as
+`calculate-weights` - This will accept the output of `calculate-inputs` as
 and input and produce a json file with key value pairs
 of gauge address and weight.
 

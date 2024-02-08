@@ -144,6 +144,7 @@ pub(crate) fn calculate_inputs(
     // epoch stats
 
     let epoch_votes = EpochData {
+        config: *config,
         epoch,
         direct_votes: total_power,
         delegated_votes: total_delegated_votes,

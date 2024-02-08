@@ -263,6 +263,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .value_parser(value_parser!(u32))
                         .help("The epoch to calculate inputs for"),
                 ),
+        ).
+        subcommand(
+            clap::command!("calculate-weights")
+                .arg(
+                    clap::Arg::new("epoch-data")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The data file output by the calculate-inputs subcommand"),
+                )
         );
 
     let matches = cmd.get_matches();
@@ -436,8 +445,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap())?;
             actions::management::calculate_inputs::calculate_inputs(&client, &config, *epoch)?;
         }
+        Some(("calculate-weights", matches)) => {
+            let epoch_data = matches.get_one::<String>("epoch-data").unwrap();
+            let epoch_data_string = std::fs::read_to_string(epoch_data)?;
+            let data: actions::management::data::EpochData = serde_json::from_str(&epoch_data_string)?;
+            actions::management::calculate_weights::calculate_weights(data)?;
+
+        }
         _ => {
-            println!("no subcommand matched")
+            println!("No subcommand");
         }
     };
     Ok(())

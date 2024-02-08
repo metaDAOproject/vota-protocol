@@ -1,10 +1,10 @@
 use crate::errors::VoteMarketManagerError;
 use reqwest::blocking::Client;
-use serde::Serialize;
+use serde::{Serialize,Deserialize};
 use solana_program::pubkey::Pubkey;
 use std::collections::HashMap;
 
-#[derive(Debug, Eq, Hash, PartialEq, Clone, Copy, Serialize)]
+#[derive(Debug, Eq, Hash, PartialEq, Clone, Copy, Serialize, Deserialize)]
 #[allow(non_camel_case_types)]
 pub enum KnownTokens {
     UXD,
