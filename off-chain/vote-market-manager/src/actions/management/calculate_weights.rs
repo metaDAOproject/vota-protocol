@@ -4,9 +4,34 @@ use solana_program::pubkey::Pubkey;
 use gauge_state::EpochGauge;
 use crate::actions::management::data::{EpochData, GaugeInfo, VoteWeight};
 
-pub(crate) fn calculate_weights(data: &EpochData)
-    -> Result<Vec<VoteWeight>, Box<dyn std::error::Error>> {
+pub(crate) fn calculate_weights(data: &mut EpochData)
+                                -> Result<Vec<VoteWeight>, Box<dyn std::error::Error>> {
     println!("calculate_weights {:?}", data);
+    let gauges = data.gauges.clone();
+
+
+    data.gauges = gauges;
+    let mut vote_weights: Vec<VoteWeight> = vec![];
+    Ok(vote_weights)
+}
+
+pub(crate) fn sort_gauges(gauges: &mut Vec<GaugeInfo>) {
+
+    gauges.sort_by(|a, b| {
+        //change all zeros to very small numbers to get the correct order and
+        //avoid divide by zero
+        let votes_a = if a.votes == 0 { 0.0000000001 } else { a.votes as f64 };
+        let votes_b = if b.votes == 0 { 0.0000000001 } else { b.votes as f64 };
+        let payment_a = if a.payment == 0.0 { 0.0000000001 } else { a.payment };
+        let payment_b = if b.payment == 0.0 { 0.0000000001 } else { b.payment };
+        let cmp_value_a = votes_a / payment_a;
+        let cmp_value_b = votes_b / payment_b;
+        cmp_value_b.partial_cmp(&cmp_value_a).unwrap()
+    });
+}
+
+
+pub fn weight_calc_pass(data: &EpochData) -> Result<Vec<VoteWeight>, Box<dyn std::error::Error>> {
     let mut vote_weights: Vec<VoteWeight> = vec![];
     for gauge_data in data.gauges.iter() {
         if gauge_data.payment == 0.0 {
@@ -63,7 +88,7 @@ mod test_calculate_weight {
             ]),
             escrows: vec![],
         };
-        let weights = calculate_weights(&data).unwrap();
+        let weights = weight_calc_pass(&data).unwrap();
         assert_eq!(weights.len(), 3);
         assert_eq!(weights[0].votes, (((data.direct_votes + data.delegated_votes) as f64)/3.0).round() as u64);
     }
@@ -103,7 +128,7 @@ mod test_calculate_weight {
             ]),
             escrows: vec![],
         };
-        let weights = calculate_weights(&data).unwrap();
+        let weights = weight_calc_pass(&data).unwrap();
         assert_eq!(weights[0].votes, 100_000);
         assert_eq!(weights[1].votes, 200_000);
         assert_eq!(weights[2].votes, 300_000);
@@ -145,7 +170,7 @@ mod test_calculate_weight {
             ]),
             escrows: vec![],
         };
-        let weights = calculate_weights(&data).unwrap();
+        let weights = weight_calc_pass(&data).unwrap();
         assert_eq!(weights.len(), 3);
         assert_eq!(weights[0].votes, 0);
         assert_eq!(weights[1].votes, 500_000);
@@ -188,11 +213,89 @@ mod test_calculate_weight {
             ]),
             escrows: vec![],
         };
-        let weights = calculate_weights(&data).unwrap();
+        let weights = weight_calc_pass(&data).unwrap();
         assert_eq!(weights.len(), 3);
         // Should make them even when the direct votes are included
         assert_eq!(weights[0].votes, 100_000 - 10);
         assert_eq!(weights[1].votes, 100_000 - 20);
         assert_eq!(weights[2].votes, 100_000 - 30);
+    }
+    #[test]
+    pub fn test_sort_gauges_zero_votes() {
+        let gauge1 = Pubkey::new_unique();
+        let gauge2 = Pubkey::new_unique();
+        let gauge3 = Pubkey::new_unique();
+        let mut gauges = vec![
+            GaugeInfo {
+                gauge: gauge1,
+                payment: 200.0,
+                votes: 10,
+            },
+            GaugeInfo {
+                gauge: gauge2,
+                payment: 500.0,
+                votes: 20,
+            },
+            GaugeInfo {
+                gauge: gauge3,
+                payment: 700.0,
+                votes: 30,
+            }
+        ];
+        sort_gauges(&mut gauges);
+        // Want to eliminate the lowest bribes first in this case
+        assert_eq!(gauges[0].payment, 200.0);
+        assert_eq!(gauges[1].payment, 700.0);
+        assert_eq!(gauges[2].payment, 500.0);
+    }
+    #[test]
+    pub fn test_sort_gauges() {
+        let gauge1 = Pubkey::new_unique();
+        let gauge2 = Pubkey::new_unique();
+        let gauge3 = Pubkey::new_unique();
+        let mut gauges = vec![
+            GaugeInfo {
+                gauge: gauge1,
+                payment: 200.0,
+                votes: 0,
+            },
+            GaugeInfo {
+                gauge: gauge2,
+                payment: 100.0,
+                votes: 0,
+            },
+            GaugeInfo {
+                gauge: gauge3,
+                payment: 300.0,
+                votes: 0,
+            }
+        ];
+        sort_gauges(&mut gauges);
+       // Want to eliminate the lowest bribes first in this case
+        assert_eq!(gauges[0].payment, 100.0);
+    }
+    pub fn test_sort_gauges_divide_by_zero() {
+        let gauge1 = Pubkey::new_unique();
+        let gauge2 = Pubkey::new_unique();
+        let gauge3 = Pubkey::new_unique();
+        let mut gauges = vec![
+            GaugeInfo {
+                gauge: gauge1,
+                payment: 0.0,
+                votes: 0,
+            },
+            GaugeInfo {
+                gauge: gauge2,
+                payment: 200.0,
+                votes: 0,
+            },
+            GaugeInfo {
+                gauge: gauge3,
+                payment: 300.0,
+                votes: 0,
+            }
+        ];
+        sort_gauges(&mut gauges);
+        assert_eq!(gauges[0].payment, 300.0);
     }
 }

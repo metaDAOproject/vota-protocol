@@ -23,7 +23,7 @@ pub struct EpochData {
     pub escrows: Vec<Pubkey>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct GaugeInfo {
     #[serde(
         deserialize_with = "common::deserialize_pubkey",
