@@ -33,3 +33,12 @@ pub struct GaugeInfo {
     pub payment: f64,
     pub votes: u64,
 }
+
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct VoteWeight {
+    pub gauge: Pubkey,
+    pub votes: u64,
+}
+
+

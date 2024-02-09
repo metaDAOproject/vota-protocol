@@ -449,7 +449,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let epoch_data = matches.get_one::<String>("epoch-data").unwrap();
             let epoch_data_string = std::fs::read_to_string(epoch_data)?;
             let data: actions::management::data::EpochData = serde_json::from_str(&epoch_data_string)?;
-            actions::management::calculate_weights::calculate_weights(data)?;
+            actions::management::calculate_weights::calculate_weights(&data)?;
 
         }
         _ => {

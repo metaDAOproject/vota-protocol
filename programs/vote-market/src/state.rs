@@ -4,10 +4,15 @@ use anchor_lang::prelude::*;
 #[derive(Debug)]
 pub struct VoteBuy {
     pub gauge: Pubkey,
+    /// The mint of the token used to buy votes. This must be included in
+    /// [AllowedMints::mints] for the gauge.
     pub mint: Pubkey,
     pub amount: u64,
-    // This amount or the amount field, whichever is less, will be distributed
+    /// This amount or the amount field, whichever is less, will be distributed
     pub max_amount: Option<u64>,
+    /// Anyone can create a vault for buying tokens. This is the creator
+    /// of the vault who is will be entitled to any incentives and is
+    /// allowed to add additional funds.
     pub reward_receiver: Pubkey,
 }
 
