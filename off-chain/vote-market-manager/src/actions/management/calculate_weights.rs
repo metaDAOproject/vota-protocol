@@ -1,18 +1,23 @@
 use std::collections::HashMap;
-use solana_client::rpc_client::RpcClient;
+use std::fs;
+use chrono::Utc;
 use solana_program::pubkey::Pubkey;
-use gauge_state::EpochGauge;
 use crate::actions::management::data::{EpochData, GaugeInfo, VoteWeight};
 
 pub(crate) fn calculate_weights(data: &mut EpochData)
-                                -> Result<Vec<VoteWeight>, Box<dyn std::error::Error>> {
-    println!("calculate_weights {:?}", data);
-    let gauges = data.gauges.clone();
+                                -> Result<(), Box<dyn std::error::Error>> {
+    let weights = weight_calc(data)?;
 
-
-    data.gauges = gauges;
-    let mut vote_weights: Vec<VoteWeight> = vec![];
-    Ok(vote_weights)
+    let vote_weights_json = serde_json::to_string(&weights).unwrap();
+    fs::write(
+        format!(
+            "./epoch_{}_weights{}.json",
+            data.epoch,
+            Utc::now().format("%Y-%m-%d-%H_%M")
+        ),
+        vote_weights_json,
+    )?;
+    Ok(())
 }
 
 pub(crate) fn sort_gauges(gauges: &mut Vec<GaugeInfo>) {
@@ -28,6 +33,23 @@ pub(crate) fn sort_gauges(gauges: &mut Vec<GaugeInfo>) {
         let cmp_value_b = votes_b / payment_b;
         cmp_value_b.partial_cmp(&cmp_value_a).unwrap()
     });
+}
+
+pub fn weight_calc(data: &EpochData) -> Result<Vec<VoteWeight>, Box<dyn std::error::Error>> {
+    let mut input_data: EpochData = data.clone();
+    let mut pass = weight_calc_pass(&mut input_data).unwrap();
+    let mut i = 0;
+    sort_gauges(&mut input_data.gauges);
+    input_data.gauges = input_data.gauges.iter().filter(|x| x.payment > 0.0).cloned().collect();
+    while pass.len() > 0 && pass[0].votes <= 0 {
+        input_data.direct_votes -= input_data.gauges[0].votes;
+        input_data.total_vote_buy_value -= input_data.gauges[0].payment;
+        input_data.gauges.remove(0);
+        sort_gauges(&mut input_data.gauges);
+        pass = weight_calc_pass(&input_data).unwrap();
+        i += 1;
+    }
+    Ok(pass)
 }
 
 
@@ -297,5 +319,50 @@ mod test_calculate_weight {
         ];
         sort_gauges(&mut gauges);
         assert_eq!(gauges[0].payment, 300.0);
+    }
+    #[test]
+    pub fn test_remove_negative() {
+        let gauge1 = Pubkey::new_unique();
+        let gauge2 = Pubkey::new_unique();
+        let gauge3 = Pubkey::new_unique();
+        let data = EpochData {
+            config: Pubkey::new_unique(),
+            epoch: 1,
+            //
+            direct_votes:100_002_000,
+            delegated_votes: 300_000,
+            total_vote_buy_value: 300.0,
+            gauges: vec![
+                GaugeInfo {
+                    gauge: gauge1,
+                    payment: 100.0,
+                    votes: 100_000_000,
+                },
+                GaugeInfo {
+                    gauge: gauge2,
+                    payment: 100.0,
+                    votes: 1_000,
+                },
+                GaugeInfo {
+                    gauge: gauge3,
+                    payment: 100.0,
+                    votes: 1_000,
+                }
+            ],
+            prices: HashMap::from([
+                (KnownTokens::mSOL, 120.56),
+                (KnownTokens::UXD, 0.991553),
+                (KnownTokens::SBR, 0.00286583),
+                (KnownTokens::BLZE, 0.00311461),
+            ]),
+            escrows: vec![],
+        };
+
+        let weights = weight_calc(&data).unwrap();
+        println!("{:?}", weights);
+        assert_eq!(weights.len(), 2);
+        // Should make them even when the direct votes are included
+        assert_eq!(weights[0].votes, 150_000);
+        assert_eq!(weights[1].votes, 150_000);
     }
 }

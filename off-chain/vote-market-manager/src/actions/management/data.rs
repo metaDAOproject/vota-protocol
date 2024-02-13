@@ -3,7 +3,7 @@ use serde::{Serialize, Deserialize};
 use solana_program::pubkey::Pubkey;
 use std::collections::HashMap;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct EpochData {
     #[serde(
     deserialize_with = "common::deserialize_pubkey",
@@ -37,6 +37,10 @@ pub struct GaugeInfo {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct VoteWeight {
+    #[serde(
+    deserialize_with = "common::deserialize_pubkey",
+    serialize_with = "common::serialize_pubkey"
+    )]
     pub gauge: Pubkey,
     pub votes: u64,
 }
