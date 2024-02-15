@@ -1,41 +1,65 @@
-# Vota
+# Vota Protocol
 
-Monorepo that houses the programs and utilities for the BRB ecosystem.
+![License BSLv1.1](https://img.shields.io/badge/License-BSLv1.1-lightgray.svg)
 
-### programs/vote-market
-The on-chain program for the vote market. 
+A Solana-based protocol for trading votes for money.
 
-Set a new key to yor solana cli config key. 
-Set the KEY_PATH environment variable in `.env` or in you shell to your new key, then run:
+## Installation
+
+To run Vota, pull the repository from GitHub and install its dependencies. 
+You will need [yarn](https://classic.yarnpkg.com/en/docs/install/) installed.
 
 ```bash
-cargo -p account-gen
-anchor test 
+git clone https://github.com/metaDAOproject/vota-protocol
+cd vota-protocol
+yarn install --lock-file
 ```
-The account-gen command is only needed when the keypair is changed.
 
+## Testing
 
-### external-state/account-gen
-Executable for processing accounts needed on the localhost validator for testing. This
-will generate the accounts to work with the Keypair at the path specified in the KEY_PATH
-envorinment variable.
+To run tests, first duplicate `.env.example` to `.env` and change `KEY_PATH` and `KEY_PATH2`
+to valid paths to keypairs. Then run:
 
-Run this at root level to generate the the accounts in test-accounts 
 ```bash
 cargo run -p account-gen
+anchor test 
 ```
 
-### external-state/gauge-state
-Crate copying the relevant parts of the [Quarry Gauge Repo](https://github.com/QuarryProtocol/gauge). T
-This creates a crate compatible with Anchor 0.29.0 for composing with the program.
+The account-gen command is only needed when the keypair is changed.
 
-### external-state/locked-voter-state
-Crate copying the relevant parts of the [Tribeca Locked Voter](https://github.com/TribecaHQ/tribeca/tree/master/programs/locked-voter). T
-This creates a crate compatible with Anchor 0.29.0 for composing with the program.
+## Repository Structure
 
-## Saber Vote Market
+This repo contains a few modules:
+- `programs/vote-market`: the on-chain program
+- `external-state/account-gen`: an executable for creating the accounts needed on the localhost
+validator for testing
+- `external-state/gauge-state`: a stub that allows the vote market program to
+compose with the [Quarry gauge program](https://github.com/QuarryProtocol/gauge)
+- `external-state/locked-voter-state`: a stub that allows the vote market program
+to compose with the [Tribeca locked voter program](https://github.com/TribecaHQ/tribeca/tree/master/programs/locked-voter)
+- `off-chain/vote-market-manager`: a CLI executable for operating the vote market,
+including voting on behalf of users and sending rewards to users
 
-On-chain program and off-chain scripts for implementing a vote market built on top of [Quarry Protocol](https://github.com/QuarryProtocol/quarry), interacting with Quarry [gauges](https://github.com/QuarryProtocol/gauge) and the Tribeca Protocol [locked-voter](https://github.com/TribecaHQ/tribeca/tree/master/programs/locked-voter) program.
+## Flow
 
-### Initial Design
-![Initial Design](design/Vote Market Begin.drawio.png)
+First, an admin must create a `VoteMarketConfig` account. This contains an `admin`, a 
+`script_authority`, and a `gaugemeister`.
+
+![admin create config](./design/create-config.png)
+
+The script authority is the one who has the ability to vote on behalf of users. The admin
+can change the script authority and other various parts of the program.
+
+After a `VoteMarketConfig` has been created, vote buyers can create `VoteBuy`s. `VoteBuy`s are
+specific to a gauge and epoch and contain an amount of tokens that constitute the vote payment.
+Tokens need to be whitelisted by an admin before they can be used to buy votes.
+
+![create vote buy](./design/create-vote-buy.png)
+
+Concurrently, veSBR holders can delegate their voting power to Vota via the locked voter program.
+
+![delegate](./design/delegate-transaction.png)
+
+Then, the script authority can trigger Vota voting for a specific gauge. It can also claim rewards
+on behalf of users.
+
