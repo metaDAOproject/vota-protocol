@@ -1,41 +1,32 @@
 # Vota
 
-Monorepo that houses the programs and utilities for the BRB ecosystem.
+![License LGPLv3](https://img.shields.io/badge/License-BSLv1.1-gray.svg)
 
-### programs/vote-market
-The on-chain program for the vote market. 
+![icon](./icon.svg)
 
-Set a new key to yor solana cli config key. 
-Set the KEY_PATH environment variable in `.env` or in you shell to your new key, then run:
+A Solana-based protocol for trading votes for money.
 
-```bash
-cargo -p account-gen
-anchor test 
-```
-The account-gen command is only needed when the keypair is changed.
+## Testing
 
+To run tests, first duplicate `.env.example` to `.env` and change `KEY_PATH` and `KEY_PATH2`
+to valid paths to keypairs. Then run
 
-### external-state/account-gen
-Executable for processing accounts needed on the localhost validator for testing. This
-will generate the accounts to work with the Keypair at the path specified in the KEY_PATH
-envorinment variable.
-
-Run this at root level to generate the the accounts in test-accounts 
 ```bash
 cargo run -p account-gen
+anchor test 
 ```
 
-### external-state/gauge-state
-Crate copying the relevant parts of the [Quarry Gauge Repo](https://github.com/QuarryProtocol/gauge). T
-This creates a crate compatible with Anchor 0.29.0 for composing with the program.
+The account-gen command is only needed when the keypair is changed.
 
-### external-state/locked-voter-state
-Crate copying the relevant parts of the [Tribeca Locked Voter](https://github.com/TribecaHQ/tribeca/tree/master/programs/locked-voter). T
-This creates a crate compatible with Anchor 0.29.0 for composing with the program.
+## Structure
 
-## Saber Vote Market
-
-On-chain program and off-chain scripts for implementing a vote market built on top of [Quarry Protocol](https://github.com/QuarryProtocol/quarry), interacting with Quarry [gauges](https://github.com/QuarryProtocol/gauge) and the Tribeca Protocol [locked-voter](https://github.com/TribecaHQ/tribeca/tree/master/programs/locked-voter) program.
-
-### Initial Design
-![Initial Design](design/Vote Market Begin.drawio.png)
+This repo contains a few modules:
+- programs/vote-market: the on-chain program
+- external-state/account-gen: an executable for creating the accounts needed on the localhost
+validator for testing
+- external-state/gauge-state: a stub that allows the vote market program to
+compose with the [Quarry gauge program](https://github.com/QuarryProtocol/gauge)
+- external-state/locked-voter-state: a stub that allows the vote market program
+to compose with the [Tribeca locked voter program](https://github.com/TribecaHQ/tribeca/tree/master/programs/locked-voter)
+- off-chain/vote-market-manager: a CLI executable for operating the vote market,
+including voting on behalf of users and sending rewards to users
