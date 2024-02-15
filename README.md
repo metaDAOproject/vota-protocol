@@ -1,8 +1,19 @@
-# Vota
+# Vota Protocol
 
-![License BSLv1.1](https://img.shields.io/badge/License-BSLv1.1-gray.svg)
+![License BSLv1.1](https://img.shields.io/badge/License-BSLv1.1-lightgray.svg)
 
 A Solana-based protocol for trading votes for money.
+
+## Installation
+
+To run Vota, pull the repository from GitHub and install its dependencies. 
+You will need [yarn](https://classic.yarnpkg.com/en/docs/install/) installed.
+
+```bash
+git clone https://github.com/metaDAOproject/vota-protocol
+cd vota-protocol
+yarn install --lock-file
+```
 
 ## Testing
 
@@ -44,4 +55,11 @@ specific to a gauge and epoch and contain an amount of tokens that constitute th
 Tokens need to be whitelisted by an admin before they can be used to buy votes.
 
 ![create vote buy](./design/create-vote-buy.png)
+
+Concurrently, veSBR holders can delegate their voting power to Vota via the locked voter program.
+
+![delegate](./design/delegate-transaction.png)
+
+Then, the script authority can trigger Vota voting for a specific gauge. It can also claim rewards
+on behalf of users.
 
