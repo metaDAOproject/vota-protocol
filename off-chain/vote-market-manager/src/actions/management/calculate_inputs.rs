@@ -74,6 +74,10 @@ pub(crate) fn calculate_inputs(
     let mut gauges: Vec<GaugeInfo> = Vec::new();
     let mut total_vote_buy_value: f64 = 0.0;
     for epoch_gauge in direct_votes {
+        // Only count gauges that have an associated vote buy
+        if !vote_buys.iter().any(|x| x.gauge == epoch_gauge.gauge) {
+            continue;
+        }
         total_power += epoch_gauge.total_power;
         let mut payment = 0.0;
         if let Some(vote_buy) = vote_buys.iter().find(|x| x.gauge == epoch_gauge.gauge) {
@@ -144,6 +148,7 @@ pub(crate) fn calculate_inputs(
     // epoch stats
 
     let epoch_votes = EpochData {
+        config: *config,
         epoch,
         direct_votes: total_power,
         delegated_votes: total_delegated_votes,
