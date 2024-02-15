@@ -16,6 +16,7 @@ pub struct EpochData {
     pub total_vote_buy_value: f64,
     pub gauges: Vec<GaugeInfo>,
     pub prices: HashMap<KnownTokens, f64>,
+    pub sbr_per_epoch: u64,
     #[serde(
         deserialize_with = "common::deserialize_pubkey_vec",
         serialize_with = "common::serialize_pubkey_vec"

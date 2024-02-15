@@ -2770,6 +2770,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "quarry-state"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+]
+
+[[package]]
 name = "quinn"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5047,6 +5054,7 @@ dependencies = [
  "dotenv",
  "gauge-state",
  "locked-voter-state",
+ "quarry-state",
  "reqwest",
  "serde",
  "serde_json",

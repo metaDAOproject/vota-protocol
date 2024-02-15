@@ -1,5 +1,5 @@
 [workspace]
-members = [ "external-state/account-gen", "external-state/common", "off-chain/vote-market-manager",
+members = [ "external-state/account-gen", "external-state/common", "external-state/quarry-state", "off-chain/vote-market-manager",
     "programs/*"
 ]
 resolver = "2"

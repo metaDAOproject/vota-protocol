@@ -272,6 +272,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .value_parser(value_parser!(String))
                         .help("The data file output by the calculate-inputs subcommand"),
                 )
+        ).
+        subcommand(
+            clap::command!("find-max-vote-buy")
+                .arg(
+                    clap::Arg::new("epoch-data")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The data file output by the calculate-inputs subcommand"),
+                )
         );
 
     let matches = cmd.get_matches();
@@ -451,6 +460,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let mut data: actions::management::data::EpochData = serde_json::from_str(&epoch_data_string)?;
             actions::management::calculate_weights::calculate_weights(&mut data)?;
 
+        }
+        Some(("find-max-vote-buy", matches)) => {
+            let epoch_data = matches.get_one::<String>("epoch-data").unwrap();
+            let epoch_data_string = std::fs::read_to_string(epoch_data)?;
+            let mut data: actions::management::data::EpochData = serde_json::from_str(&epoch_data_string)?;
+            actions::management::find_max_vote_buy::find_max_vote_buy(&mut data)?;
         }
         _ => {
             println!("No subcommand");

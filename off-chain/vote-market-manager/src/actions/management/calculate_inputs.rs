@@ -16,6 +16,7 @@ use solana_program::pubkey::Pubkey;
 use spl_token::state::Mint;
 use std::collections::HashMap;
 use std::fs;
+use quarry_state::SECONDS_PER_YEAR;
 
 /// Creates a json file containing all the data needed to calculate algorithmic
 /// vote weights and the maximum amount of bribes that meet the efficiency
@@ -107,6 +108,13 @@ pub(crate) fn calculate_inputs(
     let gaugemeister_account = client.get_account(&GAUGEMEISTER).unwrap();
     let gaugemeister_data =
         Gaugemeister::deserialize(&mut &gaugemeister_account.data[8..]).unwrap();
+    // Get SBR emissions for epoch
+    let rewarder = client.get_account(&gaugemeister_data.rewarder)?;
+    let rewarder_data = quarry_state::Rewarder::deserialize(&mut &rewarder.data[8..]).unwrap();
+    let sbr_per_year = rewarder_data.annual_rewards_rate;
+    let sbr_per_second = sbr_per_year as f64 / SECONDS_PER_YEAR as f64;
+    let sbr_per_epoch = sbr_per_second * gaugemeister_data.epoch_duration_seconds as f64;
+    println!("sbr_per_epoch: {:?}", sbr_per_epoch / 1_000_000.0);
     let mut already_voted_count = 0;
     let mut total_delegated_votes: u64 = 0;
     for (key, escrow) in &delegated_voters {
@@ -156,6 +164,7 @@ pub(crate) fn calculate_inputs(
         gauges,
         prices,
         escrows: delegated_voters.iter().map(|x| x.0).collect(),
+        sbr_per_epoch: 0,
     };
     let epoch_stats_json = serde_json::to_string(&epoch_votes).unwrap();
     fs::write(
