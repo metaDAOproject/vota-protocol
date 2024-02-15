@@ -1,6 +1,4 @@
-# Vote Market
-
-![License LGPLv3](https://img.shields.io/badge/License-LGPLv3-violet.svg)
+# Vota
 
 Monorepo that houses the programs and utilities for the BRB ecosystem.
 
