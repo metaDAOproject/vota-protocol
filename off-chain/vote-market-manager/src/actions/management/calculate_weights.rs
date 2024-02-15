@@ -38,7 +38,6 @@ pub(crate) fn sort_gauges(gauges: &mut Vec<GaugeInfo>) {
 pub fn weight_calc(data: &EpochData) -> Result<Vec<VoteWeight>, Box<dyn std::error::Error>> {
     let mut input_data: EpochData = data.clone();
     let mut pass = weight_calc_pass(&mut input_data).unwrap();
-    let mut i = 0;
     sort_gauges(&mut input_data.gauges);
     input_data.gauges = input_data.gauges.iter().filter(|x| x.payment > 0.0).cloned().collect();
     while pass.len() > 0 && pass[0].votes <= 0 {
@@ -47,7 +46,6 @@ pub fn weight_calc(data: &EpochData) -> Result<Vec<VoteWeight>, Box<dyn std::err
         input_data.gauges.remove(0);
         sort_gauges(&mut input_data.gauges);
         pass = weight_calc_pass(&input_data).unwrap();
-        i += 1;
     }
     Ok(pass)
 }
