@@ -7,7 +7,7 @@ use solana_sdk::signature::Keypair;
 use crate::actions::management::data::{EpochData, VoteWeight};
 use crate::actions::vote_market::set_maximum::set_maximum;
 
-pub(crate) fn find_max_vote_buy(client: &RpcClient, anchor_client: &Client<&Keypair>, payer: &Keypair, data: &mut EpochData, vote_weights: Vec<VoteWeight>) -> Result<(), Box<dyn std::error::Error>> {
+pub(crate) fn find_max_vote_buy(client: &RpcClient, anchor_client: &Client<&Keypair>, payer: &Keypair, data: EpochData, vote_weights: Vec<VoteWeight>) -> Result<(), Box<dyn std::error::Error>> {
     println!("find_max_vote_buy {:#?}", data);
     for gauge in &data.gauges {
         let vote_weight = vote_weights.iter().find(|x| x.gauge == gauge.gauge);

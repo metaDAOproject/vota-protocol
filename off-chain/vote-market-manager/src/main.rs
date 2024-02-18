@@ -1,15 +1,16 @@
-use crate::actions::queries::escrows;
+use std::env;
+use std::str::FromStr;
 
-use crate::accounts::resolve::get_delegate;
+use anchor_lang::AnchorDeserialize;
 use clap::value_parser;
 use dotenv::dotenv;
 use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::pubkey;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Signer;
-use std::env;
-use std::str::FromStr;
-use anchor_lang::AnchorDeserialize;
+
+use crate::accounts::resolve::get_delegate;
+use crate::actions::queries::escrows;
 use crate::utils::short_address;
 
 mod accounts;
@@ -299,6 +300,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .value_parser(value_parser!(String))
                         .help("The vote weights file output by the calculate-weights subcommand"),
                 )
+        )
+        .subcommand(
+            clap::command!("execute-votes")
+                .arg(
+                    clap::Arg::new("epoch-data")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The data file output by the calculate-inputs subcommand"),
+                )
+                .arg(
+                    clap::Arg::new("vote-weights")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The vote weights file output by the calculate-weights subcommand"),
+                )
         );
 
     let matches = cmd.get_matches();
@@ -364,7 +380,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let direct_votes = actions::queries::direct_votes::get_direct_votes(&client, *epoch)?;
             let mut total_votes = 0;
             for eg in direct_votes {
-
                 let gauge_account = client.get_account(&eg.gauge)?;
                 let gauge_data = gauge_state::Gauge::deserialize(&mut gauge_account.data[8..].as_ref())?;
                 let quarry_address = gauge_data.quarry;
@@ -491,23 +506,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let epoch_data_string = std::fs::read_to_string(epoch_data)?;
             let mut data: actions::management::data::EpochData = serde_json::from_str(&epoch_data_string)?;
             actions::management::calculate_weights::calculate_weights(&mut data)?;
-
         }
         Some(("calculate-weights-simple", matches)) => {
             let epoch_data = matches.get_one::<String>("epoch-data").unwrap();
             let epoch_data_string = std::fs::read_to_string(epoch_data)?;
             let mut data: actions::management::data::EpochData = serde_json::from_str(&epoch_data_string)?;
             actions::management::calculate_weights_simple::calculate_weights(&mut data)?;
-
         }
         Some(("find-max-vote-buy", matches)) => {
             let epoch_data = matches.get_one::<String>("epoch-data").unwrap();
             let epoch_data_string = std::fs::read_to_string(epoch_data)?;
-            let mut data: actions::management::data::EpochData = serde_json::from_str(&epoch_data_string)?;
+            let data: actions::management::data::EpochData = serde_json::from_str(&epoch_data_string)?;
             let vote_weights_file = matches.get_one::<String>("vote-weights").unwrap();
             let vote_weights_string = std::fs::read_to_string(vote_weights_file)?;
             let vote_weights: Vec<actions::management::data::VoteWeight> = serde_json::from_str(&vote_weights_string)?;
-            actions::management::find_max_vote_buy::find_max_vote_buy(&client, &anchor_client, &payer, &mut data, vote_weights)?;
+            actions::management::find_max_vote_buy::find_max_vote_buy(&client, &anchor_client, &payer, data, vote_weights)?;
+        }
+        Some(("execute-votes", matches)) => {
+            let epoch_data = matches.get_one::<String>("epoch-data").unwrap();
+            let epoch_data_string = std::fs::read_to_string(epoch_data)?;
+            let data: actions::management::data::EpochData = serde_json::from_str(&epoch_data_string)?;
+            let vote_weights_file = matches.get_one::<String>("vote-weights").unwrap();
+            let vote_weights_string = std::fs::read_to_string(vote_weights_file)?;
+            let vote_weights: Vec<actions::management::data::VoteWeight> = serde_json::from_str(&vote_weights_string)?;
+            actions::management::execute_votes::execute_votes(&client, &anchor_client, &payer, data, vote_weights)?;
         }
         _ => {
             println!("No subcommand");
