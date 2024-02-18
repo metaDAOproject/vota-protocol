@@ -274,12 +274,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 )
         ).
         subcommand(
+            clap::command!("calculate-weights-simple")
+                .arg(
+                    clap::Arg::new("epoch-data")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The data file output by the calculate-inputs subcommand"),
+                )
+        ).
+        subcommand(
             clap::command!("find-max-vote-buy")
                 .arg(
                     clap::Arg::new("epoch-data")
                         .required(true)
                         .value_parser(value_parser!(String))
                         .help("The data file output by the calculate-inputs subcommand"),
+                )
+                .arg(
+                    clap::Arg::new("vote-weights")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The vote weights file output by the calculate-weights subcommand"),
                 )
         );
 
@@ -461,11 +476,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             actions::management::calculate_weights::calculate_weights(&mut data)?;
 
         }
+        Some(("calculate-weights-simple", matches)) => {
+            let epoch_data = matches.get_one::<String>("epoch-data").unwrap();
+            let epoch_data_string = std::fs::read_to_string(epoch_data)?;
+            let mut data: actions::management::data::EpochData = serde_json::from_str(&epoch_data_string)?;
+            actions::management::calculate_weights_simple::calculate_weights(&mut data)?;
+
+        }
         Some(("find-max-vote-buy", matches)) => {
             let epoch_data = matches.get_one::<String>("epoch-data").unwrap();
             let epoch_data_string = std::fs::read_to_string(epoch_data)?;
             let mut data: actions::management::data::EpochData = serde_json::from_str(&epoch_data_string)?;
-            actions::management::find_max_vote_buy::find_max_vote_buy(&mut data)?;
+            let vote_weights_file = matches.get_one::<String>("vote-weights").unwrap();
+            let vote_weights_string = std::fs::read_to_string(vote_weights_file)?;
+            let vote_weights: Vec<actions::management::data::VoteWeight> = serde_json::from_str(&vote_weights_string)?;
+            actions::management::find_max_vote_buy::find_max_vote_buy(&mut data, vote_weights)?;
         }
         _ => {
             println!("No subcommand");

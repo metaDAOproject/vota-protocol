@@ -107,6 +107,8 @@ mod test_calculate_weight {
                   (KnownTokens::BLZE, 0.00311461),
             ]),
             escrows: vec![],
+            sbr_per_epoch: 0,
+            usd_per_vote: 0.0,
         };
         let weights = weight_calc_pass(&data).unwrap();
         assert_eq!(weights.len(), 3);
@@ -147,6 +149,8 @@ mod test_calculate_weight {
                 (KnownTokens::BLZE, 0.00311461),
             ]),
             escrows: vec![],
+            sbr_per_epoch: 0,
+            usd_per_vote: 0.0,
         };
         let weights = weight_calc_pass(&data).unwrap();
         assert_eq!(weights[0].votes, 100_000);
@@ -189,6 +193,8 @@ mod test_calculate_weight {
                 (KnownTokens::BLZE, 0.00311461),
             ]),
             escrows: vec![],
+            sbr_per_epoch: 0,
+            usd_per_vote: 0.0,
         };
         let weights = weight_calc_pass(&data).unwrap();
         assert_eq!(weights.len(), 3);
@@ -232,6 +238,8 @@ mod test_calculate_weight {
                 (KnownTokens::BLZE, 0.00311461),
             ]),
             escrows: vec![],
+            sbr_per_epoch: 0,
+            usd_per_vote: 0.0,
         };
         let weights = weight_calc_pass(&data).unwrap();
         assert_eq!(weights.len(), 3);
@@ -354,6 +362,8 @@ mod test_calculate_weight {
                 (KnownTokens::BLZE, 0.00311461),
             ]),
             escrows: vec![],
+            sbr_per_epoch: 0,
+            usd_per_vote: 0.0,
         };
 
         let weights = weight_calc(&data).unwrap();
