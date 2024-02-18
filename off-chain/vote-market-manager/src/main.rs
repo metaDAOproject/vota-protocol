@@ -507,7 +507,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let vote_weights_file = matches.get_one::<String>("vote-weights").unwrap();
             let vote_weights_string = std::fs::read_to_string(vote_weights_file)?;
             let vote_weights: Vec<actions::management::data::VoteWeight> = serde_json::from_str(&vote_weights_string)?;
-            actions::management::find_max_vote_buy::find_max_vote_buy(&mut data, vote_weights)?;
+            actions::management::find_max_vote_buy::find_max_vote_buy(&client, &anchor_client, &payer, &mut data, vote_weights)?;
         }
         _ => {
             println!("No subcommand");

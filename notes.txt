@@ -1,0 +1,7 @@
+finish efficiency
+- get the value
+- calc amount of votes?
+- run on-chain instruction
+remove efficiency constant from config
+add fee to program
+
