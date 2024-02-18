@@ -9,10 +9,13 @@ use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Signer;
 use std::env;
 use std::str::FromStr;
+use anchor_lang::AnchorDeserialize;
+use crate::utils::short_address;
 
 mod accounts;
 mod actions;
 mod errors;
+mod utils;
 
 const ANCHOR_DISCRIMINATOR_SIZE: usize = 8;
 const GAUGEMEISTER: Pubkey = pubkey!("28ZDtf6d2wsYhBvabTxUHTRT6MDxqjmqR7RMCp348tyU");
@@ -355,9 +358,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("{}", escrow);
         }
         Some(("get-direct-votes", matches)) => {
+            // Update this with the latest from the file from calculate-inputs
+            let usd_per_vote = 9.699848367796068e-12;
             let epoch = matches.get_one::<u32>("epoch").unwrap();
             let direct_votes = actions::queries::direct_votes::get_direct_votes(&client, *epoch)?;
-            println!("direct votes: {:?}", direct_votes);
+            let mut total_votes = 0;
+            for eg in direct_votes {
+
+                let gauge_account = client.get_account(&eg.gauge)?;
+                let gauge_data = gauge_state::Gauge::deserialize(&mut gauge_account.data[8..].as_ref())?;
+                let quarry_address = gauge_data.quarry;
+                let quarry_account = client.get_account(&quarry_address)?;
+                let quarry_data = quarry_state::Quarry::deserialize(&mut quarry_account.data[8..].as_ref())?;
+                let quarry_mint = quarry_data.token_mint_key;
+                total_votes += eg.total_power;
+                println!("Pool Mint: {:?}, Gauge: {:?}, Power: {:?}, USD value of votes: {:?}", short_address(&quarry_mint), short_address(&eg.gauge), eg.total_power, eg.total_power as f64 * usd_per_vote);
+            }
+            println!("Total votes: {:?}", total_votes);
         }
         Some(("get-vote-buys", matches)) => {
             let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap())?;

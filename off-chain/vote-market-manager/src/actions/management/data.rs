@@ -11,6 +11,7 @@ pub struct EpochData {
     )]
     pub config: Pubkey,
     pub epoch: u32,
+    pub total_votes: u64,
     pub direct_votes: u64,
     pub delegated_votes: u64,
     pub total_vote_buy_value: f64,

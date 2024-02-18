@@ -71,15 +71,17 @@ pub(crate) fn calculate_inputs(
     let direct_votes = get_direct_votes(client, epoch)?;
 
     println!("account len: {:?}", direct_votes.len());
-    let mut total_power: u64 = 0;
+    let mut total_power_vote_buy_gauges: u64 = 0;
+    let mut total_votes: u64 = 0;
     let mut gauges: Vec<GaugeInfo> = Vec::new();
     let mut total_vote_buy_value: f64 = 0.0;
     for epoch_gauge in direct_votes {
+        total_votes += epoch_gauge.total_power;
         // Only count gauges that have an associated vote buy
         if !vote_buys.iter().any(|x| x.gauge == epoch_gauge.gauge) {
             continue;
         }
-        total_power += epoch_gauge.total_power;
+        total_power_vote_buy_gauges += epoch_gauge.total_power;
         let mut payment = 0.0;
         if let Some(vote_buy) = vote_buys.iter().find(|x| x.gauge == epoch_gauge.gauge) {
             println!("found vote buy: {:?}", vote_buy);
@@ -145,25 +147,30 @@ pub(crate) fn calculate_inputs(
 
     //To get algorithmic votes subtract votes that are already used from the total of all epoch gauges
 
-    println!("total_power: {:?}", total_power);
+    println!("total votes in vote buy pools: {:?}", total_power_vote_buy_gauges);
+    println!("total votes {:?}", total_votes);
+
 
     // Get SBR emissions for epoch
     let rewarder = client.get_account(&gaugemeister_data.rewarder)?;
     let rewarder_data = quarry_state::Rewarder::deserialize(&mut &rewarder.data[8..]).unwrap();
     let sbr_per_year = rewarder_data.annual_rewards_rate;
-    let sbr_per_second = sbr_per_year as f64 / SECONDS_PER_YEAR as f64;
+    // Divide by 1e6 to account for decimals. Need to adjust if different token is used
+    let sbr_per_second = sbr_per_year as f64 / SECONDS_PER_YEAR as f64 / 1_000_000.0;
     let sbr_per_epoch = sbr_per_second * gaugemeister_data.epoch_duration_seconds as f64;
-    println!("sbr_per_epoch: {:?}", sbr_per_epoch / 1_000_000.0);
-    // TODO: Add delegated vots to toal_power
-    let sbr_per_vote = sbr_per_epoch / (total_power + total_delegated_votes) as f64;
-    println!("sbr_per_vote: {:?}", sbr_per_vote / 1_000_000.0);
+    println!("sbr_per_epoch: {:?}", sbr_per_epoch);
+    let sbr_per_vote = sbr_per_epoch / (total_votes + total_delegated_votes) as f64;
+    let sbr_price = prices.get(&KnownTokens::SBR).unwrap();
+    println!("sbr_price: {:?}", sbr_price);
+    println!("sbr_per_vote: {:?}", sbr_per_vote);
     let usd_per_vote = sbr_per_vote * prices.get(&KnownTokens::SBR).unwrap();
     println!("usd_per_vote: {:?}", usd_per_vote);
 
     let epoch_votes = EpochData {
         config: *config,
         epoch,
-        direct_votes: total_power,
+        total_votes,
+        direct_votes: total_power_vote_buy_gauges,
         delegated_votes: total_delegated_votes,
         total_vote_buy_value,
         gauges,
