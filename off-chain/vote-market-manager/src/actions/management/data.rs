@@ -22,6 +22,7 @@ pub struct EpochData {
         serialize_with = "common::serialize_pubkey_vec"
     )]
     pub escrows: Vec<Pubkey>,
+    pub usd_per_vote: f64,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

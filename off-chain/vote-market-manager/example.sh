@@ -17,4 +17,4 @@ cargo run -- vote $ESCROW $CONFIG $EPOCH 2> /dev/null
 # Redeem
 cargo run -- trigger-epoch 2> /dev/null
 cargo run -- set-maximum $CONFIG $GAUGE 5555555 $EPOCH 2> /dev/null
-cargo run -- claim $MINT $ESCROW $CONFIG $GAUGE $EPOCH 2> /dev/null
+cargo run -- claim $MINT $ESCROW $CONFIG $GAUGE $EPOCH 
