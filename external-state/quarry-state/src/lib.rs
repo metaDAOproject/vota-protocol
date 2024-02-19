@@ -46,7 +46,6 @@ pub struct Rewarder {
 }
 impl Rewarder {
     pub const LEN: usize = 32 + 1 + 32 + 32 + 2 + 8 + 8 + 32 + 32 + 32 + 8 + 32 + 1;
-
 }
 /// A pool which distributes tokens to its [Miner]s.
 #[account]

@@ -1,11 +1,10 @@
-use std::collections::HashMap;
-use std::fs;
+use crate::actions::management::data::{EpochData, GaugeInfo, VoteWeight};
 use chrono::Utc;
 use solana_program::pubkey::Pubkey;
-use crate::actions::management::data::{EpochData, GaugeInfo, VoteWeight};
+use std::collections::HashMap;
+use std::fs;
 
-pub(crate) fn calculate_weights(data: &mut EpochData)
-                                -> Result<(), Box<dyn std::error::Error>> {
+pub(crate) fn calculate_weights(data: &mut EpochData) -> Result<(), Box<dyn std::error::Error>> {
     let weights = weight_calc(data)?;
 
     let vote_weights_json = serde_json::to_string(&weights).unwrap();
@@ -21,14 +20,29 @@ pub(crate) fn calculate_weights(data: &mut EpochData)
 }
 
 pub(crate) fn sort_gauges(gauges: &mut Vec<GaugeInfo>) {
-
     gauges.sort_by(|a, b| {
         //change all zeros to very small numbers to get the correct order and
         //avoid divide by zero
-        let votes_a = if a.votes == 0 { 0.0000000001 } else { a.votes as f64 };
-        let votes_b = if b.votes == 0 { 0.0000000001 } else { b.votes as f64 };
-        let payment_a = if a.payment == 0.0 { 0.0000000001 } else { a.payment };
-        let payment_b = if b.payment == 0.0 { 0.0000000001 } else { b.payment };
+        let votes_a = if a.votes == 0 {
+            0.0000000001
+        } else {
+            a.votes as f64
+        };
+        let votes_b = if b.votes == 0 {
+            0.0000000001
+        } else {
+            b.votes as f64
+        };
+        let payment_a = if a.payment == 0.0 {
+            0.0000000001
+        } else {
+            a.payment
+        };
+        let payment_b = if b.payment == 0.0 {
+            0.0000000001
+        } else {
+            b.payment
+        };
         let cmp_value_a = votes_a / payment_a;
         let cmp_value_b = votes_b / payment_b;
         cmp_value_b.partial_cmp(&cmp_value_a).unwrap()
@@ -39,7 +53,12 @@ pub fn weight_calc(data: &EpochData) -> Result<Vec<VoteWeight>, Box<dyn std::err
     let mut input_data: EpochData = data.clone();
     let mut pass = weight_calc_pass(&mut input_data).unwrap();
     sort_gauges(&mut input_data.gauges);
-    input_data.gauges = input_data.gauges.iter().filter(|x| x.payment > 0.0).cloned().collect();
+    input_data.gauges = input_data
+        .gauges
+        .iter()
+        .filter(|x| x.payment > 0.0)
+        .cloned()
+        .collect();
     while pass.len() > 0 && pass[0].votes <= 0 {
         input_data.direct_votes -= input_data.gauges[0].votes;
         input_data.total_vote_buy_value -= input_data.gauges[0].payment;
@@ -50,28 +69,33 @@ pub fn weight_calc(data: &EpochData) -> Result<Vec<VoteWeight>, Box<dyn std::err
     Ok(pass)
 }
 
-
 pub fn weight_calc_pass(data: &EpochData) -> Result<Vec<VoteWeight>, Box<dyn std::error::Error>> {
     let mut vote_weights: Vec<VoteWeight> = vec![];
     for gauge_data in data.gauges.iter() {
         if gauge_data.payment == 0.0 {
             continue;
         }
-        let algorithmic_votes = (gauge_data.payment * (data.direct_votes as f64 + data.delegated_votes as f64) / data.total_vote_buy_value) - gauge_data.votes as f64;
+        let algorithmic_votes = (gauge_data.payment
+            * (data.direct_votes as f64 + data.delegated_votes as f64)
+            / data.total_vote_buy_value)
+            - gauge_data.votes as f64;
 
         vote_weights.push(VoteWeight {
             gauge: gauge_data.gauge,
             votes: algorithmic_votes.round() as u64,
         });
-        println!("Algorithmic votes for {}: {}", gauge_data.gauge, algorithmic_votes);
+        println!(
+            "Algorithmic votes for {}: {}",
+            gauge_data.gauge, algorithmic_votes
+        );
     }
     Ok(vote_weights)
 }
 
 #[cfg(test)]
 mod test_calculate_weight {
-    use crate::actions::management::oracle::KnownTokens;
     use super::*;
+    use crate::actions::management::oracle::KnownTokens;
     #[test]
     fn test_even_distribution() {
         let gauge1 = Pubkey::new_unique();
@@ -98,13 +122,13 @@ mod test_calculate_weight {
                     gauge: gauge3,
                     payment: 100.0,
                     votes: 0,
-                }
+                },
             ],
             prices: HashMap::from([
-                  (KnownTokens::mSOL, 120.56),
-                  (KnownTokens::UXD, 0.991553),
-                  (KnownTokens::SBR, 0.00286583),
-                  (KnownTokens::BLZE, 0.00311461),
+                (KnownTokens::mSOL, 120.56),
+                (KnownTokens::UXD, 0.991553),
+                (KnownTokens::SBR, 0.00286583),
+                (KnownTokens::BLZE, 0.00311461),
             ]),
             escrows: vec![],
             sbr_per_epoch: 0,
@@ -112,7 +136,10 @@ mod test_calculate_weight {
         };
         let weights = weight_calc_pass(&data).unwrap();
         assert_eq!(weights.len(), 3);
-        assert_eq!(weights[0].votes, (((data.direct_votes + data.delegated_votes) as f64)/3.0).round() as u64);
+        assert_eq!(
+            weights[0].votes,
+            (((data.direct_votes + data.delegated_votes) as f64) / 3.0).round() as u64
+        );
     }
     #[test]
     fn test_uneven_distribution() {
@@ -140,7 +167,7 @@ mod test_calculate_weight {
                     gauge: gauge3,
                     payment: 30.0,
                     votes: 0,
-                }
+                },
             ],
             prices: HashMap::from([
                 (KnownTokens::mSOL, 120.56),
@@ -184,7 +211,7 @@ mod test_calculate_weight {
                     gauge: gauge3,
                     payment: 100.0,
                     votes: 0,
-                }
+                },
             ],
             prices: HashMap::from([
                 (KnownTokens::mSOL, 120.56),
@@ -229,7 +256,7 @@ mod test_calculate_weight {
                     gauge: gauge3,
                     payment: 100.0,
                     votes: 30,
-                }
+                },
             ],
             prices: HashMap::from([
                 (KnownTokens::mSOL, 120.56),
@@ -268,7 +295,7 @@ mod test_calculate_weight {
                 gauge: gauge3,
                 payment: 700.0,
                 votes: 30,
-            }
+            },
         ];
         sort_gauges(&mut gauges);
         // Want to eliminate the lowest bribes first in this case
@@ -296,10 +323,10 @@ mod test_calculate_weight {
                 gauge: gauge3,
                 payment: 300.0,
                 votes: 0,
-            }
+            },
         ];
         sort_gauges(&mut gauges);
-       // Want to eliminate the lowest bribes first in this case
+        // Want to eliminate the lowest bribes first in this case
         assert_eq!(gauges[0].payment, 100.0);
     }
     pub fn test_sort_gauges_divide_by_zero() {
@@ -321,7 +348,7 @@ mod test_calculate_weight {
                 gauge: gauge3,
                 payment: 300.0,
                 votes: 0,
-            }
+            },
         ];
         sort_gauges(&mut gauges);
         assert_eq!(gauges[0].payment, 300.0);
@@ -335,7 +362,7 @@ mod test_calculate_weight {
             config: Pubkey::new_unique(),
             epoch: 1,
             //
-            direct_votes:100_002_000,
+            direct_votes: 100_002_000,
             delegated_votes: 300_000,
             total_vote_buy_value: 300.0,
             gauges: vec![
@@ -353,7 +380,7 @@ mod test_calculate_weight {
                     gauge: gauge3,
                     payment: 100.0,
                     votes: 1_000,
-                }
+                },
             ],
             prices: HashMap::from([
                 (KnownTokens::mSOL, 120.56),

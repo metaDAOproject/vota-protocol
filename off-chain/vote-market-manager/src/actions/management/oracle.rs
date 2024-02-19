@@ -1,6 +1,6 @@
 use crate::errors::VoteMarketManagerError;
 use reqwest::blocking::Client;
-use serde::{Serialize,Deserialize};
+use serde::{Deserialize, Serialize};
 use solana_program::pubkey::Pubkey;
 use std::collections::HashMap;
 

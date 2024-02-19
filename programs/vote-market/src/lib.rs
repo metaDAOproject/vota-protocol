@@ -40,6 +40,11 @@ pub mod vote_market {
         Ok(())
     }
 
+    pub fn update_claim_fee(ctx: Context<UpdateAdmin>, claim_fee: u16) -> Result<()> {
+        ctx.accounts.config.claim_fee = claim_fee;
+        Ok(())
+    }
+
     pub fn update_script_authority(
         ctx: Context<UpdateScriptAuthority>,
         script_authority: Pubkey,

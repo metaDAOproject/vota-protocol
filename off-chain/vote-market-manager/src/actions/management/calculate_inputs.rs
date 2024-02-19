@@ -11,12 +11,12 @@ use solana_client::rpc_client::RpcClient;
 use crate::accounts::resolve::{get_delegate, get_epoch_gauge_voter, get_gauge_voter};
 use crate::actions::queries::direct_votes::get_direct_votes;
 use locked_voter_state::Locker;
+use quarry_state::SECONDS_PER_YEAR;
 use solana_program::program_pack::Pack;
 use solana_program::pubkey::Pubkey;
 use spl_token::state::Mint;
 use std::collections::HashMap;
 use std::fs;
-use quarry_state::SECONDS_PER_YEAR;
 
 /// Creates a json file containing all the data needed to calculate algorithmic
 /// vote weights and the maximum amount of bribes that meet the efficiency
@@ -147,9 +147,11 @@ pub(crate) fn calculate_inputs(
 
     //To get algorithmic votes subtract votes that are already used from the total of all epoch gauges
 
-    println!("total votes in vote buy pools: {:?}", total_power_vote_buy_gauges);
+    println!(
+        "total votes in vote buy pools: {:?}",
+        total_power_vote_buy_gauges
+    );
     println!("total votes {:?}", total_votes);
-
 
     // Get SBR emissions for epoch
     let rewarder = client.get_account(&gaugemeister_data.rewarder)?;

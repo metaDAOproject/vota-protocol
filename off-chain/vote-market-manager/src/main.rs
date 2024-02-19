@@ -267,26 +267,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .value_parser(value_parser!(u32))
                         .help("The epoch to calculate inputs for"),
                 ),
-        ).
-        subcommand(
-            clap::command!("calculate-weights")
-                .arg(
-                    clap::Arg::new("epoch-data")
-                        .required(true)
-                        .value_parser(value_parser!(String))
-                        .help("The data file output by the calculate-inputs subcommand"),
-                )
-        ).
-        subcommand(
-            clap::command!("calculate-weights-simple")
-                .arg(
-                    clap::Arg::new("epoch-data")
-                        .required(true)
-                        .value_parser(value_parser!(String))
-                        .help("The data file output by the calculate-inputs subcommand"),
-                )
-        ).
-        subcommand(
+        )
+        .subcommand(
+            clap::command!("calculate-weights").arg(
+                clap::Arg::new("epoch-data")
+                    .required(true)
+                    .value_parser(value_parser!(String))
+                    .help("The data file output by the calculate-inputs subcommand"),
+            ),
+        )
+        .subcommand(
+            clap::command!("calculate-weights-simple").arg(
+                clap::Arg::new("epoch-data")
+                    .required(true)
+                    .value_parser(value_parser!(String))
+                    .help("The data file output by the calculate-inputs subcommand"),
+            ),
+        )
+        .subcommand(
             clap::command!("find-max-vote-buy")
                 .arg(
                     clap::Arg::new("epoch-data")
@@ -299,7 +297,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .required(true)
                         .value_parser(value_parser!(String))
                         .help("The vote weights file output by the calculate-weights subcommand"),
-                )
+                ),
         )
         .subcommand(
             clap::command!("execute-votes")
@@ -314,7 +312,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .required(true)
                         .value_parser(value_parser!(String))
                         .help("The vote weights file output by the calculate-weights subcommand"),
-                )
+                ),
         );
 
     let matches = cmd.get_matches();
@@ -381,13 +379,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let mut total_votes = 0;
             for eg in direct_votes {
                 let gauge_account = client.get_account(&eg.gauge)?;
-                let gauge_data = gauge_state::Gauge::deserialize(&mut gauge_account.data[8..].as_ref())?;
+                let gauge_data =
+                    gauge_state::Gauge::deserialize(&mut gauge_account.data[8..].as_ref())?;
                 let quarry_address = gauge_data.quarry;
                 let quarry_account = client.get_account(&quarry_address)?;
-                let quarry_data = quarry_state::Quarry::deserialize(&mut quarry_account.data[8..].as_ref())?;
+                let quarry_data =
+                    quarry_state::Quarry::deserialize(&mut quarry_account.data[8..].as_ref())?;
                 let quarry_mint = quarry_data.token_mint_key;
                 total_votes += eg.total_power;
-                println!("Pool Mint: {:?}, Gauge: {:?}, Power: {:?}, USD value of votes: {:?}", short_address(&quarry_mint), short_address(&eg.gauge), eg.total_power, eg.total_power as f64 * usd_per_vote);
+                println!(
+                    "Pool Mint: {:?}, Gauge: {:?}, Power: {:?}, USD value of votes: {:?}",
+                    short_address(&quarry_mint),
+                    short_address(&eg.gauge),
+                    eg.total_power,
+                    eg.total_power as f64 * usd_per_vote
+                );
             }
             println!("Total votes: {:?}", total_votes);
         }
@@ -504,32 +510,50 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(("calculate-weights", matches)) => {
             let epoch_data = matches.get_one::<String>("epoch-data").unwrap();
             let epoch_data_string = std::fs::read_to_string(epoch_data)?;
-            let mut data: actions::management::data::EpochData = serde_json::from_str(&epoch_data_string)?;
+            let mut data: actions::management::data::EpochData =
+                serde_json::from_str(&epoch_data_string)?;
             actions::management::calculate_weights::calculate_weights(&mut data)?;
         }
         Some(("calculate-weights-simple", matches)) => {
             let epoch_data = matches.get_one::<String>("epoch-data").unwrap();
             let epoch_data_string = std::fs::read_to_string(epoch_data)?;
-            let mut data: actions::management::data::EpochData = serde_json::from_str(&epoch_data_string)?;
+            let mut data: actions::management::data::EpochData =
+                serde_json::from_str(&epoch_data_string)?;
             actions::management::calculate_weights_simple::calculate_weights(&mut data)?;
         }
         Some(("find-max-vote-buy", matches)) => {
             let epoch_data = matches.get_one::<String>("epoch-data").unwrap();
             let epoch_data_string = std::fs::read_to_string(epoch_data)?;
-            let data: actions::management::data::EpochData = serde_json::from_str(&epoch_data_string)?;
+            let data: actions::management::data::EpochData =
+                serde_json::from_str(&epoch_data_string)?;
             let vote_weights_file = matches.get_one::<String>("vote-weights").unwrap();
             let vote_weights_string = std::fs::read_to_string(vote_weights_file)?;
-            let vote_weights: Vec<actions::management::data::VoteWeight> = serde_json::from_str(&vote_weights_string)?;
-            actions::management::find_max_vote_buy::find_max_vote_buy(&client, &anchor_client, &payer, data, vote_weights)?;
+            let vote_weights: Vec<actions::management::data::VoteWeight> =
+                serde_json::from_str(&vote_weights_string)?;
+            actions::management::find_max_vote_buy::find_max_vote_buy(
+                &client,
+                &anchor_client,
+                &payer,
+                data,
+                vote_weights,
+            )?;
         }
         Some(("execute-votes", matches)) => {
             let epoch_data = matches.get_one::<String>("epoch-data").unwrap();
             let epoch_data_string = std::fs::read_to_string(epoch_data)?;
-            let data: actions::management::data::EpochData = serde_json::from_str(&epoch_data_string)?;
+            let data: actions::management::data::EpochData =
+                serde_json::from_str(&epoch_data_string)?;
             let vote_weights_file = matches.get_one::<String>("vote-weights").unwrap();
             let vote_weights_string = std::fs::read_to_string(vote_weights_file)?;
-            let vote_weights: Vec<actions::management::data::VoteWeight> = serde_json::from_str(&vote_weights_string)?;
-            actions::management::execute_votes::execute_votes(&client, &anchor_client, &payer, data, vote_weights)?;
+            let vote_weights: Vec<actions::management::data::VoteWeight> =
+                serde_json::from_str(&vote_weights_string)?;
+            actions::management::execute_votes::execute_votes(
+                &client,
+                &anchor_client,
+                &payer,
+                data,
+                vote_weights,
+            )?;
         }
         _ => {
             println!("No subcommand");

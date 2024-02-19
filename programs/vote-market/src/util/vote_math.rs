@@ -18,10 +18,7 @@ pub fn get_user_payment(
         .ok_or(VoteMarketError::InvalidVotePower.into())
 }
 
-pub fn get_fee(
-    payment_to_user: u64,
-    fee: u16,
-) -> Result<u64> {
+pub fn get_fee(payment_to_user: u64, fee: u16) -> Result<u64> {
     if fee > 10000 {
         return err!(VoteMarketError::InvalidFee);
     }
@@ -32,8 +29,8 @@ pub fn get_fee(
 // Unit tests
 #[cfg(test)]
 mod test_vote_math {
-    use anchor_lang::error::Error::AnchorError;
     use super::*;
+    use anchor_lang::error::Error::AnchorError;
 
     #[test]
     fn test_get_fee() {
@@ -44,7 +41,7 @@ mod test_vote_math {
         assert_eq!(get_fee(101, 600), Ok(6));
         match get_fee(100, 10001) {
             Ok(_) => panic!("should have failed"),
-            Err(_) => {},
+            Err(_) => {}
         }
     }
     #[test]
