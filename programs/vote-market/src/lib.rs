@@ -14,7 +14,7 @@ declare_id!("CgpagJ94phFKHBKkk4pd4YdKgfNCp5SzsiNwcLe73dc");
 #[program]
 pub mod vote_market {
     use super::*;
-    use crate::util::vote_math::get_user_payment;
+    use crate::util::vote_math::{get_fee, get_user_payment};
     use anchor_lang::solana_program;
     use anchor_lang::solana_program::program::{invoke, invoke_signed};
     use anchor_lang::solana_program::system_instruction;
@@ -170,7 +170,9 @@ pub mod vote_market {
                 return err!(errors::VoteMarketError::MaxVoteBuyAmountNotSet);
             }
         };
-        let payment_to_user = get_user_payment(total_power, total_vote_payment, allocated_power)?;
+        let total_payment = get_user_payment(total_power, total_vote_payment, allocated_power)?;
+        let fee = get_fee(total_payment, ctx.accounts.config.claim_fee)?;
+        let payment_to_user = total_payment - fee;
         let transfer_ix = spl_token::instruction::transfer(
             &ctx.accounts.token_program.key(),
             &ctx.accounts.token_vault.key(),
@@ -193,6 +195,30 @@ pub mod vote_market {
             &[
                 ctx.accounts.token_vault.to_account_info(),
                 ctx.accounts.seller_token_account.to_account_info(),
+                ctx.accounts.vote_buy.to_account_info(),
+                ctx.accounts.token_program.to_account_info(),
+            ],
+            &[&[
+                b"vote-buy".as_ref(),
+                epoch.to_le_bytes().as_ref(),
+                ctx.accounts.config.key().as_ref(),
+                ctx.accounts.gauge.key().as_ref(),
+                &[bump],
+            ]],
+        )?;
+        let transfer_to_treasury_ix = spl_token::instruction::transfer(
+            &ctx.accounts.token_program.key(),
+            &ctx.accounts.token_vault.key(),
+            &ctx.accounts.treasury.key(),
+            &vote_buy.key(),
+            &[],
+            fee,
+        )?;
+        invoke_signed(
+            &transfer_to_treasury_ix,
+            &[
+                ctx.accounts.token_vault.to_account_info(),
+                ctx.accounts.treasury.to_account_info(),
                 ctx.accounts.vote_buy.to_account_info(),
                 ctx.accounts.token_program.to_account_info(),
             ],
@@ -445,14 +471,22 @@ pub struct ClaimVotePayment<'info> {
     associated_token::mint = mint,
     associated_token::authority = seller,
     )]
-    pub seller_token_account: Account<'info, TokenAccount>,
+    pub seller_token_account: Box<Account<'info, TokenAccount>>,
     #[account(mut,
     associated_token::mint = mint,
     associated_token::authority = vote_buy,
     )]
-    pub token_vault: Account<'info, TokenAccount>,
+    pub token_vault: Box<Account<'info, TokenAccount>>,
+    #[account(mut,
+    associated_token::mint = mint,
+    associated_token::authority = admin,
+    )]
+    /// CHECK I only need this to check the treasury
+    pub treasury: Box<Account<'info, TokenAccount>>,
+    /// CHECK Not enough stack space to deserialize
+    pub admin: UncheckedAccount<'info>,
     pub mint: Account<'info, Mint>,
-    #[account(has_one = gaugemeister, has_one = script_authority)]
+    #[account(has_one = gaugemeister, has_one = script_authority, has_one = admin)]
     pub config: Box<Account<'info, VoteMarketConfig>>,
     #[account(mut,
     seeds = [b"vote-buy".as_ref(),

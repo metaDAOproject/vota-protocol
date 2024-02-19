@@ -9,7 +9,7 @@ import {Gauge} from "../external-state/types/gauge";
 import {setupTokens} from "./setup-tokens";
 import {setupConfig} from "./test-setup";
 import {
-    ASSOCIATED_TOKEN_PROGRAM_ID,
+    ASSOCIATED_TOKEN_PROGRAM_ID, createAssociatedTokenAccount,
     getAccount,
     getAssociatedTokenAddressSync,
     TOKEN_PROGRAM_ID
@@ -80,6 +80,20 @@ describe("vote market rewards phase", () => {
             epochGauge
         } = getVoteAccounts(config, program, gaugeMeisterData, program.provider.publicKey);
 
+        const newAdmin = web3.Keypair.generate();
+        const updateAdminSig = await program.methods.updateAdmin(newAdmin.publicKey).accounts(
+            {
+                config: config.publicKey,
+                admin: program.provider.publicKey,
+            }).rpc();
+
+        const treasury = await createAssociatedTokenAccount(
+            connection,
+            payer,
+            mint,
+            newAdmin.publicKey
+            );
+
         try {
             // Claim payment
             await program.methods.claimVotePayment(gaugeMeisterData.currentRewardsEpoch + 1).accounts({
@@ -87,6 +101,8 @@ describe("vote market rewards phase", () => {
                 seller: program.provider.publicKey,
                 sellerTokenAccount: ata,
                 tokenVault,
+                treasury,
+                admin: newAdmin.publicKey,
                 mint,
                 config: config.publicKey,
                 voteBuy,
@@ -135,15 +151,13 @@ describe("vote market rewards phase", () => {
         const updateScriptAuthSig = await program.methods.updateScriptAuthority(nonSellerPayer.publicKey).accounts(
             {
                 config: config.publicKey,
-                admin: program.provider.publicKey,
-            }).rpc();
+                admin: newAdmin.publicKey,
+            }).signers([newAdmin]).rpc();
         const latestBlockhash = await program.provider.connection.getLatestBlockhash();
         await connection.confirmTransaction( {
                 signature: updateScriptAuthSig,
                 ...latestBlockhash
             }, "confirmed");
-        const configData = await program.account.voteMarketConfig.fetch(config.publicKey);
-
 
         // Can't claim until a max amount is set
         await program.methods.setMaxAmount(gaugeMeisterData.currentRewardsEpoch + 1, new BN(1_000_000)).accounts( {
@@ -154,11 +168,13 @@ describe("vote market rewards phase", () => {
             }
         ).signers([nonSellerPayer]).rpc();
 
-        const tx = await program.methods.claimVotePayment(gaugeMeisterData.currentRewardsEpoch + 1).accounts({
+        await program.methods.claimVotePayment(gaugeMeisterData.currentRewardsEpoch + 1).accounts({
             scriptAuthority: nonSellerPayer.publicKey,
             seller: program.provider.publicKey,
             sellerTokenAccount: ata,
             tokenVault,
+            treasury,
+            admin: newAdmin.publicKey,
             mint,
             config: config.publicKey,
             voteBuy,
@@ -178,10 +194,13 @@ describe("vote market rewards phase", () => {
         }).signers([nonSellerPayer]).rpc({commitment: "confirmed"});
         sellerTokenAccountData = await getAccount(program.provider.connection, ata);
         const expectedRewards = BigInt(18514);
-
-        expect(sellerTokenAccountData.amount).to.equal(BigInt(999_000_000) + expectedRewards);
+        const expectedFee = expectedRewards * BigInt(600) / BigInt(10_000);
+        expect(sellerTokenAccountData.amount).to.equal(BigInt(999_000_000) + expectedRewards - expectedFee);
         tokenVaultData = await getAccount(program.provider.connection, tokenVault);
         expect(tokenVaultData.amount).to.equal(BigInt(1_000_000) - expectedRewards);
+
+        const treasuryAccount = await getAccount(program.provider.connection, treasury);
+        expect(treasuryAccount.amount).to.equal(expectedFee);
         const voteDelegateBalance = await program.provider.connection.getBalance(voteDelegate);
         const expectedGaugeVoteRent = await program.provider.connection.getMinimumBalanceForRentExemption(16)
         expect(voteDelegateBalance).to.equal(expectedGaugeVoteRent);
@@ -193,6 +212,8 @@ describe("vote market rewards phase", () => {
                 seller: program.provider.publicKey,
                 sellerTokenAccount: ata,
                 tokenVault,
+                treasury,
+                admin: newAdmin.publicKey,
                 mint,
                 config: config.publicKey,
                 voteBuy,
