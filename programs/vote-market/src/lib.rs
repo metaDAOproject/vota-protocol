@@ -24,14 +24,14 @@ pub mod vote_market {
     pub fn create_config(
         ctx: Context<CreateConfig>,
         mints: Vec<Pubkey>,
-        efficiency_ratio: u64,
+        claim_fee: u16,
         script_authority: Pubkey,
     ) -> Result<()> {
         ctx.accounts.config.script_authority = script_authority;
         ctx.accounts.config.gaugemeister = ctx.accounts.gaugemeister.key();
         ctx.accounts.allowed_mints.mints = mints;
         ctx.accounts.config.admin = ctx.accounts.payer.key();
-        ctx.accounts.config.efficiency_ratio = efficiency_ratio;
+        ctx.accounts.config.claim_fee = claim_fee;
         Ok(())
     }
 

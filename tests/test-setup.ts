@@ -19,7 +19,7 @@ export async function setupConfig(program: Program<VoteMarket>, allowedMintList:
     if (!configAccount) {
         const tx = await program.methods.createConfig(
             allowedMintList,
-            new BN(100),
+            600,
             scriptAuthority,
         ).accounts(
             {

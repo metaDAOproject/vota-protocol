@@ -45,7 +45,7 @@ describe("vote market voting phase", () => {
         const configAccount = await program.account.voteMarketConfig.fetch(config.publicKey);
         expect(configAccount.gaugemeister).to.eql(GAUGEMEISTER);
         expect(configAccount.scriptAuthority).to.eql(scriptAuthority);
-        expect(configAccount.efficiencyRatio.eq(new BN(100))).to.be.true;
+        expect(configAccount.claimFee).to.eql(600);
         const allowedMintsAccount = await program.account.allowedMints.fetch(allowedMints);
         expect(allowedMintsAccount.mints).to.eql(allowedMintList);
     });
