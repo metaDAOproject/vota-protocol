@@ -336,7 +336,17 @@ pub mod vote_market {
 
     pub fn vote_buy_refund(ctx: Context<VoteBuyRefund>, epoch: u32) -> Result<()> {
         if let Some(max_amount) = ctx.accounts.vote_buy.max_amount {
-            let refund_amount = ctx.accounts.vote_buy.amount - max_amount;
+            msg!("Epoch: {} Current Rewards epoch {}", epoch, ctx.accounts.gaugemeister.current_rewards_epoch);
+            let mut refund_amount = ctx.accounts.vote_buy.amount;
+            if epoch < ctx.accounts.gaugemeister.current_rewards_epoch {
+                msg!("Claiming refund for expired claims");
+            } else {
+                msg!("Claiming refund for excess buy value");
+                refund_amount = ctx.accounts.vote_buy.amount.checked_sub(max_amount).ok_or(
+                    errors::VoteMarketError::InvalidRefund,
+                )?;
+                ctx.accounts.vote_buy.amount -= refund_amount;
+            }
             let transfer_ix = spl_token::instruction::transfer(
                 &ctx.accounts.token_program.key(),
                 &ctx.accounts.token_vault.key(),
@@ -370,6 +380,8 @@ pub mod vote_market {
                     &[bump],
                 ]],
             )?;
+        } else {
+            return err!(errors::VoteMarketError::MaxVoteBuyAmountNotSet);
         }
         Ok(())
     }
@@ -625,6 +637,7 @@ pub struct VoteBuyRefund<'info> {
     )]
     pub token_vault: Account<'info, TokenAccount>,
     #[account(
+    mut,
     has_one = mint,
     seeds = [
     b"vote-buy".as_ref(),
@@ -635,7 +648,9 @@ pub struct VoteBuyRefund<'info> {
     )]
     pub vote_buy: Account<'info, VoteBuy>,
     pub mint: Account<'info, Mint>,
+    #[account(has_one = gaugemeister)]
     pub config: Account<'info, VoteMarketConfig>,
     pub gauge: Account<'info, gauge_state::Gauge>,
+    pub gaugemeister: Account<'info, gauge_state::Gaugemeister>,
     pub token_program: Program<'info, Token>,
 }

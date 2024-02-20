@@ -1,32 +1,27 @@
 import fs from "fs";
 import * as anchor from "@coral-xyz/anchor";
-import { AnchorProvider, Program, web3 } from "@coral-xyz/anchor";
-import { VoteMarket } from "../target/types/vote_market";
+import {AnchorProvider, Program, web3} from "@coral-xyz/anchor";
+import {VoteMarket} from "../target/types/vote_market";
 import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet";
 import GAUGE_IDL from "../external-state/idls/gauge.json";
+import {GAUGE, GAUGE_PROGRAM_ID, GAUGEMEISTER, LOCKED_VOTER_PROGRAM_ID,} from "./constants";
+import {Gauge} from "../external-state/types/gauge";
+import {setupTokens} from "./setup-tokens";
+import {setupConfig} from "./test-setup";
 import {
-  GAUGE,
-  GAUGE_PROGRAM_ID,
-  GAUGEMEISTER,
-  LOCKED_VOTER_PROGRAM_ID,
-} from "./constants";
-import { Gauge } from "../external-state/types/gauge";
-import { setupTokens } from "./setup-tokens";
-import { setupConfig } from "./test-setup";
-import {
-  ASSOCIATED_TOKEN_PROGRAM_ID,
-  createAssociatedTokenAccount,
-  getAccount,
-  getAssociatedTokenAddressSync,
-  TOKEN_PROGRAM_ID,
+    ASSOCIATED_TOKEN_PROGRAM_ID,
+    createAssociatedTokenAccount,
+    getAccount,
+    getAssociatedTokenAddressSync,
+    TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import BN from "bn.js";
 import dotenv from "dotenv";
-import { expect } from "chai";
-import * as crypto from "crypto";
-import { getVoteAccounts } from "./common";
+import {expect} from "chai";
+import {getVoteAccounts, triggerNextEpoch} from "./common";
 
 dotenv.config();
+
 
 describe("vote market rewards phase", () => {
   // Configure the client to use the local cluster.
@@ -171,24 +166,8 @@ describe("vote market rewards phase", () => {
     }
 
     //get instruction discriminator
-    var hash = crypto.createHash("sha256");
-    hash.update(Buffer.from("global:trigger_next_epoch"));
-    const discriminator = hash.digest().subarray(0, 8);
-    const triggerNextEpochIx = new web3.TransactionInstruction({
-      data: Buffer.from(discriminator),
-      keys: [{ pubkey: GAUGEMEISTER, isSigner: false, isWritable: true }],
-      programId: GAUGE_PROGRAM_ID,
-    });
-    const latestBlock = await program.provider.connection.getLatestBlockhash();
-    const triggerNextEpochTx = new web3.Transaction({
-      feePayer: payer.publicKey,
-      ...latestBlock,
-    }).add(triggerNextEpochIx);
-    triggerNextEpochTx.sign(payer);
-    await program.provider.sendAndConfirm(triggerNextEpochTx, [], {
-      commitment: "confirmed",
-    });
-    let sellerTokenAccountData = await getAccount(
+      await triggerNextEpoch(program, payer);
+      let sellerTokenAccountData = await getAccount(
       program.provider.connection,
       ata
     );
@@ -385,9 +364,12 @@ describe("vote market rewards phase", () => {
         mint,
         config: config.publicKey,
         gauge: GAUGE,
+        gaugemeister: GAUGEMEISTER,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
-      .rpc();
+      .rpc( {
+          skipPreflight: true,
+      });
     let blockHash = await program.provider.connection.getLatestBlockhash();
     await program.provider.connection.confirmTransaction(
       {
@@ -397,8 +379,76 @@ describe("vote market rewards phase", () => {
       "confirmed"
     );
     buyerTokenAccountData = await getAccount(program.provider.connection, ata);
+    // Vote buys in excess of the max are refunded
     expect(buyerTokenAccountData.amount).to.equal(
       BigInt(999_000_000 + 300_000)
     );
+    // make sure the buyer can't get double refunds
+    try {
+        const sig = await program.methods
+            .voteBuyRefund(gaugeMeisterData.currentRewardsEpoch + 1)
+            .accounts({
+                buyer: program.provider.publicKey,
+                buyerTokenAccount: ata,
+                tokenVault,
+                voteBuy,
+                mint,
+                config: config.publicKey,
+                gauge: GAUGE,
+                gaugemeister: GAUGEMEISTER,
+                tokenProgram: TOKEN_PROGRAM_ID,
+            }).rpc(
+                {skipPreflight: true,}
+            );
+        let blockHash = await program.provider.connection.getLatestBlockhash();
+        await program.provider.connection.confirmTransaction(
+            {
+                signature: sig,
+                ...blockHash,
+            },
+            "confirmed"
+        );
+
+    } catch (e) {
+        expect(e.error.errorCode.code).to.equal("InvalidRefund");
+    }
+      //epochs are set to 1 second duration for the test
+      //Get the rest refunded after the rewards epoch ends
+      const gaugemeisterData = await gaugeProgram.account.gaugemeister.fetch(GAUGEMEISTER);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Votes are on rewards epoch
+      await triggerNextEpoch(program, payer);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Rewards epoch complete
+      await triggerNextEpoch(program, payer);
+      const sig2 = await program.methods
+          .voteBuyRefund(gaugeMeisterData.currentRewardsEpoch + 1)
+          .accounts({
+              buyer: program.provider.publicKey,
+              buyerTokenAccount: ata,
+              tokenVault,
+              voteBuy,
+              mint,
+              config: config.publicKey,
+              gauge: GAUGE,
+              gaugemeister: GAUGEMEISTER,
+              tokenProgram: TOKEN_PROGRAM_ID,
+          }).rpc(
+              {skipPreflight: false,}
+          );
+      let blockHash2 = await program.provider.connection.getLatestBlockhash();
+      await program.provider.connection.confirmTransaction(
+          {
+              signature: sig2,
+              ...blockHash2,
+          },
+          "confirmed"
+      );
+      let buyerTokenAccountData2 = await getAccount(
+          program.provider.connection,
+          ata
+      );
+      // All vote buys are refunded
+      expect(buyerTokenAccountData2.amount).to.equal(BigInt(999_000_000 + 1_000_000));
   });
 });

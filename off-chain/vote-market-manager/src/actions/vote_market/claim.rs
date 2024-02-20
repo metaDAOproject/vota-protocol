@@ -22,6 +22,7 @@ pub fn claim(
     println!("token vault {}", token_vault);
     let vote_delegate = get_delegate(&config);
     let vote_accounts = resolve_vote_keys(&escrow, &gauge, epoch);
+    let treasury = get_associated_token_address(&payer.pubkey(), &mint);
 
     let result = program
         .request()
@@ -32,6 +33,8 @@ pub fn claim(
             seller: payer.pubkey(),
             seller_token_account,
             token_vault,
+            treasury,
+            admin: payer.pubkey(),
             mint,
             config,
             vote_buy,

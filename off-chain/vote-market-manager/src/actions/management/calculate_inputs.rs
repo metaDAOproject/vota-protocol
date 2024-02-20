@@ -19,7 +19,7 @@ use std::collections::HashMap;
 use std::fs;
 
 /// Creates a json file containing all the data needed to calculate algorithmic
-/// vote weights and the maximum amount of bribes that meet the efficiency
+/// vote weights and the maximum amount of vote buys that meet the efficiency
 /// ratio requirements for one epoch and one [`vote_market::state::VoteMarketConfig`]
 ///
 /// The json file will be named `epoch_{epoch}_vote_info{timestamp}.json`

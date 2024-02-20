@@ -22,7 +22,7 @@ D - the sum of all d_i
 The value of the vote lock/emissions token (SBR) in USD value
 The amount of expected SBR emissions for the epoch being voted for
 The expected emissions per vote in USD value
-efficiency_ratio - the ratio of emission value to bribes
+efficiency_ratio - the ratio of emission value to vote buys 
 ```
 The amounts with the i subscript will be stored in a map with index of the gauge address.
 

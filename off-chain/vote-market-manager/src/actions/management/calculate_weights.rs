@@ -298,7 +298,7 @@ mod test_calculate_weight {
             },
         ];
         sort_gauges(&mut gauges);
-        // Want to eliminate the lowest bribes first in this case
+        // Want to eliminate the lowest vote buys first in this case
         assert_eq!(gauges[0].payment, 200.0);
         assert_eq!(gauges[1].payment, 700.0);
         assert_eq!(gauges[2].payment, 500.0);
@@ -326,7 +326,7 @@ mod test_calculate_weight {
             },
         ];
         sort_gauges(&mut gauges);
-        // Want to eliminate the lowest bribes first in this case
+        // Want to eliminate the lowest vote buys first in this case
         assert_eq!(gauges[0].payment, 100.0);
     }
     pub fn test_sort_gauges_divide_by_zero() {

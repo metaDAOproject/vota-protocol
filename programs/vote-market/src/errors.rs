@@ -21,4 +21,6 @@ pub enum VoteMarketError {
     MaxVoteBuyAmountNotSet,
     #[msg("Max fee is 10000")]
     InvalidFee,
+    #[msg("Nothing to refund")]
+    InvalidRefund,
 }
