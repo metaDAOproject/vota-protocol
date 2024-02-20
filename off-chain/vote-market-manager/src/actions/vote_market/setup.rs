@@ -25,7 +25,7 @@ pub fn setup(anchor_client: &anchor_client::Client<&Keypair>, mints: Vec<Pubkey>
         })
         .args(vote_market::instruction::CreateConfig {
             mints,
-            efficiency_ratio: 0,
+            claim_fee: 600,
             script_authority: payer.pubkey(),
         })
         .send()

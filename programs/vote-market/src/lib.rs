@@ -14,7 +14,7 @@ declare_id!("CgpagJ94phFKHBKkk4pd4YdKgfNCp5SzsiNwcLe73dc");
 #[program]
 pub mod vote_market {
     use super::*;
-    use crate::util::vote_math::get_user_payment;
+    use crate::util::vote_math::{get_fee, get_user_payment};
     use anchor_lang::solana_program;
     use anchor_lang::solana_program::program::{invoke, invoke_signed};
     use anchor_lang::solana_program::system_instruction;
@@ -24,19 +24,24 @@ pub mod vote_market {
     pub fn create_config(
         ctx: Context<CreateConfig>,
         mints: Vec<Pubkey>,
-        efficiency_ratio: u64,
+        claim_fee: u16,
         script_authority: Pubkey,
     ) -> Result<()> {
         ctx.accounts.config.script_authority = script_authority;
         ctx.accounts.config.gaugemeister = ctx.accounts.gaugemeister.key();
         ctx.accounts.allowed_mints.mints = mints;
         ctx.accounts.config.admin = ctx.accounts.payer.key();
-        ctx.accounts.config.efficiency_ratio = efficiency_ratio;
+        ctx.accounts.config.claim_fee = claim_fee;
         Ok(())
     }
 
     pub fn update_admin(ctx: Context<UpdateAdmin>, admin: Pubkey) -> Result<()> {
         ctx.accounts.config.admin = admin;
+        Ok(())
+    }
+
+    pub fn update_claim_fee(ctx: Context<UpdateAdmin>, claim_fee: u16) -> Result<()> {
+        ctx.accounts.config.claim_fee = claim_fee;
         Ok(())
     }
 
@@ -170,7 +175,9 @@ pub mod vote_market {
                 return err!(errors::VoteMarketError::MaxVoteBuyAmountNotSet);
             }
         };
-        let payment_to_user = get_user_payment(total_power, total_vote_payment, allocated_power)?;
+        let total_payment = get_user_payment(total_power, total_vote_payment, allocated_power)?;
+        let fee = get_fee(total_payment, ctx.accounts.config.claim_fee)?;
+        let payment_to_user = total_payment - fee;
         let transfer_ix = spl_token::instruction::transfer(
             &ctx.accounts.token_program.key(),
             &ctx.accounts.token_vault.key(),
@@ -193,6 +200,30 @@ pub mod vote_market {
             &[
                 ctx.accounts.token_vault.to_account_info(),
                 ctx.accounts.seller_token_account.to_account_info(),
+                ctx.accounts.vote_buy.to_account_info(),
+                ctx.accounts.token_program.to_account_info(),
+            ],
+            &[&[
+                b"vote-buy".as_ref(),
+                epoch.to_le_bytes().as_ref(),
+                ctx.accounts.config.key().as_ref(),
+                ctx.accounts.gauge.key().as_ref(),
+                &[bump],
+            ]],
+        )?;
+        let transfer_to_treasury_ix = spl_token::instruction::transfer(
+            &ctx.accounts.token_program.key(),
+            &ctx.accounts.token_vault.key(),
+            &ctx.accounts.treasury.key(),
+            &vote_buy.key(),
+            &[],
+            fee,
+        )?;
+        invoke_signed(
+            &transfer_to_treasury_ix,
+            &[
+                ctx.accounts.token_vault.to_account_info(),
+                ctx.accounts.treasury.to_account_info(),
                 ctx.accounts.vote_buy.to_account_info(),
                 ctx.accounts.token_program.to_account_info(),
             ],
@@ -305,7 +336,24 @@ pub mod vote_market {
 
     pub fn vote_buy_refund(ctx: Context<VoteBuyRefund>, epoch: u32) -> Result<()> {
         if let Some(max_amount) = ctx.accounts.vote_buy.max_amount {
-            let refund_amount = ctx.accounts.vote_buy.amount - max_amount;
+            msg!(
+                "Epoch: {} Current Rewards epoch {}",
+                epoch,
+                ctx.accounts.gaugemeister.current_rewards_epoch
+            );
+            let mut refund_amount = ctx.accounts.vote_buy.amount;
+            if epoch < ctx.accounts.gaugemeister.current_rewards_epoch {
+                msg!("Claiming refund for expired claims");
+            } else {
+                msg!("Claiming refund for excess buy value");
+                refund_amount = ctx
+                    .accounts
+                    .vote_buy
+                    .amount
+                    .checked_sub(max_amount)
+                    .ok_or(errors::VoteMarketError::InvalidRefund)?;
+                ctx.accounts.vote_buy.amount -= refund_amount;
+            }
             let transfer_ix = spl_token::instruction::transfer(
                 &ctx.accounts.token_program.key(),
                 &ctx.accounts.token_vault.key(),
@@ -339,6 +387,8 @@ pub mod vote_market {
                     &[bump],
                 ]],
             )?;
+        } else {
+            return err!(errors::VoteMarketError::MaxVoteBuyAmountNotSet);
         }
         Ok(())
     }
@@ -445,14 +495,22 @@ pub struct ClaimVotePayment<'info> {
     associated_token::mint = mint,
     associated_token::authority = seller,
     )]
-    pub seller_token_account: Account<'info, TokenAccount>,
+    pub seller_token_account: Box<Account<'info, TokenAccount>>,
     #[account(mut,
     associated_token::mint = mint,
     associated_token::authority = vote_buy,
     )]
-    pub token_vault: Account<'info, TokenAccount>,
+    pub token_vault: Box<Account<'info, TokenAccount>>,
+    #[account(mut,
+    associated_token::mint = mint,
+    associated_token::authority = admin,
+    )]
+    /// CHECK I only need this to check the treasury
+    pub treasury: Box<Account<'info, TokenAccount>>,
+    /// CHECK Not enough stack space to deserialize
+    pub admin: UncheckedAccount<'info>,
     pub mint: Account<'info, Mint>,
-    #[account(has_one = gaugemeister, has_one = script_authority)]
+    #[account(has_one = gaugemeister, has_one = script_authority, has_one = admin)]
     pub config: Box<Account<'info, VoteMarketConfig>>,
     #[account(mut,
     seeds = [b"vote-buy".as_ref(),
@@ -586,6 +644,7 @@ pub struct VoteBuyRefund<'info> {
     )]
     pub token_vault: Account<'info, TokenAccount>,
     #[account(
+    mut,
     has_one = mint,
     seeds = [
     b"vote-buy".as_ref(),
@@ -596,7 +655,9 @@ pub struct VoteBuyRefund<'info> {
     )]
     pub vote_buy: Account<'info, VoteBuy>,
     pub mint: Account<'info, Mint>,
+    #[account(has_one = gaugemeister)]
     pub config: Account<'info, VoteMarketConfig>,
     pub gauge: Account<'info, gauge_state::Gauge>,
+    pub gaugemeister: Account<'info, gauge_state::Gaugemeister>,
     pub token_program: Program<'info, Token>,
 }

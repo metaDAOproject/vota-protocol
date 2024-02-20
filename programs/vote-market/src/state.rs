@@ -25,11 +25,11 @@ pub struct VoteMarketConfig {
     pub script_authority: Pubkey,
     pub gaugemeister: Pubkey,
     pub admin: Pubkey,
-    pub efficiency_ratio: u64,
+    pub claim_fee: u16,
 }
 
 impl VoteMarketConfig {
-    pub const LEN: usize = 8 + 32 + 32 + 32 + 8;
+    pub const LEN: usize = 8 + 32 + 32 + 32 + 2;
 }
 
 #[account]

@@ -1,28 +1,28 @@
 use crate::errors::VoteMarketManagerError;
 use reqwest::blocking::Client;
-use serde::{Serialize,Deserialize};
+use serde::{Deserialize, Serialize};
 use solana_program::pubkey::Pubkey;
 use std::collections::HashMap;
 
 #[derive(Debug, Eq, Hash, PartialEq, Clone, Copy, Serialize, Deserialize)]
 #[allow(non_camel_case_types)]
 pub enum KnownTokens {
-    UXD,
-    mSOL,
-    BLZE,
-    SBR,
+    Uxd,
+    Msol,
+    Blze,
+    Sbr,
 }
 
 impl From<String> for KnownTokens {
     fn from(s: String) -> Self {
         match s.as_str() {
-            "FLZYdni7sdh86U6eGUXK5epbzzt8Sc93PMPbMRTsYAqa" => KnownTokens::UXD,
-            "J5BWqabLwaFP3xPDGndRJdZPTUncQCRfostpDHh2eesb" => KnownTokens::mSOL,
-            "5VDD9VgkKBYMVsWekA9egrZTJsNs2cmgTm1YkPCCpz1U" => KnownTokens::BLZE,
-            "7kbnvuGBxxj8AG9qp8Scn56muWGaRaFqxg1FsRp3PaFT" => KnownTokens::UXD,
-            "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So" => KnownTokens::mSOL,
-            "BLZEEuZUBVqFhj8adcCFPJvPVCiCyVmh3hkJMrU8KuJA" => KnownTokens::BLZE,
-            "Saber2gLauYim4Mvftnrasomsv6NvAuncvMEZwcLpD1" => KnownTokens::SBR,
+            "FLZYdni7sdh86U6eGUXK5epbzzt8Sc93PMPbMRTsYAqa" => KnownTokens::Uxd,
+            "J5BWqabLwaFP3xPDGndRJdZPTUncQCRfostpDHh2eesb" => KnownTokens::Msol,
+            "5VDD9VgkKBYMVsWekA9egrZTJsNs2cmgTm1YkPCCpz1U" => KnownTokens::Blze,
+            "7kbnvuGBxxj8AG9qp8Scn56muWGaRaFqxg1FsRp3PaFT" => KnownTokens::Uxd,
+            "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So" => KnownTokens::Msol,
+            "BLZEEuZUBVqFhj8adcCFPJvPVCiCyVmh3hkJMrU8KuJA" => KnownTokens::Blze,
+            "Saber2gLauYim4Mvftnrasomsv6NvAuncvMEZwcLpD1" => KnownTokens::Sbr,
             _ => panic!("Unknown token"),
         }
     }
@@ -37,10 +37,10 @@ impl From<Pubkey> for KnownTokens {
 impl From<KnownTokens> for String {
     fn from(s: KnownTokens) -> Self {
         match s {
-            KnownTokens::UXD => "7kbnvuGBxxj8AG9qp8Scn56muWGaRaFqxg1FsRp3PaFT".to_string(),
-            KnownTokens::mSOL => "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So".to_string(),
-            KnownTokens::BLZE => "BLZEEuZUBVqFhj8adcCFPJvPVCiCyVmh3hkJMrU8KuJA".to_string(),
-            KnownTokens::SBR => "Saber2gLauYim4Mvftnrasomsv6NvAuncvMEZwcLpD1".to_string(),
+            KnownTokens::Uxd => "7kbnvuGBxxj8AG9qp8Scn56muWGaRaFqxg1FsRp3PaFT".to_string(),
+            KnownTokens::Msol => "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So".to_string(),
+            KnownTokens::Blze => "BLZEEuZUBVqFhj8adcCFPJvPVCiCyVmh3hkJMrU8KuJA".to_string(),
+            KnownTokens::Sbr => "Saber2gLauYim4Mvftnrasomsv6NvAuncvMEZwcLpD1".to_string(),
         }
     }
 }

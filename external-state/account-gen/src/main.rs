@@ -46,7 +46,10 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let (gaugemeister_data, gaugemeister_account) = process_account::<Gaugemeister, _>(
         "gaugemeister",
         None,
-        |x| x,
+        |mut data| {
+            data.epoch_duration_seconds = 1;
+            data
+        },
         &mut accounts_to_update,
         "",
     )?;
