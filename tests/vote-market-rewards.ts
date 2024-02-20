@@ -415,12 +415,13 @@ describe("vote market rewards phase", () => {
       //epochs are set to 1 second duration for the test
       //Get the rest refunded after the rewards epoch ends
       const gaugemeisterData = await gaugeProgram.account.gaugemeister.fetch(GAUGEMEISTER);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1500));
       // Votes are on rewards epoch
       await triggerNextEpoch(program, payer);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1500));
       // Rewards epoch complete
       await triggerNextEpoch(program, payer);
+      await new Promise((resolve) => setTimeout(resolve, 1500));
       const sig2 = await program.methods
           .voteBuyRefund(gaugeMeisterData.currentRewardsEpoch + 1)
           .accounts({
