@@ -87,10 +87,10 @@ pub fn weight_calc_pass(data: &EpochData) -> Result<Vec<VoteWeight>, Box<dyn std
 
 #[cfg(test)]
 mod test_calculate_weight {
-    use std::collections::HashMap;
-    use solana_program::pubkey::Pubkey;
     use super::*;
     use crate::actions::management::oracle::KnownTokens;
+    use solana_program::pubkey::Pubkey;
+    use std::collections::HashMap;
     #[test]
     fn test_even_distribution() {
         let gauge1 = Pubkey::new_unique();

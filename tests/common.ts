@@ -1,7 +1,12 @@
 import * as anchor from "@coral-xyz/anchor";
-import {Program, web3} from "@coral-xyz/anchor";
-import {GAUGE, GAUGE_PROGRAM_ID, GAUGEMEISTER, LOCKED_VOTER_PROGRAM_ID,} from "./constants";
-import {VoteMarket} from "../target/types/vote_market";
+import { Program, web3 } from "@coral-xyz/anchor";
+import {
+  GAUGE,
+  GAUGE_PROGRAM_ID,
+  GAUGEMEISTER,
+  LOCKED_VOTER_PROGRAM_ID,
+} from "./constants";
+import { VoteMarket } from "../target/types/vote_market";
 import crypto from "crypto";
 
 export function getVoteAccounts(
@@ -75,22 +80,25 @@ export function getVoteAccounts(
   };
 }
 
-export async function triggerNextEpoch(program: Program<VoteMarket>, payer: web3.Keypair) {
-    var hash = crypto.createHash("sha256");
-    hash.update(Buffer.from("global:trigger_next_epoch"));
-    const discriminator = hash.digest().subarray(0, 8);
-    const triggerNextEpochIx = new web3.TransactionInstruction({
-        data: Buffer.from(discriminator),
-        keys: [{pubkey: GAUGEMEISTER, isSigner: false, isWritable: true}],
-        programId: GAUGE_PROGRAM_ID,
-    });
-    const latestBlock = await program.provider.connection.getLatestBlockhash();
-    const triggerNextEpochTx = new web3.Transaction({
-        feePayer: payer.publicKey,
-        ...latestBlock,
-    }).add(triggerNextEpochIx);
-    triggerNextEpochTx.sign(payer);
-    await program.provider.sendAndConfirm(triggerNextEpochTx, [], {
-        commitment: "confirmed",
-    });
+export async function triggerNextEpoch(
+  program: Program<VoteMarket>,
+  payer: web3.Keypair
+) {
+  var hash = crypto.createHash("sha256");
+  hash.update(Buffer.from("global:trigger_next_epoch"));
+  const discriminator = hash.digest().subarray(0, 8);
+  const triggerNextEpochIx = new web3.TransactionInstruction({
+    data: Buffer.from(discriminator),
+    keys: [{ pubkey: GAUGEMEISTER, isSigner: false, isWritable: true }],
+    programId: GAUGE_PROGRAM_ID,
+  });
+  const latestBlock = await program.provider.connection.getLatestBlockhash();
+  const triggerNextEpochTx = new web3.Transaction({
+    feePayer: payer.publicKey,
+    ...latestBlock,
+  }).add(triggerNextEpochIx);
+  triggerNextEpochTx.sign(payer);
+  await program.provider.sendAndConfirm(triggerNextEpochTx, [], {
+    commitment: "confirmed",
+  });
 }

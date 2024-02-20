@@ -336,15 +336,22 @@ pub mod vote_market {
 
     pub fn vote_buy_refund(ctx: Context<VoteBuyRefund>, epoch: u32) -> Result<()> {
         if let Some(max_amount) = ctx.accounts.vote_buy.max_amount {
-            msg!("Epoch: {} Current Rewards epoch {}", epoch, ctx.accounts.gaugemeister.current_rewards_epoch);
+            msg!(
+                "Epoch: {} Current Rewards epoch {}",
+                epoch,
+                ctx.accounts.gaugemeister.current_rewards_epoch
+            );
             let mut refund_amount = ctx.accounts.vote_buy.amount;
             if epoch < ctx.accounts.gaugemeister.current_rewards_epoch {
                 msg!("Claiming refund for expired claims");
             } else {
                 msg!("Claiming refund for excess buy value");
-                refund_amount = ctx.accounts.vote_buy.amount.checked_sub(max_amount).ok_or(
-                    errors::VoteMarketError::InvalidRefund,
-                )?;
+                refund_amount = ctx
+                    .accounts
+                    .vote_buy
+                    .amount
+                    .checked_sub(max_amount)
+                    .ok_or(errors::VoteMarketError::InvalidRefund)?;
                 ctx.accounts.vote_buy.amount -= refund_amount;
             }
             let transfer_ix = spl_token::instruction::transfer(
