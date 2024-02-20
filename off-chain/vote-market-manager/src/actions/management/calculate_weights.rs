@@ -17,7 +17,7 @@ pub(crate) fn calculate_weights(data: &mut EpochData) -> Result<(), Box<dyn std:
     Ok(())
 }
 
-pub(crate) fn sort_gauges(gauges: &mut Vec<GaugeInfo>) {
+pub(crate) fn sort_gauges(gauges: &mut [GaugeInfo]) {
     gauges.sort_by(|a, b| {
         //change all zeros to very small numbers to get the correct order and
         //avoid divide by zero
@@ -49,15 +49,10 @@ pub(crate) fn sort_gauges(gauges: &mut Vec<GaugeInfo>) {
 
 pub fn weight_calc(data: &EpochData) -> Result<Vec<VoteWeight>, Box<dyn std::error::Error>> {
     let mut input_data: EpochData = data.clone();
-    let mut pass = weight_calc_pass(&mut input_data).unwrap();
+    let mut pass = weight_calc_pass(&input_data).unwrap();
     sort_gauges(&mut input_data.gauges);
-    input_data.gauges = input_data
-        .gauges
-        .iter()
-        .filter(|x| x.payment > 0.0)
-        .cloned()
-        .collect();
-    while pass.len() > 0 && pass[0].votes <= 0 {
+    input_data.gauges.retain(|x| x.payment > 0.0);
+    while !pass.is_empty() && pass[0].votes == 0 {
         input_data.direct_votes -= input_data.gauges[0].votes;
         input_data.total_vote_buy_value -= input_data.gauges[0].payment;
         input_data.gauges.remove(0);
@@ -92,6 +87,8 @@ pub fn weight_calc_pass(data: &EpochData) -> Result<Vec<VoteWeight>, Box<dyn std
 
 #[cfg(test)]
 mod test_calculate_weight {
+    use std::collections::HashMap;
+    use solana_program::pubkey::Pubkey;
     use super::*;
     use crate::actions::management::oracle::KnownTokens;
     #[test]
@@ -103,6 +100,7 @@ mod test_calculate_weight {
             config: Pubkey::new_unique(),
             epoch: 1,
             direct_votes: 0,
+            total_votes: 0,
             delegated_votes: 1_000_000,
             total_vote_buy_value: 300.0,
             gauges: vec![
@@ -123,10 +121,10 @@ mod test_calculate_weight {
                 },
             ],
             prices: HashMap::from([
-                (KnownTokens::mSOL, 120.56),
-                (KnownTokens::UXD, 0.991553),
-                (KnownTokens::SBR, 0.00286583),
-                (KnownTokens::BLZE, 0.00311461),
+                (KnownTokens::Msol, 120.56),
+                (KnownTokens::Uxd, 0.991553),
+                (KnownTokens::Sbr, 0.00286583),
+                (KnownTokens::Blze, 0.00311461),
             ]),
             escrows: vec![],
             sbr_per_epoch: 0,
@@ -148,6 +146,7 @@ mod test_calculate_weight {
             config: Pubkey::new_unique(),
             epoch: 1,
             direct_votes: 0,
+            total_votes: 0,
             delegated_votes: 600_000,
             total_vote_buy_value: 60.0,
             gauges: vec![
@@ -168,10 +167,10 @@ mod test_calculate_weight {
                 },
             ],
             prices: HashMap::from([
-                (KnownTokens::mSOL, 120.56),
-                (KnownTokens::UXD, 0.991553),
-                (KnownTokens::SBR, 0.00286583),
-                (KnownTokens::BLZE, 0.00311461),
+                (KnownTokens::Msol, 120.56),
+                (KnownTokens::Uxd, 0.991553),
+                (KnownTokens::Sbr, 0.00286583),
+                (KnownTokens::Blze, 0.00311461),
             ]),
             escrows: vec![],
             sbr_per_epoch: 0,
@@ -192,6 +191,7 @@ mod test_calculate_weight {
             config: Pubkey::new_unique(),
             epoch: 1,
             direct_votes: 500_000,
+            total_votes: 500_000,
             delegated_votes: 1_000_000,
             total_vote_buy_value: 300.0,
             gauges: vec![
@@ -212,10 +212,10 @@ mod test_calculate_weight {
                 },
             ],
             prices: HashMap::from([
-                (KnownTokens::mSOL, 120.56),
-                (KnownTokens::UXD, 0.991553),
-                (KnownTokens::SBR, 0.00286583),
-                (KnownTokens::BLZE, 0.00311461),
+                (KnownTokens::Msol, 120.56),
+                (KnownTokens::Uxd, 0.991553),
+                (KnownTokens::Sbr, 0.00286583),
+                (KnownTokens::Blze, 0.00311461),
             ]),
             escrows: vec![],
             sbr_per_epoch: 0,
@@ -237,6 +237,7 @@ mod test_calculate_weight {
             epoch: 1,
             //
             direct_votes: 60,
+            total_votes: 60,
             delegated_votes: 300_000 - 60,
             total_vote_buy_value: 300.0,
             gauges: vec![
@@ -257,10 +258,10 @@ mod test_calculate_weight {
                 },
             ],
             prices: HashMap::from([
-                (KnownTokens::mSOL, 120.56),
-                (KnownTokens::UXD, 0.991553),
-                (KnownTokens::SBR, 0.00286583),
-                (KnownTokens::BLZE, 0.00311461),
+                (KnownTokens::Msol, 120.56),
+                (KnownTokens::Uxd, 0.991553),
+                (KnownTokens::Sbr, 0.00286583),
+                (KnownTokens::Blze, 0.00311461),
             ]),
             escrows: vec![],
             sbr_per_epoch: 0,
@@ -361,6 +362,7 @@ mod test_calculate_weight {
             epoch: 1,
             //
             direct_votes: 100_002_000,
+            total_votes: 100_002_000,
             delegated_votes: 300_000,
             total_vote_buy_value: 300.0,
             gauges: vec![
@@ -381,10 +383,10 @@ mod test_calculate_weight {
                 },
             ],
             prices: HashMap::from([
-                (KnownTokens::mSOL, 120.56),
-                (KnownTokens::UXD, 0.991553),
-                (KnownTokens::SBR, 0.00286583),
-                (KnownTokens::BLZE, 0.00311461),
+                (KnownTokens::Msol, 120.56),
+                (KnownTokens::Uxd, 0.991553),
+                (KnownTokens::Sbr, 0.00286583),
+                (KnownTokens::Blze, 0.00311461),
             ]),
             escrows: vec![],
             sbr_per_epoch: 0,

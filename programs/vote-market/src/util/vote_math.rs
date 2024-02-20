@@ -30,7 +30,6 @@ pub fn get_fee(payment_to_user: u64, fee: u16) -> Result<u64> {
 #[cfg(test)]
 mod test_vote_math {
     use super::*;
-    use anchor_lang::error::Error::AnchorError;
 
     #[test]
     fn test_get_fee() {

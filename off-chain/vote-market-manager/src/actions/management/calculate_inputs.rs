@@ -60,7 +60,7 @@ pub(crate) fn calculate_inputs(
     let mut tokens: Vec<KnownTokens> = vote_buys.iter().map(|x| x.mint.into()).collect();
 
     // Add SBR price
-    tokens.push(KnownTokens::SBR);
+    tokens.push(KnownTokens::Sbr);
 
     // Get USD values of relevant tokens
     let mut prices: HashMap<KnownTokens, f64> = HashMap::new();
@@ -162,10 +162,10 @@ pub(crate) fn calculate_inputs(
     let sbr_per_epoch = sbr_per_second * gaugemeister_data.epoch_duration_seconds as f64;
     println!("sbr_per_epoch: {:?}", sbr_per_epoch);
     let sbr_per_vote = sbr_per_epoch / (total_votes + total_delegated_votes) as f64;
-    let sbr_price = prices.get(&KnownTokens::SBR).unwrap();
+    let sbr_price = prices.get(&KnownTokens::Sbr).unwrap();
     println!("sbr_price: {:?}", sbr_price);
     println!("sbr_per_vote: {:?}", sbr_per_vote);
-    let usd_per_vote = sbr_per_vote * prices.get(&KnownTokens::SBR).unwrap();
+    let usd_per_vote = sbr_per_vote * prices.get(&KnownTokens::Sbr).unwrap();
     println!("usd_per_vote: {:?}", usd_per_vote);
 
     let epoch_votes = EpochData {
