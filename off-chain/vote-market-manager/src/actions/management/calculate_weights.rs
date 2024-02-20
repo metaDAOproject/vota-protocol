@@ -1,7 +1,5 @@
 use crate::actions::management::data::{EpochData, GaugeInfo, VoteWeight};
 use chrono::Utc;
-use solana_program::pubkey::Pubkey;
-use std::collections::HashMap;
 use std::fs;
 
 pub(crate) fn calculate_weights(data: &mut EpochData) -> Result<(), Box<dyn std::error::Error>> {

@@ -2,7 +2,6 @@ use crate::actions::management::data::{EpochData, VoteWeight};
 use crate::actions::vote_market::set_maximum::set_maximum;
 use anchor_client::Client;
 use anchor_lang::AnchorDeserialize;
-use reqwest::blocking::ClientBuilder;
 use solana_client::rpc_client::RpcClient;
 use solana_program::pubkey::Pubkey;
 use solana_sdk::signature::Keypair;

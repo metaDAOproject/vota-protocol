@@ -1,7 +1,7 @@
 GAUGE=3xC4eW6xhW3Gpb4T5sCKFe73ay2K4aUUfxL57XFdguJx
 EPOCH=94
 # Change this escrow if you generate localhost accounts with another key
-ESCROW=C8CMP5RkRQneDtYruTNWbRXihorfXpYh7JdEXjia1DJL
+ESCROW=CfziqKJ81vUCEdgfKKsBUrWKYh1v81zQKK7SMbsmpk8s
 pkill -f solana-test-validator
 anchor localnet > /dev/null 2>&1 &
 sleep 5
@@ -17,4 +17,4 @@ cargo run -- vote $ESCROW $CONFIG $EPOCH
 # Redeem
 cargo run -- trigger-epoch 2> /dev/null
 cargo run -- set-maximum $CONFIG $GAUGE 5555555 $EPOCH
-cargo run -- claim $MINT $ESCROW $CONFIG $GAUGE $EPOCH 
+cargo run -- claim $MINT $ESCROW $CONFIG $GAUGE $EPOCH

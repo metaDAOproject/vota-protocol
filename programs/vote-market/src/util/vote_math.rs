@@ -1,6 +1,6 @@
 use crate::errors::VoteMarketError;
 use anchor_lang::err;
-use anchor_lang::error::Error;
+
 use anchor_lang::prelude::*;
 
 pub fn get_user_payment(
