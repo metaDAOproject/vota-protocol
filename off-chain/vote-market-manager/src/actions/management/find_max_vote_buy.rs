@@ -1,4 +1,4 @@
-use crate::actions::management::data::{EpochData, VoteWeight};
+use crate::actions::management::data::{EpochData, VoteInfo};
 use crate::actions::vote_market::set_maximum::set_maximum;
 use anchor_client::Client;
 use anchor_lang::AnchorDeserialize;
@@ -11,11 +11,11 @@ pub(crate) fn find_max_vote_buy(
     anchor_client: &Client<&Keypair>,
     payer: &Keypair,
     data: EpochData,
-    vote_weights: Vec<VoteWeight>,
+    vote_infos: Vec<VoteInfo>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!("find_max_vote_buy {:#?}", data);
     for gauge in &data.gauges {
-        let vote_weight = vote_weights.iter().find(|x| x.gauge == gauge.gauge);
+        let vote_weight = vote_infos.iter().find(|x| x.gauge == gauge.gauge);
         let delegated_votes = match vote_weight {
             Some(vote_weight) => vote_weight.votes,
             None => 0,

@@ -5,6 +5,7 @@ use solana_program::instruction::AccountMeta;
 use solana_program::pubkey::Pubkey;
 use solana_sdk::signature::Signer;
 use solana_sdk::signer::keypair::Keypair;
+use crate::actions::create_epoch_gauge::create_epoch_gauge;
 
 pub fn prepare_vote(client: &RpcClient, owner: Pubkey, gauge: Pubkey, payer: &Keypair, epoch: u32) {
     let escrow_address = get_escrow_address_for_owner(&owner);
@@ -66,6 +67,9 @@ pub fn prepare_vote(client: &RpcClient, owner: Pubkey, gauge: Pubkey, payer: &Ke
                 let result = client.send_and_confirm_transaction(&transaction).unwrap();
                 println!("result: {:?}", result);
                 println!("transaction: {:?}", transaction.signatures.first().unwrap());
+            }
+            VoteCreateStep::EpochGauge(_key) => {
+                create_epoch_gauge(client, payer, gauge, epoch);
             }
             VoteCreateStep::EpochGaugeVoter(_key) => {}
         }

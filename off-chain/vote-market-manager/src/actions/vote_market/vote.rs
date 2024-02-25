@@ -1,3 +1,4 @@
+use anchor_lang::AnchorDeserialize;
 use crate::accounts::resolve::{get_delegate, resolve_vote_keys};
 use crate::{GAUGEMEISTER, LOCKER};
 use solana_client::rpc_client::RpcClient;
@@ -7,11 +8,9 @@ use solana_program::pubkey::Pubkey;
 use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::signature::Signer;
 use solana_sdk::signer::keypair::Keypair;
-
-pub struct WeightInfo {
-    pub gauge: Pubkey,
-    pub weight: u32,
-}
+use locked_voter_state::Escrow;
+use crate::actions::management::data::VoteWeight;
+use crate::actions::prepare_vote::prepare_vote;
 
 pub fn vote(
     anchor_client: &anchor_client::Client<&Keypair>,
@@ -20,18 +19,23 @@ pub fn vote(
     config: Pubkey,
     escrow: Pubkey,
     epoch: u32,
-    weights: Vec<WeightInfo>,
-) {
+    weights: Vec<VoteWeight>,
+) -> Result<(), Box<dyn std::error::Error>> {
     let vote_delegate = get_delegate(&config);
-    let program = anchor_client.program(vote_market::id()).unwrap();
+    let program = anchor_client.program(vote_market::id())?;
 
+    let escrow_account = client.get_account(&escrow).unwrap();
+    let escrow_data = Escrow::deserialize(&mut &escrow_account.data[8..])?;
+    let owner = escrow_data.owner;
     // Set weights
     for weight in weights {
+
         // Set weight
         let vote_accounts = resolve_vote_keys(&escrow, &weight.gauge, epoch);
         println!("Epoch the votes are for: {}", epoch);
+        prepare_vote(client, owner, weight.gauge, script_authority, epoch);
 
-        let _sig = program
+        let vote_result = program
             .request()
             .signer(script_authority)
             .args(vote_market::instruction::Vote {
@@ -48,9 +52,15 @@ pub fn vote(
                 vote_delegate,
                 gauge_program: gauge_state::id(),
             })
-            .send()
-            .unwrap();
-
+           .send();
+        match vote_result {
+            Ok(sig) => {
+                println!("Vote succsesful for {:?}: {:?}", escrow, sig);
+            }
+            Err(e) => {
+                println!("Error sending vote for {:?}: {:?}", escrow, e);
+            }
+        }
         let data: Vec<u8> = solana_program::hash::hash(b"global:prepare_epoch_gauge_voter_v2")
             .to_bytes()[..8]
             .to_vec();
@@ -74,8 +84,15 @@ pub fn vote(
         );
         let latest_blockhash = client.get_latest_blockhash().unwrap();
         transaction.sign(&[script_authority], latest_blockhash);
-        let result = client.send_and_confirm_transaction(&transaction).unwrap();
-        println!("prepare epoch gauge voter result: {:?}", result);
+        let result = client.send_and_confirm_transaction(&transaction);
+        match result {
+            Ok(_) => {
+                println!("Epoch gauge vote prepared for {:?}: {:?}", escrow, result);
+            }
+            Err(e) => {
+                println!("Error preparing epoch gauge vote for {:?}: {:?}", escrow, e);
+            }
+        }
         println!("transaction: {:?}", transaction.signatures.first().unwrap());
         // Commit vote
 
@@ -111,8 +128,15 @@ pub fn vote(
                     skip_preflight: true,
                     ..RpcSendTransactionConfig::default()
                 },
-            )
-            .unwrap();
-        println!("Vote committed {}", result);
+            );
+        match result {
+            Ok(_) => {
+                println!("Vote committed for {:?}: {:?}", escrow, result);
+            }
+            Err(e) => {
+                println!("Error committing vote for {:?}: {:?}", escrow, e);
+            }
+        }
     }
+    Ok(())
 }
