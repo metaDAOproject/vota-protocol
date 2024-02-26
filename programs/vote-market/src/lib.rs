@@ -94,13 +94,13 @@ pub mod vote_market {
         if ctx.accounts.mint.key() == Pubkey::default() {
             return err!(errors::VoteMarketError::InvalidMint);
         }
-        if ctx.accounts.vote_buy.reward_receiver == Pubkey::default()
+        if ctx.accounts.vote_buy.buyer == Pubkey::default()
             && ctx.accounts.vote_buy.mint == Pubkey::default()
         {
-            ctx.accounts.vote_buy.reward_receiver = ctx.accounts.buyer.key();
+            ctx.accounts.vote_buy.buyer = ctx.accounts.buyer.key();
             ctx.accounts.vote_buy.mint = ctx.accounts.mint.key();
         }
-        if ctx.accounts.vote_buy.reward_receiver != ctx.accounts.buyer.key() {
+        if ctx.accounts.vote_buy.buyer != ctx.accounts.buyer.key() {
             return err!(errors::VoteMarketError::InvalidBuyer);
         }
         if ctx.accounts.vote_buy.mint != ctx.accounts.mint.key() {
@@ -646,6 +646,7 @@ pub struct VoteBuyRefund<'info> {
     #[account(
     mut,
     has_one = mint,
+    has_one = buyer,
     seeds = [
     b"vote-buy".as_ref(),
     epoch.to_le_bytes().as_ref(),

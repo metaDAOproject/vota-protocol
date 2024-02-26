@@ -358,6 +358,45 @@ describe("vote market rewards phase", () => {
       })
       .rpc({ commitment: "confirmed" });
 
+    try {
+        const wrongBuyer = web3.Keypair.generate();
+        await connection.requestAirdrop(wrongBuyer.publicKey, 1000000000);
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        const wrongAta = await createAssociatedTokenAccount(
+            connection,
+            wrongBuyer,
+            mint,
+            wrongBuyer.publicKey
+        );
+        const sig = await program.methods
+            .voteBuyRefund(gaugeMeisterData.currentRewardsEpoch + 1)
+            .signers([wrongBuyer])
+            .accounts({
+                buyer: wrongBuyer.publicKey,
+                buyerTokenAccount: wrongAta,
+                tokenVault,
+                voteBuy,
+                mint,
+                config: config.publicKey,
+                gauge: GAUGE,
+                gaugemeister: GAUGEMEISTER,
+                tokenProgram: TOKEN_PROGRAM_ID,
+            })
+            .rpc({
+                skipPreflight: true,
+            });
+        let blockHash = await program.provider.connection.getLatestBlockhash();
+        await program.provider.connection.confirmTransaction(
+            {
+                signature: sig,
+                ...blockHash,
+            },
+            "confirmed"
+        );
+        expect.fail("Wrong account successfully took the refund");
+    } catch (e) {
+        expect(e.error.errorCode.code).to.equal("ConstraintHasOne");
+    }
     const sig = await program.methods
       .voteBuyRefund(gaugeMeisterData.currentRewardsEpoch + 1)
       .accounts({

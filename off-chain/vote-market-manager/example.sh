@@ -11,7 +11,7 @@ CONFIG=$(cargo run --quiet -- setup --mints $MINT 2>/dev/null | tail -n 1 | awk 
 echo The config is $CONFIG
 cargo run -- buy-votes $CONFIG $GAUGE $MINT $EPOCH 5555555
 # Vote
-cargo run -- delegate $ESCROW $CONFIG
+cargo run -- delegate $CONFIG
 cargo run -- vote $ESCROW $CONFIG $EPOCH
 
 # Redeem

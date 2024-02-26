@@ -13,7 +13,7 @@ pub struct VoteBuy {
     /// Anyone can create a vault for buying tokens. This is the creator
     /// of the vault who is will be entitled to any incentives and is
     /// allowed to add additional funds.
-    pub reward_receiver: Pubkey,
+    pub buyer: Pubkey,
 }
 
 impl VoteBuy {
