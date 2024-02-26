@@ -1,5 +1,5 @@
 use crate::actions::management::data::{
-    EpochData, GaugeInfo, VoteInfo, VoteInfoCollection, VoteWeight,
+    EpochData, GaugeInfo, VoteInfo,
 };
 use chrono::Utc;
 use std::fs;

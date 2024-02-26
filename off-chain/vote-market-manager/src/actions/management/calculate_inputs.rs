@@ -10,7 +10,6 @@ use solana_client::rpc_client::RpcClient;
 
 use crate::accounts::resolve::{get_delegate, get_epoch_gauge_voter, get_gauge_voter};
 use crate::actions::queries::direct_votes::get_direct_votes;
-use crate::actions::vote_market::vote::vote;
 use locked_voter_state::Locker;
 use quarry_state::SECONDS_PER_YEAR;
 use solana_program::program_pack::Pack;

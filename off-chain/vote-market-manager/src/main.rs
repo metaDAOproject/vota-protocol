@@ -445,7 +445,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 escrow,
                 *epoch,
                 weights,
-            );
+            )?;
         }
         Some(("setup", matches)) => {
             println!("setup");
