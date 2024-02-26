@@ -11,7 +11,7 @@ use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Signer;
 
 use crate::accounts::resolve::{get_delegate, get_escrow_address_for_owner};
-use crate::actions::management::data::VoteWeight;
+use crate::actions::management::data::{VoteInfo};
 use crate::actions::queries::escrows;
 use crate::utils::short_address;
 
@@ -122,7 +122,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ),
         )
         .subcommand(
-            clap::command!("vote")
+            clap::command!("vote-test")
                 .arg(
                     clap::Arg::new("escrow")
                         .required(true)
@@ -375,7 +375,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let escrow = get_escrow_address_for_owner(&payer.pubkey());
             let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap())?;
             let delegate = accounts::resolve::get_delegate(&config);
-            print!("delegate: {:?}", delegate);
+            println!("delegate: {:?}", delegate);
             actions::delegate::delegate(client, &escrow, &delegate, &payer);
         }
         Some(("get-escrow", matches)) => {
@@ -428,14 +428,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let epoch = matches.get_one::<u32>("epoch").unwrap();
             actions::create_epoch_gauge::create_epoch_gauge(&client, &payer, gauge, *epoch);
         }
-        Some(("vote", matches)) => {
-            println!("vote");
+        Some(("vote-test", matches)) => {
+            println!("vote-test");
             let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap())?;
             let escrow = Pubkey::from_str(matches.get_one::<String>("escrow").unwrap())?;
             let epoch = matches.get_one::<u32>("epoch").unwrap();
-            let weights = vec![actions::management::data::VoteWeight {
+            let weights = vec![VoteInfo {
                 gauge: Pubkey::from_str("3xC4eW6xhW3Gpb4T5sCKFe73ay2K4aUUfxL57XFdguJx")?,
                 weight: 100,
+                votes: 100,
             }];
             actions::vote_market::vote::vote(
                 &anchor_client,
@@ -563,14 +564,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 serde_json::from_str(&epoch_data_string)?;
             let vote_weights_file = matches.get_one::<String>("vote-weights").unwrap();
             let vote_weights_string = std::fs::read_to_string(vote_weights_file)?;
-            let vote_weights: actions::management::data::VoteInfoCollection =
+            let vote_weights: Vec<VoteInfo>=
                 serde_json::from_str(&vote_weights_string)?;
             actions::management::find_max_vote_buy::find_max_vote_buy(
                 &client,
                 &anchor_client,
                 &payer,
                 data,
-                vote_weights.get_infos(),
+                vote_weights,
             )?;
         }
         Some(("execute-votes", matches)) => {
@@ -580,7 +581,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 serde_json::from_str(&epoch_data_string)?;
             let vote_weights_file = matches.get_one::<String>("vote-weights").unwrap();
             let vote_weights_string = std::fs::read_to_string(vote_weights_file)?;
-            let vote_infos: Vec<VoteWeight> = serde_json::from_str(&vote_weights_string)?;
+            let vote_infos: Vec<VoteInfo> = serde_json::from_str(&vote_weights_string)?;
             actions::management::execute_votes::execute_votes(
                 &client,
                 &anchor_client,

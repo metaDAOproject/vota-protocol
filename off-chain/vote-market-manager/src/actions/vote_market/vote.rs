@@ -1,5 +1,5 @@
 use crate::accounts::resolve::{get_delegate, resolve_vote_keys};
-use crate::actions::management::data::VoteWeight;
+use crate::actions::management::data::{VoteInfo};
 use crate::actions::prepare_vote::prepare_vote;
 use crate::{GAUGEMEISTER, LOCKER};
 use anchor_lang::AnchorDeserialize;
@@ -19,9 +19,10 @@ pub fn vote(
     config: Pubkey,
     escrow: Pubkey,
     epoch: u32,
-    weights: Vec<VoteWeight>,
+    weights: Vec<VoteInfo>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let vote_delegate = get_delegate(&config);
+    println!("Vote delegate address is {}", vote_delegate);
     let program = anchor_client.program(vote_market::id())?;
 
     let escrow_account = client.get_account(&escrow).unwrap();
@@ -33,7 +34,6 @@ pub fn vote(
         let vote_accounts = resolve_vote_keys(&escrow, &weight.gauge, epoch);
         println!("Epoch the votes are for: {}", epoch);
         prepare_vote(client, owner, weight.gauge, script_authority, epoch);
-
         let vote_result = program
             .request()
             .signer(script_authority)
