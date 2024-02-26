@@ -16,16 +16,13 @@ pub(crate) fn execute_votes(
     println!("Executing votes");
     println!("Data: {:?}", data);
     println!("Vote weights: {:?}", vote_weights);
-    let delegate = get_delegate(&data.config);
-    let escrows = get_delegated_escrows(client, &delegate);
-    for (escrow, _) in escrows {
+    for escrow in data.escrows.iter() {
         println!("Voting on behalf of escrow {:?}", escrow);
-        let result = vote(anchor_client, client, script_authority, data.config, escrow, data.epoch, vote_weights.clone());
+        let result = vote(anchor_client, client, script_authority, data.config, *escrow, data.epoch, vote_weights.clone());
         match result {
             Ok(_) => println!("Escrow: {:?} voted", escrow),
             Err(e) => println!("Error voting for escrow: {:?} {:?}", escrow, e),
         }
     }
-
     Ok(())
 }
