@@ -1,11 +1,11 @@
 use crate::accounts::resolve::{get_escrow_address_for_owner, resolve_vote_keys, VoteCreateStep};
+use crate::actions::create_epoch_gauge::create_epoch_gauge;
 use crate::GAUGEMEISTER;
 use solana_client::rpc_client::RpcClient;
 use solana_program::instruction::AccountMeta;
 use solana_program::pubkey::Pubkey;
 use solana_sdk::signature::Signer;
 use solana_sdk::signer::keypair::Keypair;
-use crate::actions::create_epoch_gauge::create_epoch_gauge;
 
 pub fn prepare_vote(client: &RpcClient, owner: Pubkey, gauge: Pubkey, payer: &Keypair, epoch: u32) {
     let escrow_address = get_escrow_address_for_owner(&owner);

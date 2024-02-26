@@ -1,4 +1,6 @@
-use crate::actions::management::data::{EpochData, GaugeInfo, VoteInfo, VoteInfoCollection, VoteWeight};
+use crate::actions::management::data::{
+    EpochData, GaugeInfo, VoteInfo, VoteInfoCollection, VoteWeight,
+};
 use chrono::Utc;
 use std::fs;
 

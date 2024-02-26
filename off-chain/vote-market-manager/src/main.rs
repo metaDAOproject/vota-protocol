@@ -1,5 +1,5 @@
-use std::{env, fs};
 use std::str::FromStr;
+use std::{env, fs};
 
 use anchor_lang::AnchorDeserialize;
 use chrono::Utc;
@@ -78,13 +78,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ),
         )
         .subcommand(
-            clap::command!("delegate")
-                .arg(
-                    clap::Arg::new("config")
-                        .required(true)
-                        .value_parser(value_parser!(String))
-                        .help("The config to generate the delegate from"),
-                ),
+            clap::command!("delegate").arg(
+                clap::Arg::new("config")
+                    .required(true)
+                    .value_parser(value_parser!(String))
+                    .help("The config to generate the delegate from"),
+            ),
         )
         .subcommand(
             clap::command!("prepare-vote")
@@ -155,20 +154,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ),
         )
         .subcommand(
-            clap::command!("update-mints").arg(
-                clap::Arg::new("config")
-                    .required(true)
-                    .value_parser(value_parser!(String))
-                    .help("The config to update the mints for"))
+            clap::command!("update-mints")
                 .arg(
-                clap::Arg::new("mints")
-                    .long("mints")
-                    .short('m')
-                    .required(true)
-                    .value_delimiter(',')
-                    .value_parser(value_parser!(String))
-                    .help("The mints to allow for the vote buys"),
-            ),
+                    clap::Arg::new("config")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The config to update the mints for"),
+                )
+                .arg(
+                    clap::Arg::new("mints")
+                        .long("mints")
+                        .short('m')
+                        .required(true)
+                        .value_delimiter(',')
+                        .value_parser(value_parser!(String))
+                        .help("The mints to allow for the vote buys"),
+                ),
         )
         .subcommand(clap::command!("create-token"))
         .subcommand(
@@ -542,7 +543,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let epoch_data_string = std::fs::read_to_string(epoch_data)?;
             let mut data: actions::management::data::EpochData =
                 serde_json::from_str(&epoch_data_string)?;
-            let results = actions::management::calculate_weights_simple::calculate_weights(&mut data)?;
+            let results =
+                actions::management::calculate_weights_simple::calculate_weights(&mut data)?;
             println!("results {:?}", results);
             let vote_weights_json = serde_json::to_string(&results).unwrap();
             fs::write(
@@ -578,8 +580,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 serde_json::from_str(&epoch_data_string)?;
             let vote_weights_file = matches.get_one::<String>("vote-weights").unwrap();
             let vote_weights_string = std::fs::read_to_string(vote_weights_file)?;
-            let vote_infos: Vec<VoteWeight> =
-                serde_json::from_str(&vote_weights_string)?;
+            let vote_infos: Vec<VoteWeight> = serde_json::from_str(&vote_weights_string)?;
             actions::management::execute_votes::execute_votes(
                 &client,
                 &anchor_client,

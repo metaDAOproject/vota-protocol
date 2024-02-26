@@ -335,17 +335,17 @@ pub mod vote_market {
     }
 
     pub fn vote_buy_refund(ctx: Context<VoteBuyRefund>, epoch: u32) -> Result<()> {
-        if let Some(max_amount) = ctx.accounts.vote_buy.max_amount {
-            msg!(
-                "Epoch: {} Current Rewards epoch {}",
-                epoch,
-                ctx.accounts.gaugemeister.current_rewards_epoch
-            );
-            let mut refund_amount = ctx.accounts.vote_buy.amount;
-            if epoch < ctx.accounts.gaugemeister.current_rewards_epoch {
-                msg!("Claiming refund for expired claims");
-            } else {
-                msg!("Claiming refund for excess buy value");
+        msg!(
+            "Epoch: {} Current Rewards epoch {}",
+            epoch,
+            ctx.accounts.gaugemeister.current_rewards_epoch
+        );
+        let mut refund_amount = ctx.accounts.vote_buy.amount;
+        if epoch < ctx.accounts.gaugemeister.current_rewards_epoch {
+            msg!("Claiming refund for expired claims");
+        } else {
+            msg!("Claiming refund for excess buy value");
+            if let Some(max_amount) = ctx.accounts.vote_buy.max_amount {
                 refund_amount = ctx
                     .accounts
                     .vote_buy
@@ -353,43 +353,43 @@ pub mod vote_market {
                     .checked_sub(max_amount)
                     .ok_or(errors::VoteMarketError::InvalidRefund)?;
                 ctx.accounts.vote_buy.amount -= refund_amount;
+            } else {
+                return err!(errors::VoteMarketError::MaxVoteBuyAmountNotSet);
             }
-            let transfer_ix = spl_token::instruction::transfer(
-                &ctx.accounts.token_program.key(),
-                &ctx.accounts.token_vault.key(),
-                &ctx.accounts.buyer_token_account.key(),
-                &ctx.accounts.vote_buy.key(),
-                &[],
-                refund_amount,
-            )?;
-            let (_, bump) = Pubkey::find_program_address(
-                &[
-                    b"vote-buy".as_ref(),
-                    epoch.to_le_bytes().as_ref(),
-                    ctx.accounts.config.key().as_ref(),
-                    ctx.accounts.gauge.key().as_ref(),
-                ],
-                ctx.program_id,
-            );
-            invoke_signed(
-                &transfer_ix,
-                &[
-                    ctx.accounts.token_vault.to_account_info(),
-                    ctx.accounts.buyer_token_account.to_account_info(),
-                    ctx.accounts.vote_buy.to_account_info(),
-                    ctx.accounts.token_program.to_account_info(),
-                ],
-                &[&[
-                    b"vote-buy".as_ref(),
-                    epoch.to_le_bytes().as_ref(),
-                    ctx.accounts.config.key().as_ref(),
-                    ctx.accounts.gauge.key().as_ref(),
-                    &[bump],
-                ]],
-            )?;
-        } else {
-            return err!(errors::VoteMarketError::MaxVoteBuyAmountNotSet);
         }
+        let transfer_ix = spl_token::instruction::transfer(
+            &ctx.accounts.token_program.key(),
+            &ctx.accounts.token_vault.key(),
+            &ctx.accounts.buyer_token_account.key(),
+            &ctx.accounts.vote_buy.key(),
+            &[],
+            refund_amount,
+        )?;
+        let (_, bump) = Pubkey::find_program_address(
+            &[
+                b"vote-buy".as_ref(),
+                epoch.to_le_bytes().as_ref(),
+                ctx.accounts.config.key().as_ref(),
+                ctx.accounts.gauge.key().as_ref(),
+            ],
+            ctx.program_id,
+        );
+        invoke_signed(
+            &transfer_ix,
+            &[
+                ctx.accounts.token_vault.to_account_info(),
+                ctx.accounts.buyer_token_account.to_account_info(),
+                ctx.accounts.vote_buy.to_account_info(),
+                ctx.accounts.token_program.to_account_info(),
+            ],
+            &[&[
+                b"vote-buy".as_ref(),
+                epoch.to_le_bytes().as_ref(),
+                ctx.accounts.config.key().as_ref(),
+                ctx.accounts.gauge.key().as_ref(),
+                &[bump],
+            ]],
+        )?;
         Ok(())
     }
 }

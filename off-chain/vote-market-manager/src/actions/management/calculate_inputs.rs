@@ -10,6 +10,7 @@ use solana_client::rpc_client::RpcClient;
 
 use crate::accounts::resolve::{get_delegate, get_epoch_gauge_voter, get_gauge_voter};
 use crate::actions::queries::direct_votes::get_direct_votes;
+use crate::actions::vote_market::vote::vote;
 use locked_voter_state::Locker;
 use quarry_state::SECONDS_PER_YEAR;
 use solana_program::program_pack::Pack;
@@ -19,7 +20,6 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::fs;
 use vote_market::state::VoteBuy;
-use crate::actions::vote_market::vote::vote;
 
 /// Creates a json file containing all the data needed to calculate algorithmic
 /// vote weights and the maximum amount of vote buys that meet the efficiency
@@ -99,7 +99,7 @@ pub(crate) fn calculate_inputs(
         });
     }
     for vote in vote_buys.iter() {
-        if gauges.iter().find(|x| x.gauge == vote.gauge).is_none(){
+        if gauges.iter().find(|x| x.gauge == vote.gauge).is_none() {
             let payment = calculate_payment(client, &mut prices, vote)?;
             gauges.push(GaugeInfo {
                 gauge: vote.gauge,
@@ -202,7 +202,11 @@ pub(crate) fn calculate_inputs(
     Ok(())
 }
 
-fn calculate_payment(client: &RpcClient, prices: &mut HashMap<KnownTokens, f64>, vote_buy: &VoteBuy) -> Result<f64, Box<dyn Error>> {
+fn calculate_payment(
+    client: &RpcClient,
+    prices: &mut HashMap<KnownTokens, f64>,
+    vote_buy: &VoteBuy,
+) -> Result<f64, Box<dyn Error>> {
     let mint_account = client.get_account(&vote_buy.mint).unwrap();
     let decimals = Mint::unpack(mint_account.data.as_slice())?.decimals;
     let amount = spl_token::amount_to_ui_amount(vote_buy.amount, decimals);

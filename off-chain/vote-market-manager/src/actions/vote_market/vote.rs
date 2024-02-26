@@ -1,6 +1,9 @@
-use anchor_lang::AnchorDeserialize;
 use crate::accounts::resolve::{get_delegate, resolve_vote_keys};
+use crate::actions::management::data::VoteWeight;
+use crate::actions::prepare_vote::prepare_vote;
 use crate::{GAUGEMEISTER, LOCKER};
+use anchor_lang::AnchorDeserialize;
+use locked_voter_state::Escrow;
 use solana_client::rpc_client::RpcClient;
 use solana_client::rpc_config::RpcSendTransactionConfig;
 use solana_program::instruction::AccountMeta;
@@ -8,9 +11,6 @@ use solana_program::pubkey::Pubkey;
 use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::signature::Signer;
 use solana_sdk::signer::keypair::Keypair;
-use locked_voter_state::Escrow;
-use crate::actions::management::data::VoteWeight;
-use crate::actions::prepare_vote::prepare_vote;
 
 pub fn vote(
     anchor_client: &anchor_client::Client<&Keypair>,
@@ -29,7 +29,6 @@ pub fn vote(
     let owner = escrow_data.owner;
     // Set weights
     for weight in weights {
-
         // Set weight
         let vote_accounts = resolve_vote_keys(&escrow, &weight.gauge, epoch);
         println!("Epoch the votes are for: {}", epoch);
@@ -52,7 +51,7 @@ pub fn vote(
                 vote_delegate,
                 gauge_program: gauge_state::id(),
             })
-           .send();
+            .send();
         match vote_result {
             Ok(sig) => {
                 println!("Vote succsesful for {:?}: {:?}", escrow, sig);
@@ -120,15 +119,14 @@ pub fn vote(
         );
         let latest_blockhash = client.get_latest_blockhash().unwrap();
         transaction.sign(&[script_authority], latest_blockhash);
-        let result = client
-            .send_and_confirm_transaction_with_spinner_and_config(
-                &transaction,
-                CommitmentConfig::confirmed(),
-                RpcSendTransactionConfig {
-                    skip_preflight: true,
-                    ..RpcSendTransactionConfig::default()
-                },
-            );
+        let result = client.send_and_confirm_transaction_with_spinner_and_config(
+            &transaction,
+            CommitmentConfig::confirmed(),
+            RpcSendTransactionConfig {
+                skip_preflight: true,
+                ..RpcSendTransactionConfig::default()
+            },
+        );
         match result {
             Ok(_) => {
                 println!("Vote committed for {:?}: {:?}", escrow, result);
