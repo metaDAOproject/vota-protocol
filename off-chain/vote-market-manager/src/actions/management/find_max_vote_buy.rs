@@ -20,7 +20,10 @@ pub(crate) fn find_max_vote_buy(
             Some(vote_weight) => vote_weight.votes,
             None => 0,
         };
-        let gauge_usd_effect = (gauge.votes + delegated_votes) as f64 * data.usd_per_vote;
+        println!("delegated_votes: {}", delegated_votes);
+        println!("gauge_votes: {}", gauge.votes);
+        // This is if we count direct votes let gauge_usd_effect = (gauge.votes + delegated_votes) as f64 * data.usd_per_vote;
+        let gauge_usd_effect = delegated_votes as f64 * data.usd_per_vote;
         println!("==================================");
         println!("gauge_usd_effect: {}", gauge_usd_effect);
         let gauge_efficiency = gauge_usd_effect / gauge.payment;
