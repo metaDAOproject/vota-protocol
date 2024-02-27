@@ -25,3 +25,5 @@ serde_json = "1.0.111"
 serde = { version = "1.0.195", features = ["derive"] }
 reqwest = { version = "0.11.24", features = ["blocking"]}
 common = { path = "../../external-state/common" }
+structured-logger = "1.0.3"
+log = "0.4.20"

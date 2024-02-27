@@ -9,6 +9,8 @@ use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::pubkey;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Signer;
+use structured_logger::Builder;
+use structured_logger::json::new_writer;
 
 use crate::accounts::resolve::{get_delegate, get_escrow_address_for_owner};
 use crate::actions::management::data::{VoteInfo};
@@ -26,7 +28,19 @@ const LOCKER: Pubkey = pubkey!("8erad8kmNrLJDJPe9UkmTHomrMV3EW48sjGeECyVjbYX");
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
+    Builder::with_level("info")
+        .with_target_writer("*", new_writer(fs::File::create(
+            format!(
+                "./vote_market_{}.log",
+                Utc::now().format("%Y-%m-%d-%H_%M")
+            ))?))
+        .init();
 
+    log::info!(target: "vote_market_manager",
+        one = "hello world",
+        two = "/test";
+    "this is the message");
+    log::error!("hello again");
     let cmd = clap::Command::new("vote-market-manager")
         .bin_name("vote-market-manager")
         .arg(
@@ -290,14 +304,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ),
         )
         .subcommand(
-            clap::command!("calculate-weights-simple").arg(
-                clap::Arg::new("epoch-data")
-                    .required(true)
-                    .value_parser(value_parser!(String))
-                    .help("The data file output by the calculate-inputs subcommand"),
-            ),
-        )
-        .subcommand(
             clap::command!("find-max-vote-buy")
                 .arg(
                     clap::Arg::new("epoch-data")
@@ -537,15 +543,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let epoch_data_string = std::fs::read_to_string(epoch_data)?;
             let mut data: actions::management::data::EpochData =
                 serde_json::from_str(&epoch_data_string)?;
-            actions::management::calculate_weights::calculate_weights(&mut data)?;
-        }
-        Some(("calculate-weights-simple", matches)) => {
-            let epoch_data = matches.get_one::<String>("epoch-data").unwrap();
-            let epoch_data_string = std::fs::read_to_string(epoch_data)?;
-            let mut data: actions::management::data::EpochData =
-                serde_json::from_str(&epoch_data_string)?;
             let results =
-                actions::management::calculate_weights_simple::calculate_weights(&mut data)?;
+                actions::management::calculate_weights::calculate_weights(&mut data)?;
             println!("results {:?}", results);
             let vote_weights_json = serde_json::to_string(&results).unwrap();
             fs::write(

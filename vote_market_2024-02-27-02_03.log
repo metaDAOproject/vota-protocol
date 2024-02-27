@@ -1,0 +1,2 @@
+{"level":"INFO","message":"this is the message","one":"hello world","target":"vote_market_manager","timestamp":1708999401072,"two":"/test"}
+{"file":"off-chain/vote-market-manager/src/main.rs","level":"ERROR","line":43,"message":"hello again","module":"vote_market_manager","target":"vote_market_manager","timestamp":1708999401074}
