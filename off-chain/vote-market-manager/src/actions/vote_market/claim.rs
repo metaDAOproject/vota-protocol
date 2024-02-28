@@ -1,13 +1,18 @@
+use solana_client::rpc_config::RpcSendTransactionConfig;
 use crate::accounts::resolve::{get_delegate, get_vote_buy, resolve_vote_keys};
 use crate::GAUGEMEISTER;
 use solana_program::pubkey::Pubkey;
+use solana_sdk::commitment_config::CommitmentLevel;
 use solana_sdk::signature::Keypair;
 use solana_sdk::signer::Signer;
 use spl_associated_token_account::get_associated_token_address;
+use spl_associated_token_account::instruction::create_associated_token_account;
 
 pub fn claim(
     anchor_client: &anchor_client::Client<&Keypair>,
+    client: &solana_client::rpc_client::RpcClient,
     payer: &Keypair,
+    seller: Pubkey,
     mint: Pubkey,
     escrow: Pubkey,
     config: Pubkey,
@@ -15,11 +20,31 @@ pub fn claim(
     epoch: u32,
 ) {
     let program = anchor_client.program(vote_market::id()).unwrap();
-    let seller_token_account = get_associated_token_address(&payer.pubkey(), &mint);
+    let seller_token_account = get_associated_token_address(&seller, &mint);
+    let seller_token_account_info = client.get_account(&seller_token_account);
+    if !seller_token_account_info.is_ok() {
+        let create_ata_ix = create_associated_token_account(
+            &payer.pubkey(),
+            &seller,
+            &mint,
+            &spl_token::id());
+        let latest_blockhash = client.get_latest_blockhash().unwrap();
+        let tx = solana_sdk::transaction::Transaction::new_signed_with_payer(
+            &[create_ata_ix],
+            Some(&payer.pubkey()),
+            &[payer],
+            latest_blockhash,
+        );
+        let tx = client
+            .send_and_confirm_transaction_with_spinner_and_commitment(
+                &tx,
+                solana_sdk::commitment_config::CommitmentConfig::confirmed(),
+            )
+            .unwrap();
+        println!("created associated token account: {:?}", tx);
+    }
     let vote_buy = get_vote_buy(&config, &gauge, epoch);
     let token_vault = get_associated_token_address(&vote_buy, &mint);
-    println!("vote buy {}", vote_buy);
-    println!("token vault {}", token_vault);
     let vote_delegate = get_delegate(&config);
     let vote_accounts = resolve_vote_keys(&escrow, &gauge, epoch);
     let treasury = get_associated_token_address(&payer.pubkey(), &mint);
@@ -30,7 +55,7 @@ pub fn claim(
         .args(vote_market::instruction::ClaimVotePayment { epoch })
         .accounts(vote_market::accounts::ClaimVotePayment {
             script_authority: payer.pubkey(),
-            seller: payer.pubkey(),
+            seller,
             seller_token_account,
             token_vault,
             treasury,
@@ -51,8 +76,36 @@ pub fn claim(
             locked_voter_program: locked_voter_state::id(),
             token_program: spl_token::id(),
             system_program: solana_program::system_program::id(),
-        })
-        .send()
-        .unwrap();
-    println!("result: {:?}", result);
+        }).send_with_spinner_and_config(
+        RpcSendTransactionConfig {
+            skip_preflight: true,
+            preflight_commitment: Some(CommitmentLevel::Processed),
+            encoding: None,
+            max_retries: None,
+            min_context_slot: None,
+        }
+    );
+    match result {
+        Ok(sig) => {
+            log::info!(target: "claim",
+            sig=sig.to_string(),
+            user=seller.to_string(),
+            config=config.to_string(),
+            gauge=gauge.to_string(),
+            epoch=epoch;
+            "claiming vote payment"
+            );
+            println!("claimed vote payment");
+        }
+        Err(e) => {
+            log::error!(target: "claim",
+            error=e.to_string(),
+            user=seller.to_string(),
+            config=config.to_string(),
+            gauge=gauge.to_string(),
+            epoch=epoch;
+            "failed to claim vote payment");
+            println!("failed to claim vote payment");
+        }
+    }
 }

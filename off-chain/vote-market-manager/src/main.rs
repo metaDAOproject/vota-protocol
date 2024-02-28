@@ -35,12 +35,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Utc::now().format("%Y-%m-%d-%H_%M")
             ))?))
         .init();
-
-    log::info!(target: "vote_market_manager",
-        one = "hello world",
-        two = "/test";
-    "this is the message");
-    log::error!("hello again");
     let cmd = clap::Command::new("vote-market-manager")
         .bin_name("vote-market-manager")
         .arg(
@@ -332,6 +326,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .value_parser(value_parser!(String))
                         .help("The vote weights file output by the calculate-weights subcommand"),
                 ),
+        )
+        .subcommand(
+            clap::command!("execute-claim")
+                .arg(
+                    clap::Arg::new("config").
+                    required(true).
+                    value_parser(value_parser!(String)).
+                    help("The config to claim for"),
+                )
+                .arg(
+                    clap::Arg::new("epoch").
+                    required(true).
+                    value_parser(value_parser!(u32)).
+                    help("The epoch to claim for"),
+                )
+
         );
 
     let matches = cmd.get_matches();
@@ -523,15 +533,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let gauge = Pubkey::from_str(matches.get_one::<String>("gauge").unwrap())?;
             let epoch = matches.get_one::<u32>("epoch").unwrap();
 
-            actions::vote_market::claim::claim(
-                &anchor_client,
-                &payer,
-                mint,
-                escrow,
-                config,
-                gauge,
-                *epoch,
-            );
+            // actions::vote_market::claim::claim(
+            //     &anchor_client,
+            //     &payer,
+            //     payer.pubkey(),
+            //     mint,
+            //     escrow,
+            //     config,
+            //     gauge,
+            //     *epoch,
+            // );
         }
         Some(("calculate-inputs", matches)) => {
             let epoch = matches.get_one::<u32>("epoch").unwrap();
@@ -587,6 +598,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &payer,
                 data,
                 vote_infos,
+            )?;
+        }
+        Some(("execute-claim", matches)) => {
+            let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap())?;
+            let epoch = matches.get_one::<u32>("epoch").unwrap();
+            actions::management::execute_claim::execute_claim(
+                &client,
+                &anchor_client,
+                &payer,
+                config,
+                *epoch,
             )?;
         }
         _ => {
