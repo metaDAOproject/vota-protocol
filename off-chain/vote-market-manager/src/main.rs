@@ -533,16 +533,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let gauge = Pubkey::from_str(matches.get_one::<String>("gauge").unwrap())?;
             let epoch = matches.get_one::<u32>("epoch").unwrap();
 
-            // actions::vote_market::claim::claim(
-            //     &anchor_client,
-            //     &payer,
-            //     payer.pubkey(),
-            //     mint,
-            //     escrow,
-            //     config,
-            //     gauge,
-            //     *epoch,
-            // );
+            actions::vote_market::claim::claim(
+                &anchor_client,
+                &client,
+                &payer,
+                payer.pubkey(),
+                mint,
+                escrow,
+                config,
+                gauge,
+                *epoch,
+            );
         }
         Some(("calculate-inputs", matches)) => {
             let epoch = matches.get_one::<u32>("epoch").unwrap();
