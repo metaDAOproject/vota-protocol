@@ -2,7 +2,6 @@ use solana_client::rpc_config::RpcSendTransactionConfig;
 use crate::accounts::resolve::{get_delegate, get_vote_buy, resolve_vote_keys};
 use crate::GAUGEMEISTER;
 use solana_program::pubkey::Pubkey;
-use solana_sdk::commitment_config::CommitmentLevel;
 use solana_sdk::signature::Keypair;
 use solana_sdk::signer::Signer;
 use spl_associated_token_account::get_associated_token_address;
@@ -78,11 +77,7 @@ pub fn claim(
             system_program: solana_program::system_program::id(),
         }).send_with_spinner_and_config(
         RpcSendTransactionConfig {
-            skip_preflight: true,
-            preflight_commitment: Some(CommitmentLevel::Processed),
-            encoding: None,
-            max_retries: None,
-            min_context_slot: None,
+            ..RpcSendTransactionConfig::default()
         }
     );
     match result {

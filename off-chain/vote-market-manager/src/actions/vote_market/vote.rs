@@ -54,9 +54,24 @@ pub fn vote(
             .send();
         match vote_result {
             Ok(sig) => {
+                log::info!(target: "vote",
+                sig=sig.to_string(),
+                user=owner.to_string(),
+                config=config.to_string(),
+                gauge=weight.gauge.to_string(),
+                epoch=epoch;
+                "set vote weight"
+                );
                 println!("Vote succsesful for {:?}: {:?}", escrow, sig);
             }
             Err(e) => {
+                log::error!(target: "vote",
+                error=e.to_string(),
+                user=owner.to_string(),
+                config=config.to_string(),
+                gauge=weight.gauge.to_string(),
+                epoch=epoch;
+                "failed to set vote weight");
                 println!("Error sending vote for {:?}: {:?}", escrow, e);
             }
         }
@@ -85,10 +100,25 @@ pub fn vote(
         transaction.sign(&[script_authority], latest_blockhash);
         let result = client.send_and_confirm_transaction(&transaction);
         match result {
-            Ok(_) => {
+            Ok(sig) => {
+                log::info!(target: "vote",
+                sig=sig.to_string(),
+                user=owner.to_string(),
+                config=config.to_string(),
+                gauge=weight.gauge.to_string(),
+                epoch=epoch;
+                "epoch gauge vote prepared"
+                );
                 println!("Epoch gauge vote prepared for {:?}: {:?}", escrow, result);
             }
             Err(e) => {
+                log::error!(target: "vote",
+                error=e.to_string(),
+                user=owner.to_string(),
+                config=config.to_string(),
+                gauge=weight.gauge.to_string(),
+                epoch=epoch;
+                "failed to prepare epoch gauge vote");
                 println!("Error preparing epoch gauge vote for {:?}: {:?}", escrow, e);
             }
         }
@@ -123,15 +153,29 @@ pub fn vote(
             &transaction,
             CommitmentConfig::confirmed(),
             RpcSendTransactionConfig {
-                skip_preflight: true,
                 ..RpcSendTransactionConfig::default()
             },
         );
         match result {
-            Ok(_) => {
+            Ok(sig) => {
+                log::info!(target: "vote",
+                sig=sig.to_string(),
+                user=owner.to_string(),
+                config=config.to_string(),
+                gauge=weight.gauge.to_string(),
+                epoch=epoch;
+                "vote committed"
+                );
                 println!("Vote committed for {:?}: {:?}", escrow, result);
             }
             Err(e) => {
+                log::error!(target: "vote",
+                error=e.to_string(),
+                user=owner.to_string(),
+                config=config.to_string(),
+                gauge=weight.gauge.to_string(),
+                epoch=epoch;
+                "failed to commit vote");
                 println!("Error committing vote for {:?}: {:?}", escrow, e);
             }
         }

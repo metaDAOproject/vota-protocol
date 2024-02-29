@@ -505,9 +505,9 @@ pub struct ClaimVotePayment<'info> {
     associated_token::mint = mint,
     associated_token::authority = admin,
     )]
-    /// CHECK I only need this to check the treasury
+    /// CHECK Checked by seed constraints
     pub treasury: Box<Account<'info, TokenAccount>>,
-    /// CHECK Not enough stack space to deserialize
+    /// CHECK Not enough stack space to deserialize. Only used to check treasury seeds.
     pub admin: UncheckedAccount<'info>,
     pub mint: Account<'info, Mint>,
     #[account(has_one = gaugemeister, has_one = script_authority, has_one = admin)]

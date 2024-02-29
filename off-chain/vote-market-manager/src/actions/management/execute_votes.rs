@@ -16,8 +16,8 @@ pub(crate) fn execute_votes(
     println!("Executing votes");
     println!("Data: {:?}", data);
     println!("Vote weights: {:?}", vote_weights);
-    for escrow in data.escrows.iter() {
-        println!("Voting on behalf of escrow {:?}", escrow);
+    for (i, escrow) in data.escrows.iter().enumerate() {
+        println!("Voting on behalf of escrow {:?}\n Escrow {} out of {}", escrow, i, data.escrows.len());
         let result = vote(
             anchor_client,
             client,
