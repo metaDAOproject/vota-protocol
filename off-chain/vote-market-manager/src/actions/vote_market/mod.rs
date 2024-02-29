@@ -4,3 +4,4 @@ pub(crate) mod set_maximum;
 pub(crate) mod setup;
 pub(crate) mod update_mints;
 pub mod vote;
+pub(crate) mod refund;

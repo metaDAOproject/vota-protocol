@@ -9,7 +9,7 @@ use anchor_spl::token::{Mint, Token, TokenAccount};
 use gauge_state::GaugeProgram;
 use locked_voter_state::LockedVoterProgram;
 
-declare_id!("CgpagJ94phFKHBKkk4pd4YdKgfNCp5SzsiNwcLe73dc");
+declare_id!("VotAjwzAEF9ZLNAYEB1ivXt51911EqYGVu9NeaEKRyy");
 
 #[program]
 pub mod vote_market {

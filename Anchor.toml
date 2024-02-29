@@ -3,7 +3,7 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-vote_market = "CgpagJ94phFKHBKkk4pd4YdKgfNCp5SzsiNwcLe73dc"
+vote_market = "VotAjwzAEF9ZLNAYEB1ivXt51911EqYGVu9NeaEKRyy"
 
 [provider]
 cluster = "Localnet"

@@ -1,3 +1,4 @@
+newest_config = F72CPZ7vumQ6Z7e5ncWxkNunzcL79xkjTaiNCvZoL7Uc
 new_config = 5HY4t9zU1nYiZDQj7Bzxx5FpaK98s26F5RKuFcgR36QY
 config = HekjdWmowzGEM9AztC46EuPnfqRXD71MjjRuwZD3rGi1
 allowed_mints = CUEyrzCBryUu36QcSmpPMwCQCjSxY2CAx6E1M1MuqhAq

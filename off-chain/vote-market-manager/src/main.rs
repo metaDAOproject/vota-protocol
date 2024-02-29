@@ -214,6 +214,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ),
         )
         .subcommand(
+            clap::command!("get-refund")
+                .arg(
+                    clap::Arg::new("config")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The config for the vote buy accounts"),
+                )
+                .arg(
+                    clap::Arg::new("gauge")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The gauge buy votes for"),
+                )
+                .arg(
+                    clap::Arg::new("epoch")
+                        .required(true)
+                        .value_parser(value_parser!(u32))
+                        .help("The epoch to vote for"),
+                ),
+
+        )
+        .subcommand(
             clap::command!("set-maximum")
                 .arg(
                     clap::Arg::new("config")
@@ -506,6 +528,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &mint,
                 *epoch,
                 *amount,
+            );
+        }
+        Some(("get-refund", matches)) => {
+            let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap())?;
+            let gauge = Pubkey::from_str(matches.get_one::<String>("gauge").unwrap())?;
+            let epoch = matches.get_one::<u32>("epoch").unwrap();
+            actions::vote_market::refund::get_refund(
+                &anchor_client,
+                &payer,
+                config,
+                gauge,
+                *epoch,
             );
         }
         Some(("set-maximum", matches)) => {
