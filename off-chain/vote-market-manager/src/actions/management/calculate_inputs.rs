@@ -100,6 +100,7 @@ pub(crate) fn calculate_inputs(
     for vote in vote_buys.iter() {
         if gauges.iter().find(|x| x.gauge == vote.gauge).is_none() {
             let payment = calculate_payment(client, &mut prices, vote)?;
+            total_vote_buy_value += payment;
             gauges.push(GaugeInfo {
                 gauge: vote.gauge,
                 payment,
