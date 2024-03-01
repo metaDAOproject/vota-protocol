@@ -9,7 +9,7 @@ use anchor_spl::token::{Mint, Token, TokenAccount};
 use gauge_state::GaugeProgram;
 use locked_voter_state::LockedVoterProgram;
 
-declare_id!("CgpagJ94phFKHBKkk4pd4YdKgfNCp5SzsiNwcLe73dc");
+declare_id!("VotAjwzAEF9ZLNAYEB1ivXt51911EqYGVu9NeaEKRyy");
 
 #[program]
 pub mod vote_market {
@@ -94,13 +94,13 @@ pub mod vote_market {
         if ctx.accounts.mint.key() == Pubkey::default() {
             return err!(errors::VoteMarketError::InvalidMint);
         }
-        if ctx.accounts.vote_buy.reward_receiver == Pubkey::default()
+        if ctx.accounts.vote_buy.buyer == Pubkey::default()
             && ctx.accounts.vote_buy.mint == Pubkey::default()
         {
-            ctx.accounts.vote_buy.reward_receiver = ctx.accounts.buyer.key();
+            ctx.accounts.vote_buy.buyer = ctx.accounts.buyer.key();
             ctx.accounts.vote_buy.mint = ctx.accounts.mint.key();
         }
-        if ctx.accounts.vote_buy.reward_receiver != ctx.accounts.buyer.key() {
+        if ctx.accounts.vote_buy.buyer != ctx.accounts.buyer.key() {
             return err!(errors::VoteMarketError::InvalidBuyer);
         }
         if ctx.accounts.vote_buy.mint != ctx.accounts.mint.key() {
@@ -335,17 +335,17 @@ pub mod vote_market {
     }
 
     pub fn vote_buy_refund(ctx: Context<VoteBuyRefund>, epoch: u32) -> Result<()> {
-        if let Some(max_amount) = ctx.accounts.vote_buy.max_amount {
-            msg!(
-                "Epoch: {} Current Rewards epoch {}",
-                epoch,
-                ctx.accounts.gaugemeister.current_rewards_epoch
-            );
-            let mut refund_amount = ctx.accounts.vote_buy.amount;
-            if epoch < ctx.accounts.gaugemeister.current_rewards_epoch {
-                msg!("Claiming refund for expired claims");
-            } else {
-                msg!("Claiming refund for excess buy value");
+        msg!(
+            "Epoch: {} Current Rewards epoch {}",
+            epoch,
+            ctx.accounts.gaugemeister.current_rewards_epoch
+        );
+        let mut refund_amount = ctx.accounts.vote_buy.amount;
+        if epoch < ctx.accounts.gaugemeister.current_rewards_epoch {
+            msg!("Claiming refund for expired claims");
+        } else {
+            msg!("Claiming refund for excess buy value");
+            if let Some(max_amount) = ctx.accounts.vote_buy.max_amount {
                 refund_amount = ctx
                     .accounts
                     .vote_buy
@@ -353,43 +353,43 @@ pub mod vote_market {
                     .checked_sub(max_amount)
                     .ok_or(errors::VoteMarketError::InvalidRefund)?;
                 ctx.accounts.vote_buy.amount -= refund_amount;
+            } else {
+                return err!(errors::VoteMarketError::MaxVoteBuyAmountNotSet);
             }
-            let transfer_ix = spl_token::instruction::transfer(
-                &ctx.accounts.token_program.key(),
-                &ctx.accounts.token_vault.key(),
-                &ctx.accounts.buyer_token_account.key(),
-                &ctx.accounts.vote_buy.key(),
-                &[],
-                refund_amount,
-            )?;
-            let (_, bump) = Pubkey::find_program_address(
-                &[
-                    b"vote-buy".as_ref(),
-                    epoch.to_le_bytes().as_ref(),
-                    ctx.accounts.config.key().as_ref(),
-                    ctx.accounts.gauge.key().as_ref(),
-                ],
-                ctx.program_id,
-            );
-            invoke_signed(
-                &transfer_ix,
-                &[
-                    ctx.accounts.token_vault.to_account_info(),
-                    ctx.accounts.buyer_token_account.to_account_info(),
-                    ctx.accounts.vote_buy.to_account_info(),
-                    ctx.accounts.token_program.to_account_info(),
-                ],
-                &[&[
-                    b"vote-buy".as_ref(),
-                    epoch.to_le_bytes().as_ref(),
-                    ctx.accounts.config.key().as_ref(),
-                    ctx.accounts.gauge.key().as_ref(),
-                    &[bump],
-                ]],
-            )?;
-        } else {
-            return err!(errors::VoteMarketError::MaxVoteBuyAmountNotSet);
         }
+        let transfer_ix = spl_token::instruction::transfer(
+            &ctx.accounts.token_program.key(),
+            &ctx.accounts.token_vault.key(),
+            &ctx.accounts.buyer_token_account.key(),
+            &ctx.accounts.vote_buy.key(),
+            &[],
+            refund_amount,
+        )?;
+        let (_, bump) = Pubkey::find_program_address(
+            &[
+                b"vote-buy".as_ref(),
+                epoch.to_le_bytes().as_ref(),
+                ctx.accounts.config.key().as_ref(),
+                ctx.accounts.gauge.key().as_ref(),
+            ],
+            ctx.program_id,
+        );
+        invoke_signed(
+            &transfer_ix,
+            &[
+                ctx.accounts.token_vault.to_account_info(),
+                ctx.accounts.buyer_token_account.to_account_info(),
+                ctx.accounts.vote_buy.to_account_info(),
+                ctx.accounts.token_program.to_account_info(),
+            ],
+            &[&[
+                b"vote-buy".as_ref(),
+                epoch.to_le_bytes().as_ref(),
+                ctx.accounts.config.key().as_ref(),
+                ctx.accounts.gauge.key().as_ref(),
+                &[bump],
+            ]],
+        )?;
         Ok(())
     }
 }
@@ -505,9 +505,9 @@ pub struct ClaimVotePayment<'info> {
     associated_token::mint = mint,
     associated_token::authority = admin,
     )]
-    /// CHECK I only need this to check the treasury
+    /// CHECK Checked by seed constraints
     pub treasury: Box<Account<'info, TokenAccount>>,
-    /// CHECK Not enough stack space to deserialize
+    /// CHECK Not enough stack space to deserialize. Only used to check treasury seeds.
     pub admin: UncheckedAccount<'info>,
     pub mint: Account<'info, Mint>,
     #[account(has_one = gaugemeister, has_one = script_authority, has_one = admin)]
@@ -646,6 +646,7 @@ pub struct VoteBuyRefund<'info> {
     #[account(
     mut,
     has_one = mint,
+    has_one = buyer,
     seeds = [
     b"vote-buy".as_ref(),
     epoch.to_le_bytes().as_ref(),

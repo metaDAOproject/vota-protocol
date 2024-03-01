@@ -1,4 +1,5 @@
 use crate::accounts::resolve::{get_escrow_address_for_owner, resolve_vote_keys, VoteCreateStep};
+use crate::actions::create_epoch_gauge::create_epoch_gauge;
 use crate::GAUGEMEISTER;
 use solana_client::rpc_client::RpcClient;
 use solana_program::instruction::AccountMeta;
@@ -36,9 +37,26 @@ pub fn prepare_vote(client: &RpcClient, owner: Pubkey, gauge: Pubkey, payer: &Ke
                 );
                 let latest_blockhash = client.get_latest_blockhash().unwrap();
                 transaction.sign(&[payer], latest_blockhash);
-                let result = client.send_and_confirm_transaction(&transaction).unwrap();
-                println!("result: {:?}", result);
-                println!("transaction: {:?}", transaction.signatures.first().unwrap());
+                let result = client.send_and_confirm_transaction(&transaction);
+                match result {
+                    Ok(sig) => {
+                    log::info!(target: "vote",
+                        sig=sig.to_string(),
+                        user=owner.to_string(),
+                        epoch=epoch;
+                        "gauge voter created"
+                        );
+                        println!("Gauge voter created")
+                    },
+                    Err(e) => {
+                        log::error!(target: "vote",
+                        error=e.to_string(),
+                        user=owner.to_string(),
+                        epoch=epoch;
+                        "failed to create gauge voter");
+                        println!("Error creating gauge voter: {:?}", e)
+                    },
+                }
             }
             VoteCreateStep::GaugeVote(key) => {
                 println!("Creating gauge vote {}", key);
@@ -63,9 +81,30 @@ pub fn prepare_vote(client: &RpcClient, owner: Pubkey, gauge: Pubkey, payer: &Ke
                 );
                 let latest_blockhash = client.get_latest_blockhash().unwrap();
                 transaction.sign(&[payer], latest_blockhash);
-                let result = client.send_and_confirm_transaction(&transaction).unwrap();
-                println!("result: {:?}", result);
-                println!("transaction: {:?}", transaction.signatures.first().unwrap());
+                let result = client.send_and_confirm_transaction(&transaction);
+                match result {
+                    Ok(sig) => {
+                    log::info!(target: "vote",
+                        sig=sig.to_string(),
+                        user=owner.to_string(),
+                        epoch=epoch;
+                        "gauge vote created"
+                        );
+                        println!("Gauge vote created")
+                    },
+                    Err(e) => {
+                        log::error!(target: "vote",
+                        error=e.to_string(),
+                        user=owner.to_string(),
+                        epoch=epoch;
+                        "failed to create gauge vote");
+                        println!("Error creating gauge vote: {:?}", e)
+                    },
+                }
+
+            }
+            VoteCreateStep::EpochGauge(_key) => {
+                create_epoch_gauge(client, payer, gauge, epoch);
             }
             VoteCreateStep::EpochGaugeVoter(_key) => {}
         }

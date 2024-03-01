@@ -37,12 +37,16 @@ pub struct GaugeInfo {
     pub votes: u64,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct VoteWeight {
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct VoteInfo {
     #[serde(
         deserialize_with = "common::deserialize_pubkey",
         serialize_with = "common::serialize_pubkey"
     )]
     pub gauge: Pubkey,
     pub votes: u64,
+    pub weight: u32,
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct VoteInfoCollection(pub Vec<VoteInfo>);

@@ -16,7 +16,9 @@ use solana_program::program_pack::Pack;
 use solana_program::pubkey::Pubkey;
 use spl_token::state::Mint;
 use std::collections::HashMap;
+use std::error::Error;
 use std::fs;
+use vote_market::state::VoteBuy;
 
 /// Creates a json file containing all the data needed to calculate algorithmic
 /// vote weights and the maximum amount of vote buys that meet the efficiency
@@ -85,11 +87,7 @@ pub(crate) fn calculate_inputs(
         let mut payment = 0.0;
         if let Some(vote_buy) = vote_buys.iter().find(|x| x.gauge == epoch_gauge.gauge) {
             println!("found vote buy: {:?}", vote_buy);
-            let mint_account = client.get_account(&vote_buy.mint).unwrap();
-            let decimals = Mint::unpack(mint_account.data.as_slice())?.decimals;
-            let amount = spl_token::amount_to_ui_amount(vote_buy.amount, decimals);
-            let price = prices.get(&vote_buy.mint.into()).unwrap();
-            payment = amount * price;
+            payment = calculate_payment(client, &mut prices, vote_buy)?;
             total_vote_buy_value += payment;
         }
 
@@ -98,6 +96,17 @@ pub(crate) fn calculate_inputs(
             payment,
             votes: epoch_gauge.total_power,
         });
+    }
+    for vote in vote_buys.iter() {
+        if gauges.iter().find(|x| x.gauge == vote.gauge).is_none() {
+            let payment = calculate_payment(client, &mut prices, vote)?;
+            total_vote_buy_value += payment;
+            gauges.push(GaugeInfo {
+                gauge: vote.gauge,
+                payment,
+                votes: 0,
+            });
+        }
     }
 
     // Find delegated votes and get totals for gauges that have already voted.
@@ -191,4 +200,16 @@ pub(crate) fn calculate_inputs(
         epoch_stats_json,
     )?;
     Ok(())
+}
+
+fn calculate_payment(
+    client: &RpcClient,
+    prices: &mut HashMap<KnownTokens, f64>,
+    vote_buy: &VoteBuy,
+) -> Result<f64, Box<dyn Error>> {
+    let mint_account = client.get_account(&vote_buy.mint).unwrap();
+    let decimals = Mint::unpack(mint_account.data.as_slice())?.decimals;
+    let amount = spl_token::amount_to_ui_amount(vote_buy.amount, decimals);
+    let price = prices.get(&vote_buy.mint.into()).unwrap();
+    Ok(amount * price)
 }

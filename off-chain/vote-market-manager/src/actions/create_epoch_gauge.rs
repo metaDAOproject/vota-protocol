@@ -34,6 +34,27 @@ pub(crate) fn create_epoch_gauge(client: &RpcClient, payer: &Keypair, gauge: Pub
     );
     let latest_blockhash = client.get_latest_blockhash().unwrap();
     transaction.sign(&[payer], latest_blockhash);
-    let result = client.send_and_confirm_transaction(&transaction).unwrap();
-    println!("created epoch gauge: {:?}", result);
+    let result = client.send_and_confirm_transaction(&transaction);
+    match result {
+        Ok(sig) => {
+            log::info!(
+                target: "vote",
+                sig = sig.to_string(),
+                gauge = gauge.to_string(),
+                epoch = epoch;
+                "epoch gauge created"
+            );
+            println!("Created epoch gauge: {:?}", sig);
+        }
+        Err(e) => {
+            log::error!(
+                target: "vote",
+                error = e.to_string(),
+                gauge = gauge.to_string(),
+                epoch = epoch;
+                "failed to create epoch gauge"
+            );
+            println!("Error creating epoch gauge: {:?}", e);
+        }
+    }
 }

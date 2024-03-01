@@ -10,6 +10,7 @@ pub fn get_escrow_address_for_owner(owner: &Pubkey) -> Pubkey {
     .0
 }
 
+#[derive(Debug)]
 pub struct VoteKeys {
     pub gauge_voter: Pubkey,
     pub gauge_vote: Pubkey,
@@ -22,6 +23,7 @@ pub enum VoteCreateStep {
     GaugeVoter(Pubkey),
     GaugeVote(Pubkey),
     EpochGaugeVoter(Pubkey),
+    EpochGauge(Pubkey),
 }
 
 impl VoteKeys {
@@ -45,6 +47,7 @@ impl VoteKeys {
                     0 => steps.push(VoteCreateStep::GaugeVoter(self.gauge_voter)),
                     1 => steps.push(VoteCreateStep::GaugeVote(self.gauge_vote)),
                     2 => steps.push(VoteCreateStep::EpochGaugeVoter(self.epoch_gauge_voter)),
+                    4 => steps.push(VoteCreateStep::EpochGauge(self.epoch_gauge)),
                     _ => {}
                 }
             }

@@ -1,15 +1,19 @@
-use std::env;
 use std::str::FromStr;
+use std::{env, fs};
 
 use anchor_lang::AnchorDeserialize;
+use chrono::Utc;
 use clap::value_parser;
 use dotenv::dotenv;
 use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::pubkey;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Signer;
+use structured_logger::Builder;
+use structured_logger::json::new_writer;
 
-use crate::accounts::resolve::get_delegate;
+use crate::accounts::resolve::{get_delegate, get_escrow_address_for_owner};
+use crate::actions::management::data::{VoteInfo};
 use crate::actions::queries::escrows;
 use crate::utils::short_address;
 
@@ -24,7 +28,13 @@ const LOCKER: Pubkey = pubkey!("8erad8kmNrLJDJPe9UkmTHomrMV3EW48sjGeECyVjbYX");
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
-
+    Builder::with_level("info")
+        .with_target_writer("*", new_writer(fs::File::create(
+            format!(
+                "./vote_market_{}.log",
+                Utc::now().format("%Y-%m-%d-%H_%M")
+            ))?))
+        .init();
     let cmd = clap::Command::new("vote-market-manager")
         .bin_name("vote-market-manager")
         .arg(
@@ -76,19 +86,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ),
         )
         .subcommand(
-            clap::command!("delegate")
-                .arg(
-                    clap::Arg::new("escrow")
-                        .required(true)
-                        .value_parser(value_parser!(String))
-                        .help("The escrow to set the delegate for"),
-                )
-                .arg(
-                    clap::Arg::new("config")
-                        .required(true)
-                        .value_parser(value_parser!(String))
-                        .help("The config to generate the delegate from"),
-                ),
+            clap::command!("delegate").arg(
+                clap::Arg::new("config")
+                    .required(true)
+                    .value_parser(value_parser!(String))
+                    .help("The config to generate the delegate from"),
+            ),
         )
         .subcommand(
             clap::command!("prepare-vote")
@@ -127,7 +130,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ),
         )
         .subcommand(
-            clap::command!("vote")
+            clap::command!("vote-test")
                 .arg(
                     clap::Arg::new("escrow")
                         .required(true)
@@ -157,6 +160,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .value_parser(value_parser!(String))
                     .help("The mints to allow for the vote buys"),
             ),
+        )
+        .subcommand(
+            clap::command!("update-mints")
+                .arg(
+                    clap::Arg::new("config")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The config to update the mints for"),
+                )
+                .arg(
+                    clap::Arg::new("mints")
+                        .long("mints")
+                        .short('m')
+                        .required(true)
+                        .value_delimiter(',')
+                        .value_parser(value_parser!(String))
+                        .help("The mints to allow for the vote buys"),
+                ),
         )
         .subcommand(clap::command!("create-token"))
         .subcommand(
@@ -191,6 +212,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .value_parser(value_parser!(u64))
                         .help("The amount of tokens to buy votes for"),
                 ),
+        )
+        .subcommand(
+            clap::command!("get-refund")
+                .arg(
+                    clap::Arg::new("config")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The config for the vote buy accounts"),
+                )
+                .arg(
+                    clap::Arg::new("gauge")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The gauge buy votes for"),
+                )
+                .arg(
+                    clap::Arg::new("epoch")
+                        .required(true)
+                        .value_parser(value_parser!(u32))
+                        .help("The epoch to vote for"),
+                ),
+
         )
         .subcommand(
             clap::command!("set-maximum")
@@ -277,14 +320,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ),
         )
         .subcommand(
-            clap::command!("calculate-weights-simple").arg(
-                clap::Arg::new("epoch-data")
-                    .required(true)
-                    .value_parser(value_parser!(String))
-                    .help("The data file output by the calculate-inputs subcommand"),
-            ),
-        )
-        .subcommand(
             clap::command!("find-max-vote-buy")
                 .arg(
                     clap::Arg::new("epoch-data")
@@ -313,6 +348,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .value_parser(value_parser!(String))
                         .help("The vote weights file output by the calculate-weights subcommand"),
                 ),
+        )
+        .subcommand(
+            clap::command!("execute-claim")
+                .arg(
+                    clap::Arg::new("config").
+                    required(true).
+                    value_parser(value_parser!(String)).
+                    help("The config to claim for"),
+                )
+                .arg(
+                    clap::Arg::new("epoch").
+                    required(true).
+                    value_parser(value_parser!(u32)).
+                    help("The epoch to claim for"),
+                )
+
         );
 
     let matches = cmd.get_matches();
@@ -359,11 +410,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("escrows: {:?}", escrows);
         }
         Some(("delegate", matches)) => {
-            let escrow = Pubkey::from_str(matches.get_one::<String>("escrow").unwrap())?;
-            // print!("escrow: {:?}", escrow_string);
+            let escrow = get_escrow_address_for_owner(&payer.pubkey());
             let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap())?;
             let delegate = accounts::resolve::get_delegate(&config);
-            print!("delegate: {:?}", delegate);
+            println!("delegate: {:?}", delegate);
             actions::delegate::delegate(client, &escrow, &delegate, &payer);
         }
         Some(("get-escrow", matches)) => {
@@ -390,7 +440,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 println!(
                     "Pool Mint: {:?}, Gauge: {:?}, Power: {:?}, USD value of votes: {:?}",
                     short_address(&quarry_mint),
-                    short_address(&eg.gauge),
+                    &eg.gauge,
                     eg.total_power,
                     eg.total_power as f64 * usd_per_vote
                 );
@@ -416,14 +466,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let epoch = matches.get_one::<u32>("epoch").unwrap();
             actions::create_epoch_gauge::create_epoch_gauge(&client, &payer, gauge, *epoch);
         }
-        Some(("vote", matches)) => {
-            println!("vote");
+        Some(("vote-test", matches)) => {
+            println!("vote-test");
             let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap())?;
             let escrow = Pubkey::from_str(matches.get_one::<String>("escrow").unwrap())?;
             let epoch = matches.get_one::<u32>("epoch").unwrap();
-            let weights = vec![actions::vote_market::vote::WeightInfo {
+            let weights = vec![VoteInfo {
                 gauge: Pubkey::from_str("3xC4eW6xhW3Gpb4T5sCKFe73ay2K4aUUfxL57XFdguJx")?,
                 weight: 100,
+                votes: 100,
             }];
             actions::vote_market::vote::vote(
                 &anchor_client,
@@ -433,7 +484,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 escrow,
                 *epoch,
                 weights,
-            );
+            )?;
         }
         Some(("setup", matches)) => {
             println!("setup");
@@ -444,6 +495,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .collect();
             }
             actions::vote_market::setup::setup(&anchor_client, mints, &payer);
+        }
+        Some(("update-mints", matches)) => {
+            println!("update-mints");
+            let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap())?;
+            let mut mints = vec![Pubkey::default()];
+            if let Some(mint_vaulues) = matches.get_many::<String>("mints") {
+                mints = mint_vaulues
+                    .map(|mint| Pubkey::from_str(mint).unwrap())
+                    .collect();
+            }
+            println!("mints: {:?}", mints);
+            actions::vote_market::update_mints::update_mints(&anchor_client, &payer, config, mints);
         }
         Some(("create-token", _)) => {
             println!("create-token");
@@ -465,6 +528,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &mint,
                 *epoch,
                 *amount,
+            );
+        }
+        Some(("get-refund", matches)) => {
+            let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap())?;
+            let gauge = Pubkey::from_str(matches.get_one::<String>("gauge").unwrap())?;
+            let epoch = matches.get_one::<u32>("epoch").unwrap();
+            actions::vote_market::refund::get_refund(
+                &anchor_client,
+                &payer,
+                config,
+                gauge,
+                *epoch,
             );
         }
         Some(("set-maximum", matches)) => {
@@ -494,7 +569,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             actions::vote_market::claim::claim(
                 &anchor_client,
+                &client,
                 &payer,
+                payer.pubkey(),
                 mint,
                 escrow,
                 config,
@@ -512,14 +589,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let epoch_data_string = std::fs::read_to_string(epoch_data)?;
             let mut data: actions::management::data::EpochData =
                 serde_json::from_str(&epoch_data_string)?;
-            actions::management::calculate_weights::calculate_weights(&mut data)?;
-        }
-        Some(("calculate-weights-simple", matches)) => {
-            let epoch_data = matches.get_one::<String>("epoch-data").unwrap();
-            let epoch_data_string = std::fs::read_to_string(epoch_data)?;
-            let mut data: actions::management::data::EpochData =
-                serde_json::from_str(&epoch_data_string)?;
-            actions::management::calculate_weights_simple::calculate_weights(&mut data)?;
+            let results =
+                actions::management::calculate_weights::calculate_weights(&mut data)?;
+            println!("results {:?}", results);
+            let vote_weights_json = serde_json::to_string(&results).unwrap();
+            fs::write(
+                format!(
+                    "./epoch_{}_weights{}.json",
+                    data.epoch,
+                    Utc::now().format("%Y-%m-%d-%H_%M")
+                ),
+                vote_weights_json,
+            )?;
         }
         Some(("find-max-vote-buy", matches)) => {
             let epoch_data = matches.get_one::<String>("epoch-data").unwrap();
@@ -528,7 +609,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 serde_json::from_str(&epoch_data_string)?;
             let vote_weights_file = matches.get_one::<String>("vote-weights").unwrap();
             let vote_weights_string = std::fs::read_to_string(vote_weights_file)?;
-            let vote_weights: Vec<actions::management::data::VoteWeight> =
+            let vote_weights: Vec<VoteInfo>=
                 serde_json::from_str(&vote_weights_string)?;
             actions::management::find_max_vote_buy::find_max_vote_buy(
                 &client,
@@ -545,14 +626,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 serde_json::from_str(&epoch_data_string)?;
             let vote_weights_file = matches.get_one::<String>("vote-weights").unwrap();
             let vote_weights_string = std::fs::read_to_string(vote_weights_file)?;
-            let vote_weights: Vec<actions::management::data::VoteWeight> =
-                serde_json::from_str(&vote_weights_string)?;
+            let vote_infos: Vec<VoteInfo> = serde_json::from_str(&vote_weights_string)?;
             actions::management::execute_votes::execute_votes(
                 &client,
                 &anchor_client,
                 &payer,
                 data,
-                vote_weights,
+                vote_infos,
+            )?;
+        }
+        Some(("execute-claim", matches)) => {
+            let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap())?;
+            let epoch = matches.get_one::<u32>("epoch").unwrap();
+            actions::management::execute_claim::execute_claim(
+                &client,
+                &anchor_client,
+                &payer,
+                config,
+                *epoch,
             )?;
         }
         _ => {

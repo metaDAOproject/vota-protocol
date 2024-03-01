@@ -8,6 +8,7 @@ use std::collections::HashMap;
 #[allow(non_camel_case_types)]
 pub enum KnownTokens {
     Uxd,
+    Uxp,
     Msol,
     Blze,
     Sbr,
@@ -20,6 +21,7 @@ impl From<String> for KnownTokens {
             "J5BWqabLwaFP3xPDGndRJdZPTUncQCRfostpDHh2eesb" => KnownTokens::Msol,
             "5VDD9VgkKBYMVsWekA9egrZTJsNs2cmgTm1YkPCCpz1U" => KnownTokens::Blze,
             "7kbnvuGBxxj8AG9qp8Scn56muWGaRaFqxg1FsRp3PaFT" => KnownTokens::Uxd,
+            "UXPhBoR3qG4UCiGNJfV7MqhHyFqKN68g45GoYvAeL2M" => KnownTokens::Uxp,
             "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So" => KnownTokens::Msol,
             "BLZEEuZUBVqFhj8adcCFPJvPVCiCyVmh3hkJMrU8KuJA" => KnownTokens::Blze,
             "Saber2gLauYim4Mvftnrasomsv6NvAuncvMEZwcLpD1" => KnownTokens::Sbr,
@@ -38,6 +40,7 @@ impl From<KnownTokens> for String {
     fn from(s: KnownTokens) -> Self {
         match s {
             KnownTokens::Uxd => "7kbnvuGBxxj8AG9qp8Scn56muWGaRaFqxg1FsRp3PaFT".to_string(),
+            KnownTokens::Uxp => "UXPhBoR3qG4UCiGNJfV7MqhHyFqKN68g45GoYvAeL2M".to_string(),
             KnownTokens::Msol => "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So".to_string(),
             KnownTokens::Blze => "BLZEEuZUBVqFhj8adcCFPJvPVCiCyVmh3hkJMrU8KuJA".to_string(),
             KnownTokens::Sbr => "Saber2gLauYim4Mvftnrasomsv6NvAuncvMEZwcLpD1".to_string(),

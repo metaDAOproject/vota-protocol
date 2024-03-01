@@ -63,3 +63,29 @@ Concurrently, veSBR holders can delegate their voting power to Vota via the lock
 Then, the script authority can trigger Vota voting for a specific gauge. It can also claim rewards
 on behalf of users.
 
+
+# Operating the vote market
+
+
+Near the end of the epoch, run the calculate inputs script to find out how much each
+vote buyer has bought.
+```bash 
+./vmm calculate-inputs F72CPZ7vumQ6Z7e5ncWxkNunzcL79xkjTaiNCvZoL7Uc 101
+```
+The output file name will look something like this
+`epoch_101_vote_info2024-03-01-02_32.json`
+
+If the contents of the file look good, run the following command to calculate the weights.
+```bash 
+./vmm calculate-weights epoch_101_vote_info2024-03-01-02_32.json
+```
+
+The output file name will look something like this
+`epoch_101_vote_info2024-03-01-02_32.json`
+Make sure the weights look reasonable for the amount each buyer paid.
+
+Now execute the votes usin these files as an input.
+
+```bash
+./vmm execute-votes epoch_101_vote_info2024-03-01-02_32.json
+```

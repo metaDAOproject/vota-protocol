@@ -202,7 +202,7 @@ describe("vote market voting phase", () => {
     expect(voteBuyData.amount.eq(new BN(1_000_000))).to.be.true;
     expect(voteBuyData.mint).to.eql(destinationTokenAccountData.mint);
     expect(voteBuyData.maxAmount).is.null;
-    expect(voteBuyData.rewardReceiver).to.eql(program.provider.publicKey);
+    expect(voteBuyData.buyer).to.eql(program.provider.publicKey);
     //Add more tokens
     await program.methods
       .increaseVoteBuy(

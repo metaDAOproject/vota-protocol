@@ -1,5 +1,9 @@
 use crate::accounts::resolve::{get_delegate, resolve_vote_keys};
+use crate::actions::management::data::{VoteInfo};
+use crate::actions::prepare_vote::prepare_vote;
 use crate::{GAUGEMEISTER, LOCKER};
+use anchor_lang::AnchorDeserialize;
+use locked_voter_state::Escrow;
 use solana_client::rpc_client::RpcClient;
 use solana_client::rpc_config::RpcSendTransactionConfig;
 use solana_program::instruction::AccountMeta;
@@ -8,11 +12,6 @@ use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::signature::Signer;
 use solana_sdk::signer::keypair::Keypair;
 
-pub struct WeightInfo {
-    pub gauge: Pubkey,
-    pub weight: u32,
-}
-
 pub fn vote(
     anchor_client: &anchor_client::Client<&Keypair>,
     client: &RpcClient,
@@ -20,18 +19,22 @@ pub fn vote(
     config: Pubkey,
     escrow: Pubkey,
     epoch: u32,
-    weights: Vec<WeightInfo>,
-) {
+    weights: Vec<VoteInfo>,
+) -> Result<(), Box<dyn std::error::Error>> {
     let vote_delegate = get_delegate(&config);
-    let program = anchor_client.program(vote_market::id()).unwrap();
+    println!("Vote delegate address is {}", vote_delegate);
+    let program = anchor_client.program(vote_market::id())?;
 
+    let escrow_account = client.get_account(&escrow).unwrap();
+    let escrow_data = Escrow::deserialize(&mut &escrow_account.data[8..])?;
+    let owner = escrow_data.owner;
     // Set weights
     for weight in weights {
         // Set weight
         let vote_accounts = resolve_vote_keys(&escrow, &weight.gauge, epoch);
         println!("Epoch the votes are for: {}", epoch);
-
-        let _sig = program
+        prepare_vote(client, owner, weight.gauge, script_authority, epoch);
+        let vote_result = program
             .request()
             .signer(script_authority)
             .args(vote_market::instruction::Vote {
@@ -48,9 +51,30 @@ pub fn vote(
                 vote_delegate,
                 gauge_program: gauge_state::id(),
             })
-            .send()
-            .unwrap();
-
+            .send();
+        match vote_result {
+            Ok(sig) => {
+                log::info!(target: "vote",
+                sig=sig.to_string(),
+                user=owner.to_string(),
+                config=config.to_string(),
+                gauge=weight.gauge.to_string(),
+                epoch=epoch;
+                "set vote weight"
+                );
+                println!("Vote succsesful for {:?}: {:?}", escrow, sig);
+            }
+            Err(e) => {
+                log::error!(target: "vote",
+                error=e.to_string(),
+                user=owner.to_string(),
+                config=config.to_string(),
+                gauge=weight.gauge.to_string(),
+                epoch=epoch;
+                "failed to set vote weight");
+                println!("Error sending vote for {:?}: {:?}", escrow, e);
+            }
+        }
         let data: Vec<u8> = solana_program::hash::hash(b"global:prepare_epoch_gauge_voter_v2")
             .to_bytes()[..8]
             .to_vec();
@@ -74,8 +98,30 @@ pub fn vote(
         );
         let latest_blockhash = client.get_latest_blockhash().unwrap();
         transaction.sign(&[script_authority], latest_blockhash);
-        let result = client.send_and_confirm_transaction(&transaction).unwrap();
-        println!("prepare epoch gauge voter result: {:?}", result);
+        let result = client.send_and_confirm_transaction(&transaction);
+        match result {
+            Ok(sig) => {
+                log::info!(target: "vote",
+                sig=sig.to_string(),
+                user=owner.to_string(),
+                config=config.to_string(),
+                gauge=weight.gauge.to_string(),
+                epoch=epoch;
+                "epoch gauge vote prepared"
+                );
+                println!("Epoch gauge vote prepared for {:?}: {:?}", escrow, result);
+            }
+            Err(e) => {
+                log::error!(target: "vote",
+                error=e.to_string(),
+                user=owner.to_string(),
+                config=config.to_string(),
+                gauge=weight.gauge.to_string(),
+                epoch=epoch;
+                "failed to prepare epoch gauge vote");
+                println!("Error preparing epoch gauge vote for {:?}: {:?}", escrow, e);
+            }
+        }
         println!("transaction: {:?}", transaction.signatures.first().unwrap());
         // Commit vote
 
@@ -103,16 +149,36 @@ pub fn vote(
         );
         let latest_blockhash = client.get_latest_blockhash().unwrap();
         transaction.sign(&[script_authority], latest_blockhash);
-        let result = client
-            .send_and_confirm_transaction_with_spinner_and_config(
-                &transaction,
-                CommitmentConfig::confirmed(),
-                RpcSendTransactionConfig {
-                    skip_preflight: true,
-                    ..RpcSendTransactionConfig::default()
-                },
-            )
-            .unwrap();
-        println!("Vote committed {}", result);
+        let result = client.send_and_confirm_transaction_with_spinner_and_config(
+            &transaction,
+            CommitmentConfig::confirmed(),
+            RpcSendTransactionConfig {
+                ..RpcSendTransactionConfig::default()
+            },
+        );
+        match result {
+            Ok(sig) => {
+                log::info!(target: "vote",
+                sig=sig.to_string(),
+                user=owner.to_string(),
+                config=config.to_string(),
+                gauge=weight.gauge.to_string(),
+                epoch=epoch;
+                "vote committed"
+                );
+                println!("Vote committed for {:?}: {:?}", escrow, result);
+            }
+            Err(e) => {
+                log::error!(target: "vote",
+                error=e.to_string(),
+                user=owner.to_string(),
+                config=config.to_string(),
+                gauge=weight.gauge.to_string(),
+                epoch=epoch;
+                "failed to commit vote");
+                println!("Error committing vote for {:?}: {:?}", escrow, e);
+            }
+        }
     }
+    Ok(())
 }

@@ -5,3 +5,6 @@ finish efficiency
 remove efficiency constant from config
 add fee to program
 
+
+I'm concerned that the vote-delegate isn't paying for the rents.
+The vote-delegate will get closed acount sol and it will be stuck.

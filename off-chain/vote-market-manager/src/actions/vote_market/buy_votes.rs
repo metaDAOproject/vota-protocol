@@ -24,7 +24,7 @@ pub(crate) fn buy_votes(
         &[b"allow-list".as_ref(), config.as_ref()],
         &vote_market::id(),
     );
-    program
+    let result = program
         .request()
         .signer(payer)
         .accounts(vote_market::accounts::IncreaseVoteBuy {
@@ -42,7 +42,9 @@ pub(crate) fn buy_votes(
             system_program: solana_program::system_program::id(),
         })
         .args(vote_market::instruction::IncreaseVoteBuy { amount, epoch })
-        .send()
-        .unwrap();
-    println!("vote buy {}", vote_buy)
+        .send();
+    match result {
+        Ok(sig) => println!("Vote buy increased: {:?}", sig),
+        Err(e) => println!("Error increasing vote buy: {:?}", e),
+    }
 }

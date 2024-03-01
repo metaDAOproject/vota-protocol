@@ -29,6 +29,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let payer = create_payer("KEY_PATH")?;
     let payer2 = create_payer("KEY_PATH2")?;
     println!("Using payer pubkey: {:?}", payer.pubkey());
+    println!("Using payer2 pubkey: {:?}", payer2.pubkey());
     // create test accounts directory if it doesn't exist
     let test_accounts_dir = cwd.join("test-accounts");
     if !test_accounts_dir.exists() {
@@ -115,6 +116,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         ],
         &locked_voter_state::id(),
     );
+    println!("Escrow address is {}", escrow_address);
     let (gauge_voter_address, _) = Pubkey::find_program_address(
         &[
             b"GaugeVoter",

@@ -3,7 +3,7 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-vote_market = "CgpagJ94phFKHBKkk4pd4YdKgfNCp5SzsiNwcLe73dc"
+vote_market = "VotAjwzAEF9ZLNAYEB1ivXt51911EqYGVu9NeaEKRyy"
 
 [provider]
 cluster = "Localnet"
@@ -43,15 +43,15 @@ address = "E3NpYfVxUJbUH375vC6MpZE54NZrqc79hvE4U3pUgvou"
 filename = "./test-accounts/gauge-vote.json"
 
 [[test.validator.account]]
-address = "CfziqKJ81vUCEdgfKKsBUrWKYh1v81zQKK7SMbsmpk8s"
+address = "FXLMDGpLirbot2DY9JCmeKZtvu1TFaWSszE1Bd1kQAn"
 filename = "./test-accounts/escrow-no-vote.json"
 
 [[test.validator.account]]
-address = "HbSDhQT6XmSoogpXGFiTg6oDhwS8eN51dAqZ9HfSKRv"
+address = "2VshMQTveehVLKvE6mMtxazzz2geq9DKtMJLTqFf79YN"
 filename = "./test-accounts/gauge-voter-no-vote.json"
 
 [[test.validator.account]]
-address = "3Vv6AxUyVhUHzWA2K3c5pra23Jbxu2dsh52Cd3Z3y1op"
+address = "3KQwaioayMgkUkrKsDCkQUS7cKrKkqVFko5EhDqhjZjt"
 filename = "./test-accounts/gauge-vote-no-vote.json"
 
 [[test.validator.account]]
