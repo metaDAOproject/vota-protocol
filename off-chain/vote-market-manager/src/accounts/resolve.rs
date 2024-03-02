@@ -95,7 +95,7 @@ pub fn get_gauge_voter(escrow: &Pubkey) -> Pubkey {
     .0
 }
 
-fn get_gauge_vote(gauge_voter: &Pubkey, gauge: &Pubkey) -> Pubkey {
+pub fn get_gauge_vote(gauge_voter: &Pubkey, gauge: &Pubkey) -> Pubkey {
     Pubkey::find_program_address(
         &[b"GaugeVote".as_ref(), gauge_voter.as_ref(), gauge.as_ref()],
         &gauge_state::id(),

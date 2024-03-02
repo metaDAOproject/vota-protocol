@@ -151,6 +151,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ),
         )
         .subcommand(
+            clap::command!("clear-votes").arg(
+                clap::Arg::new("config")
+                    .required(true)
+                    .value_parser(value_parser!(String))
+                    .help("The config to clear the votes for"))
+                .arg(
+                clap::Arg::new("owner")
+                    .required(true)
+                    .value_parser(value_parser!(String))
+                    .help("The owner of the escrow to clear the votes for"),
+            )
+        )
+        .subcommand(
             clap::command!("setup").arg(
                 clap::Arg::new("mints")
                     .long("mints")
@@ -486,6 +499,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 weights,
             )?;
         }
+        Some(("clear-votes", matches)) => {
+            println!("clear-votes");
+            let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap())?;
+            let owner = Pubkey::from_str(matches.get_one::<String>("owner").unwrap())?;
+            actions::vote_market::clear_votes::clear_votes(&anchor_client, &client, &payer, config, owner);
+        },
         Some(("setup", matches)) => {
             println!("setup");
             let mut mints = vec![Pubkey::default()];
