@@ -1,6 +1,6 @@
-use solana_client::rpc_config::RpcSendTransactionConfig;
 use crate::accounts::resolve::{get_delegate, get_vote_buy, resolve_vote_keys};
 use crate::GAUGEMEISTER;
+use solana_client::rpc_config::RpcSendTransactionConfig;
 use solana_program::pubkey::Pubkey;
 use solana_sdk::signature::Keypair;
 use solana_sdk::signer::Signer;
@@ -22,11 +22,8 @@ pub fn claim(
     let seller_token_account = get_associated_token_address(&seller, &mint);
     let seller_token_account_info = client.get_account(&seller_token_account);
     if !seller_token_account_info.is_ok() {
-        let create_ata_ix = create_associated_token_account(
-            &payer.pubkey(),
-            &seller,
-            &mint,
-            &spl_token::id());
+        let create_ata_ix =
+            create_associated_token_account(&payer.pubkey(), &seller, &mint, &spl_token::id());
         let latest_blockhash = client.get_latest_blockhash().unwrap();
         let tx = solana_sdk::transaction::Transaction::new_signed_with_payer(
             &[create_ata_ix],
@@ -75,11 +72,10 @@ pub fn claim(
             locked_voter_program: locked_voter_state::id(),
             token_program: spl_token::id(),
             system_program: solana_program::system_program::id(),
-        }).send_with_spinner_and_config(
-        RpcSendTransactionConfig {
+        })
+        .send_with_spinner_and_config(RpcSendTransactionConfig {
             ..RpcSendTransactionConfig::default()
-        }
-    );
+        });
     match result {
         Ok(sig) => {
             log::info!(target: "claim",

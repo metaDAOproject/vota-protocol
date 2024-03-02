@@ -425,7 +425,6 @@ describe("vote market voting phase", () => {
       epochGaugeVoter,
       payer: program.provider.publicKey
     }).rpc();
-    console.log("Create voter", sig3)
 
     let [epochGauge, bump2] = anchor.web3.PublicKey.findProgramAddressSync(
         [
@@ -439,25 +438,14 @@ describe("vote market voting phase", () => {
     let [epochGaugeVote, bump3] = anchor.web3.PublicKey.findProgramAddressSync(
         [
             Buffer.from("EpochGaugeVote"),
-            gaugeVoter.toBuffer(),
-            epochGaugeVoter.toBuffer(),
+            gaugeVote.toBuffer(),
+            epochBuffer,
         ],
         GAUGE_PROGRAM_ID
         );
 
-    console.log("epochGaugeVoter", epochGaugeVoter.toBase58())
-    console.log("epochGauge", epochGauge.toBase58())
-    console.log("epochGaugeVote", epochGaugeVote.toBase58())
-    let [voteDelegate, bump4] = anchor.web3.PublicKey.findProgramAddressSync(
-        [
-            Buffer.from("vote-delegate"),
-            config.publicKey.toBuffer(),
-        ],
-        program.programId
-        );
-
     // Commit vote
-    const sig2 =await program.methods.commitVote(gaugeMeisterData.currentRewardsEpoch + 1).accounts({
+    const commitVoteBuilder = await program.methods.commitVote(gaugeMeisterData.currentRewardsEpoch + 1).accounts({
         config: config.publicKey,
         gaugemeister: GAUGEMEISTER,
         gauge: GAUGE,
@@ -466,11 +454,27 @@ describe("vote market voting phase", () => {
         epochGauge,
         epochGaugeVoter,
         epochGaugeVote,
-        voteDelegate,
+        voteDelegate: delegate,
         scriptAuthority: scriptAuthorityPayer.publicKey,
         gaugeProgram: GAUGE_PROGRAM_ID
-        }).signers([scriptAuthorityPayer]).rpc();
-    console.log("commit vote sig", sig2);
+        });
+    const commitVoteTx= await commitVoteBuilder.transaction();
 
+    const commitVoteSig = await program.provider.connection.sendTransaction(
+        commitVoteTx,
+        [scriptAuthorityPayer],
+        {
+          skipPreflight: false,
+        }
+    );
+    const latestBlockhash2 =
+        await program.provider.connection.getLatestBlockhash();
+    await program.provider.connection.confirmTransaction(
+        {
+          signature: commitVoteSig,
+          ...latestBlockhash2,
+        },
+        "confirmed"
+    );
   });
 });

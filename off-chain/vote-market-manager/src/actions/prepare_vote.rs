@@ -40,14 +40,14 @@ pub fn prepare_vote(client: &RpcClient, owner: Pubkey, gauge: Pubkey, payer: &Ke
                 let result = client.send_and_confirm_transaction(&transaction);
                 match result {
                     Ok(sig) => {
-                    log::info!(target: "vote",
+                        log::info!(target: "vote",
                         sig=sig.to_string(),
                         user=owner.to_string(),
                         epoch=epoch;
                         "gauge voter created"
                         );
                         println!("Gauge voter created")
-                    },
+                    }
                     Err(e) => {
                         log::error!(target: "vote",
                         error=e.to_string(),
@@ -55,7 +55,7 @@ pub fn prepare_vote(client: &RpcClient, owner: Pubkey, gauge: Pubkey, payer: &Ke
                         epoch=epoch;
                         "failed to create gauge voter");
                         println!("Error creating gauge voter: {:?}", e)
-                    },
+                    }
                 }
             }
             VoteCreateStep::GaugeVote(key) => {
@@ -84,14 +84,14 @@ pub fn prepare_vote(client: &RpcClient, owner: Pubkey, gauge: Pubkey, payer: &Ke
                 let result = client.send_and_confirm_transaction(&transaction);
                 match result {
                     Ok(sig) => {
-                    log::info!(target: "vote",
+                        log::info!(target: "vote",
                         sig=sig.to_string(),
                         user=owner.to_string(),
                         epoch=epoch;
                         "gauge vote created"
                         );
                         println!("Gauge vote created")
-                    },
+                    }
                     Err(e) => {
                         log::error!(target: "vote",
                         error=e.to_string(),
@@ -99,9 +99,8 @@ pub fn prepare_vote(client: &RpcClient, owner: Pubkey, gauge: Pubkey, payer: &Ke
                         epoch=epoch;
                         "failed to create gauge vote");
                         println!("Error creating gauge vote: {:?}", e)
-                    },
+                    }
                 }
-
             }
             VoteCreateStep::EpochGauge(_key) => {
                 create_epoch_gauge(client, payer, gauge, epoch);

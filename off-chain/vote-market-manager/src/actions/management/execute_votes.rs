@@ -1,4 +1,3 @@
-
 use crate::actions::management::data::{EpochData, VoteInfo};
 
 use crate::actions::vote_market::vote::vote;
@@ -17,7 +16,12 @@ pub(crate) fn execute_votes(
     println!("Data: {:?}", data);
     println!("Vote weights: {:?}", vote_weights);
     for (i, escrow) in data.escrows.iter().enumerate() {
-        println!("Voting on behalf of escrow {:?}\n Escrow {} out of {}", escrow, i, data.escrows.len());
+        println!(
+            "Voting on behalf of escrow {:?}\n Escrow {} out of {}",
+            escrow,
+            i,
+            data.escrows.len()
+        );
         let result = vote(
             anchor_client,
             client,

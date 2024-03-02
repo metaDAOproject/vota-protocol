@@ -1,4 +1,5 @@
-use std::fs;
+use crate::accounts::resolve::{get_delegate, get_gauge_vote, get_gauge_voter, resolve_vote_keys};
+use crate::{GAUGEMEISTER, LOCKER};
 use anchor_client::Client;
 use solana_client::rpc_client::RpcClient;
 use solana_client::rpc_config::RpcSendTransactionConfig;
@@ -7,23 +8,26 @@ use solana_program::pubkey::Pubkey;
 use solana_sdk::commitment_config::{CommitmentConfig, CommitmentLevel};
 use solana_sdk::signature::{Keypair, Signer};
 use solana_sdk::transaction::Transaction;
-use crate::{GAUGEMEISTER, LOCKER};
-use crate::accounts::resolve::{get_delegate, get_gauge_vote, get_gauge_voter, resolve_vote_keys};
+use std::fs;
 
-
-pub(crate) fn clear_votes(anchor_client: &Client<&Keypair>, client: &RpcClient, script_authority: &Keypair, config: Pubkey, owner: Pubkey)
-    -> Result<(), Box<dyn std::error::Error>>{
-
-
+pub(crate) fn clear_votes(
+    anchor_client: &Client<&Keypair>,
+    client: &RpcClient,
+    script_authority: &Keypair,
+    config: Pubkey,
+    owner: Pubkey,
+) -> Result<(), Box<dyn std::error::Error>> {
     let program = anchor_client.program(vote_market::id())?;
     let gauges_file = fs::File::open("gauges.json")?;
     let gauges: Vec<Pubkey> = serde_json::from_reader(gauges_file)?;
     let vote_delegate = get_delegate(&config);
-    let (escrow, _) = Pubkey::find_program_address(&[
-        b"Escrow",
-        LOCKER.to_bytes().as_ref(),
-        owner.to_bytes().as_ref()],
-        &locked_voter_state::id()
+    let (escrow, _) = Pubkey::find_program_address(
+        &[
+            b"Escrow",
+            LOCKER.to_bytes().as_ref(),
+            owner.to_bytes().as_ref(),
+        ],
+        &locked_voter_state::id(),
     );
     let gauge_voter = get_gauge_voter(&escrow);
     let mut instructions: Vec<Instruction> = Vec::new();
@@ -32,9 +36,7 @@ pub(crate) fn clear_votes(anchor_client: &Client<&Keypair>, client: &RpcClient, 
         let vote_ixs = program
             .request()
             .signer(script_authority)
-            .args(vote_market::instruction::Vote {
-                weight: 0,
-            })
+            .args(vote_market::instruction::Vote { weight: 0 })
             .accounts(vote_market::accounts::Vote {
                 config,
                 script_authority: script_authority.pubkey(),
@@ -45,19 +47,24 @@ pub(crate) fn clear_votes(anchor_client: &Client<&Keypair>, client: &RpcClient, 
                 escrow,
                 vote_delegate,
                 gauge_program: gauge_state::id(),
-            }).instructions().unwrap();
+            })
+            .instructions()
+            .unwrap();
         for ix in vote_ixs {
             instructions.push(ix);
         }
     }
     let tx = Transaction::new_with_payer(&instructions, Some(&script_authority.pubkey()));
-    let result = client.send_transaction_with_config(&tx, RpcSendTransactionConfig {
-        skip_preflight: true,
-        preflight_commitment: Some(CommitmentLevel::Processed),
-        encoding: None,
-        max_retries: None,
-        min_context_slot: None,
-    });
+    let result = client.send_transaction_with_config(
+        &tx,
+        RpcSendTransactionConfig {
+            skip_preflight: true,
+            preflight_commitment: Some(CommitmentLevel::Processed),
+            encoding: None,
+            max_retries: None,
+            min_context_slot: None,
+        },
+    );
     match result {
         Ok(sig) => {
             log::info!(target: "vote",
@@ -77,5 +84,4 @@ pub(crate) fn clear_votes(anchor_client: &Client<&Keypair>, client: &RpcClient, 
         }
     }
     Ok(())
-
 }

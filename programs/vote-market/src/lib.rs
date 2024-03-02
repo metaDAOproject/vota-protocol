@@ -340,7 +340,7 @@ pub mod vote_market {
                 AccountMeta::new(ctx.accounts.epoch_gauge_voter.key(), false),
                 AccountMeta::new(ctx.accounts.epoch_gauge_vote.key(), false),
                 AccountMeta::new(ctx.accounts.vote_delegate.key(), true),
-                AccountMeta::new(ctx.accounts.system_program.key(), false),
+                AccountMeta::new_readonly(ctx.accounts.system_program.key(), false),
             ],
             data,
         };
@@ -351,6 +351,7 @@ pub mod vote_market {
             ],
             ctx.program_id,
         );
+        require_keys_eq!(expected_vote_delegate, ctx.accounts.vote_delegate.key());
         invoke_signed(
             &set_weight_ix,
             &[
@@ -370,7 +371,6 @@ pub mod vote_market {
                 &[bump],
             ]],
         )?;
-        require_keys_eq!(expected_vote_delegate, ctx.accounts.vote_delegate.key());
         Ok(())
     }
 
@@ -661,13 +661,14 @@ pub struct Vote<'info> {
 pub struct CommitVote<'info> {
     #[account(has_one = gaugemeister, has_one = script_authority)]
     pub config: Account<'info, VoteMarketConfig>,
+    #[account(mut)]
     pub script_authority: Signer<'info>,
     #[account(owner = gauge_program.key())]
     pub gaugemeister: Account<'info, gauge_state::Gaugemeister>,
     #[account(has_one = gaugemeister, constraint = !gauge.is_disabled)]
     pub gauge: Account<'info, gauge_state::Gauge>,
     pub gauge_voter: Account<'info, gauge_state::GaugeVoter>,
-    #[account(mut,
+    #[account(
     seeds=[b"GaugeVote",
     gauge_voter.key().as_ref(),
     gauge.key().as_ref()],
@@ -675,8 +676,10 @@ pub struct CommitVote<'info> {
     seeds::program = gauge_program.key(),
     )]
     pub gauge_vote: Account<'info, gauge_state::GaugeVote>,
+    #[account(mut)]
     pub epoch_gauge: Account<'info, gauge_state::EpochGauge>,
-    #[account(has_one = gauge_voter, owner = gauge_program.key(),
+    #[account(mut,
+    has_one = gauge_voter, owner = gauge_program.key(),
     seeds=[b"EpochGaugeVoter",
     gauge_voter.key().as_ref(),
     epoch.to_le_bytes().as_ref()],
@@ -686,14 +689,15 @@ pub struct CommitVote<'info> {
     pub epoch_gauge_voter: Account<'info, gauge_state::EpochGaugeVoter>,
     #[account(mut,
     seeds=[b"EpochGaugeVote",
-    gauge_voter.key().as_ref(),
-    epoch_gauge_voter.key().as_ref()],
+    gauge_vote.key().as_ref(),
+    epoch_gauge_voter.voting_epoch.to_le_bytes().as_ref()],
     bump,
     seeds::program = gauge_program.key(),
     )]
     /// CHECK This will be initialized through a CPI
     pub epoch_gauge_vote: UncheckedAccount<'info>,
-    #[account(mut, seeds =
+    #[account(mut,
+    seeds =
     [b"vote-delegate", config.key().as_ref()],
     bump)]
     pub vote_delegate: SystemAccount<'info>,

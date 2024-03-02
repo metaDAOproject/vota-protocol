@@ -1,5 +1,5 @@
 use crate::accounts::resolve::{get_delegate, resolve_vote_keys};
-use crate::actions::management::data::{VoteInfo};
+use crate::actions::management::data::VoteInfo;
 use crate::actions::prepare_vote::prepare_vote;
 use crate::{GAUGEMEISTER, LOCKER};
 use anchor_lang::AnchorDeserialize;
