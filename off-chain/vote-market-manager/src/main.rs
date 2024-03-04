@@ -96,6 +96,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ),
         )
         .subcommand(
+            clap::command!("reset-epoch-gauge-voter").arg(
+                clap::Arg::new("owner").
+                required(true).
+                value_parser(value_parser!(String)).
+                help("The owner of the escrow to reset the epoch gauge voter for"),
+            ).arg(
+                clap::Arg::new("epoch")
+                    .required(true)
+                    .value_parser(value_parser!(u32))
+                    .help("The epoch to reset the epoch gauge voter for"),
+            ),
+        )
+        .subcommand(
             clap::command!("prepare-vote")
                 .arg(
                     clap::Arg::new("owner")
@@ -431,6 +444,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("delegate: {:?}", delegate);
             actions::delegate::delegate(client, &escrow, &delegate, &payer);
         }
+        Some(("reset-epoch-gauge-voter", matches)) => {
+            let owner = Pubkey::from_str(matches.get_one::<String>("owner").unwrap())?;
+            let epoch = matches.get_one::<u32>("epoch").unwrap();
+            actions::reset_epoch_gauge_voter::reset_epoch_gauge_voter(
+                &client,
+                &payer,
+                owner,
+                *epoch,
+            );
+        }
         Some(("get-escrow", matches)) => {
             let owner = Pubkey::from_str(matches.get_one::<String>("owner").unwrap())?;
             let escrow = accounts::resolve::get_escrow_address_for_owner(&owner);
@@ -484,17 +507,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(("vote-test", matches)) => {
             println!("vote-test");
             let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap())?;
-            println!("calling vote 1");
             let owner = Pubkey::from_str(matches.get_one::<String>("owner").unwrap())?;
-            println!("calling vote 2");
             let epoch = matches.get_one::<u32>("epoch").unwrap();
-            println!("calling vote 3");
             let weights = vec![VoteInfo {
                 gauge: Pubkey::from_str("3xC4eW6xhW3Gpb4T5sCKFe73ay2K4aUUfxL57XFdguJx")?,
                 weight: 100,
                 votes: 100,
             }];
-            println!("calling vote");
             actions::vote_market::vote::vote(
                 &anchor_client,
                 &client,
@@ -515,7 +534,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &payer,
                 config,
                 owner,
-            );
+            )?;
         }
         Some(("setup", matches)) => {
             println!("setup");

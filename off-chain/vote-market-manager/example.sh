@@ -12,9 +12,11 @@ CONFIG=$(cargo run --quiet -- setup --mints $MINT 2>/dev/null | tail -n 1 | awk 
 echo The config is $CONFIG
 cargo run -- buy-votes $CONFIG $GAUGE $MINT $EPOCH 5555555
 ## Vote
-cargo run -- delegate $CONFIG
+DELEGATE=$(cargo run -- delegate $CONFIG | tail -n 1 | awk '{print $2}')
+echo The delegate is $DELEGATE
+solana transfer $DELEGATE 0.1 --allow-unfunded-recipient
 cargo run -- vote-test $OWNER $CONFIG $EPOCH
-#
+##
 cargo run -- trigger-epoch 2> /dev/null
 cargo run -- set-maximum $CONFIG $GAUGE 5555555 $EPOCH
 cargo run -- claim $MINT $ESCROW $CONFIG $GAUGE $EPOCH

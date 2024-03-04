@@ -2,13 +2,9 @@ use crate::accounts::resolve::{get_delegate, get_escrow_address_for_owner, resol
 use crate::actions::management::data::VoteInfo;
 use crate::actions::prepare_vote::prepare_vote;
 use crate::{GAUGEMEISTER, LOCKER};
-use anchor_lang::AnchorDeserialize;
-use locked_voter_state::Escrow;
 use solana_client::rpc_client::RpcClient;
-use solana_client::rpc_config::RpcSendTransactionConfig;
 use solana_program::instruction::AccountMeta;
 use solana_program::pubkey::Pubkey;
-use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::signature::Signer;
 use solana_sdk::signer::keypair::Keypair;
 
@@ -122,39 +118,29 @@ pub fn vote(
         }
         println!("transaction: {:?}", transaction.signatures.first().unwrap());
         // Commit vote
+        let vote_result = program
+            .request()
+            .signer(script_authority)
+            .args(vote_market::instruction::CommitVote {
+                epoch,
+            })
+            .accounts(vote_market::accounts::CommitVote {
+                config,
+                script_authority: script_authority.pubkey(),
+                gaugemeister: GAUGEMEISTER,
+                gauge: weight.gauge,
+                gauge_voter: vote_accounts.gauge_voter,
+                gauge_vote: vote_accounts.gauge_vote,
+                epoch_gauge: vote_accounts.epoch_gauge,
+                epoch_gauge_voter: vote_accounts.epoch_gauge_voter,
+                epoch_gauge_vote: vote_accounts.epoch_gauge_vote,
+                vote_delegate,
+                gauge_program: gauge_state::id(),
+                system_program: solana_program::system_program::id(),
+            })
+            .send();
 
-        let mut data: Vec<u8> =
-            solana_program::hash::hash(b"global:gauge_commit_vote_v2").to_bytes()[..8].to_vec();
-        data.extend_from_slice(&weight.weight.to_le_bytes());
-        let commit_vote_ix = solana_program::instruction::Instruction {
-            program_id: gauge_state::id(),
-            accounts: vec![
-                AccountMeta::new_readonly(GAUGEMEISTER, false),
-                AccountMeta::new_readonly(weight.gauge, false),
-                AccountMeta::new_readonly(vote_accounts.gauge_voter, false),
-                AccountMeta::new_readonly(vote_accounts.gauge_vote, false),
-                AccountMeta::new(vote_accounts.epoch_gauge, false),
-                AccountMeta::new(vote_accounts.epoch_gauge_voter, false),
-                AccountMeta::new(vote_accounts.epoch_gauge_vote, false),
-                AccountMeta::new(script_authority.pubkey(), true),
-                AccountMeta::new_readonly(solana_program::system_program::id(), false),
-            ],
-            data,
-        };
-        let mut transaction = solana_sdk::transaction::Transaction::new_with_payer(
-            &[commit_vote_ix],
-            Some(&script_authority.pubkey()),
-        );
-        let latest_blockhash = client.get_latest_blockhash().unwrap();
-        transaction.sign(&[script_authority], latest_blockhash);
-        let result = client.send_and_confirm_transaction_with_spinner_and_config(
-            &transaction,
-            CommitmentConfig::confirmed(),
-            RpcSendTransactionConfig {
-                ..RpcSendTransactionConfig::default()
-            },
-        );
-        match result {
+        match vote_result {
             Ok(sig) => {
                 log::info!(target: "vote",
                 sig=sig.to_string(),
@@ -164,7 +150,7 @@ pub fn vote(
                 epoch=epoch;
                 "vote committed"
                 );
-                println!("Vote committed for {:?}: {:?}", escrow, result);
+                println!("Vote committed for {:?}: {:?}", escrow, sig);
             }
             Err(e) => {
                 log::error!(target: "vote",

@@ -21,5 +21,5 @@ pub fn delegate(client: RpcClient, escrow: &Pubkey, delegate: &Pubkey, owner: &K
     let latest_blockhash = client.get_latest_blockhash().unwrap();
     transaction.sign(&[owner], latest_blockhash);
     let result = client.send_and_confirm_transaction(&transaction).unwrap();
-    println!("result: {:?}", result);
+    println!("result: {:?}", delegate);
 }

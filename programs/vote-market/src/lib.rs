@@ -327,7 +327,7 @@ pub mod vote_market {
     }
 
     pub fn commit_vote(ctx: Context<CommitVote>, epoch: u32) -> Result<()> {
-        let mut data: Vec<u8> =
+        let data: Vec<u8> =
             solana_program::hash::hash(b"global:gauge_commit_vote_v2").to_bytes()[..8].to_vec();
         let set_weight_ix = solana_program::instruction::Instruction {
             program_id: gauge_state::id(),

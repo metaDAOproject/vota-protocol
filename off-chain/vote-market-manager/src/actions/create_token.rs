@@ -52,11 +52,17 @@ pub fn create_token(client: &RpcClient, payer: &Keypair) {
         &[payer, &mint],
         latest_blockhash,
     );
-    client
+    let result = client
         .send_and_confirm_transaction_with_spinner_and_commitment(
             &tx,
             solana_sdk::commitment_config::CommitmentConfig::confirmed(),
-        )
-        .unwrap();
-    println!("mint: {}", mint.pubkey());
+        );
+    match result {
+        Ok(sig) => {
+            println!("mint: {}", mint.pubkey());
+        }
+        Err(e) => {
+            println!("Error minting: {:?}", e);
+        }
+    }
 }

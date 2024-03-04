@@ -1,11 +1,11 @@
-use crate::accounts::resolve::{get_delegate, get_gauge_vote, get_gauge_voter, resolve_vote_keys};
+use crate::accounts::resolve::{get_delegate, get_gauge_vote, get_gauge_voter };
 use crate::{GAUGEMEISTER, LOCKER};
 use anchor_client::Client;
 use solana_client::rpc_client::RpcClient;
 use solana_client::rpc_config::RpcSendTransactionConfig;
 use solana_program::instruction::Instruction;
 use solana_program::pubkey::Pubkey;
-use solana_sdk::commitment_config::{CommitmentConfig, CommitmentLevel};
+use solana_sdk::commitment_config::{CommitmentLevel};
 use solana_sdk::signature::{Keypair, Signer};
 use solana_sdk::transaction::Transaction;
 use std::fs;
@@ -72,7 +72,7 @@ pub(crate) fn clear_votes(
     let result = client.send_transaction_with_config(
         &tx,
         RpcSendTransactionConfig {
-            skip_preflight: true,
+            skip_preflight: false,
             preflight_commitment: Some(CommitmentLevel::Processed),
             encoding: None,
             max_retries: None,
