@@ -69,33 +69,37 @@ pub fn vote(
                 println!("Error sending vote for {:?}: {:?}", escrow, e);
             }
         }
-        let data: Vec<u8> = solana_program::hash::hash(b"global:prepare_epoch_gauge_voter_v2")
-            .to_bytes()[..8]
-            .to_vec();
-        let create_epoch_gauge_voter_ix = solana_program::instruction::Instruction {
-            program_id: gauge_state::id(),
-            accounts: vec![
-                //Gauge vote account
-                AccountMeta::new_readonly(GAUGEMEISTER, false),
-                AccountMeta::new_readonly(LOCKER, false),
-                AccountMeta::new_readonly(escrow, false),
-                AccountMeta::new_readonly(vote_accounts.gauge_voter, false),
-                AccountMeta::new(vote_accounts.epoch_gauge_voter, false),
-                AccountMeta::new(script_authority.pubkey(), true),
-                AccountMeta::new_readonly(solana_program::system_program::id(), false),
-            ],
-            data,
-        };
-        let mut transaction = solana_sdk::transaction::Transaction::new_with_payer(
-            &[create_epoch_gauge_voter_ix],
-            Some(&script_authority.pubkey()),
-        );
-        let latest_blockhash = client.get_latest_blockhash().unwrap();
-        transaction.sign(&[script_authority], latest_blockhash);
-        let result = client.send_and_confirm_transaction(&transaction);
-        match result {
-            Ok(sig) => {
-                log::info!(target: "vote",
+        // Check if epoch gauge voter exists
+        let epoch_gauge_voter_account = client.get_account(&vote_accounts.epoch_gauge_voter);
+        if epoch_gauge_voter_account.is_err() {
+            let data: Vec<u8> = solana_program::hash::hash(b"global:prepare_epoch_gauge_voter_v2")
+                .to_bytes()[..8]
+                .to_vec();
+            println!("Epoch gauge voter: {:?}", vote_accounts.epoch_gauge_voter);
+            let create_epoch_gauge_voter_ix = solana_program::instruction::Instruction {
+                program_id: gauge_state::id(),
+                accounts: vec![
+                    //Gauge vote account
+                    AccountMeta::new_readonly(GAUGEMEISTER, false),
+                    AccountMeta::new_readonly(LOCKER, false),
+                    AccountMeta::new_readonly(escrow, false),
+                    AccountMeta::new_readonly(vote_accounts.gauge_voter, false),
+                    AccountMeta::new(vote_accounts.epoch_gauge_voter, false),
+                    AccountMeta::new(script_authority.pubkey(), true),
+                    AccountMeta::new_readonly(solana_program::system_program::id(), false),
+                ],
+                data,
+            };
+            let mut transaction = solana_sdk::transaction::Transaction::new_with_payer(
+                &[create_epoch_gauge_voter_ix],
+                Some(&script_authority.pubkey()),
+            );
+            let latest_blockhash = client.get_latest_blockhash().unwrap();
+            transaction.sign(&[script_authority], latest_blockhash);
+            let result = client.send_and_confirm_transaction(&transaction);
+            match result {
+                Ok(sig) => {
+                    log::info!(target: "vote",
                 sig=sig.to_string(),
                 user=owner.to_string(),
                 config=config.to_string(),
@@ -103,20 +107,21 @@ pub fn vote(
                 epoch=epoch;
                 "epoch gauge vote prepared"
                 );
-                println!("Epoch gauge vote prepared for {:?}: {:?}", escrow, result);
-            }
-            Err(e) => {
-                log::error!(target: "vote",
+                    println!("Epoch gauge vote prepared for {:?}: {:?}", escrow, result);
+                }
+                Err(e) => {
+                    log::error!(target: "vote",
                 error=e.to_string(),
                 user=owner.to_string(),
                 config=config.to_string(),
                 gauge=weight.gauge.to_string(),
                 epoch=epoch;
                 "failed to prepare epoch gauge vote");
-                println!("Error preparing epoch gauge vote for {:?}: {:?}", escrow, e);
+                    println!("Error preparing epoch gauge vote for {:?}: {:?}", escrow, e);
+                }
             }
+            println!("transaction: {:?}", transaction.signatures.first().unwrap());
         }
-        println!("transaction: {:?}", transaction.signatures.first().unwrap());
         // Commit vote
         let vote_result = program
             .request()
