@@ -441,9 +441,6 @@ pub mod vote_market {
 }
 
 #[derive(Accounts)]
-pub struct Initialize {}
-
-#[derive(Accounts)]
 #[instruction(mints: Vec<Pubkey>)]
 pub struct CreateConfig<'info> {
     #[account(
