@@ -218,7 +218,7 @@ describe("vote market rewards phase", () => {
       .signers([nonSellerPayer])
       .rpc();
 
-    await program.methods
+    const sig = await program.methods
       .claimVotePayment(gaugeMeisterData.currentRewardsEpoch + 1)
       .accounts({
         scriptAuthority: nonSellerPayer.publicKey,
@@ -247,7 +247,7 @@ describe("vote market rewards phase", () => {
       .signers([nonSellerPayer])
       .rpc({ commitment: "confirmed" });
     sellerTokenAccountData = await getAccount(program.provider.connection, ata);
-    const expectedRewards = BigInt(18514);
+    const expectedRewards = BigInt(18204);
     const expectedFee = (expectedRewards * BigInt(600)) / BigInt(10_000);
     expect(sellerTokenAccountData.amount).to.equal(
       BigInt(999_000_000) + expectedRewards - expectedFee

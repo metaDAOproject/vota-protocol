@@ -9,11 +9,11 @@ use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::pubkey;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Signer;
-use structured_logger::Builder;
 use structured_logger::json::new_writer;
+use structured_logger::Builder;
 
 use crate::accounts::resolve::{get_delegate, get_escrow_address_for_owner};
-use crate::actions::management::data::{VoteInfo};
+use crate::actions::management::data::VoteInfo;
 use crate::actions::queries::escrows;
 use crate::utils::short_address;
 
@@ -29,11 +29,13 @@ const LOCKER: Pubkey = pubkey!("8erad8kmNrLJDJPe9UkmTHomrMV3EW48sjGeECyVjbYX");
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
     Builder::with_level("info")
-        .with_target_writer("*", new_writer(fs::File::create(
-            format!(
+        .with_target_writer(
+            "*",
+            new_writer(fs::File::create(format!(
                 "./vote_market_{}.log",
                 Utc::now().format("%Y-%m-%d-%H_%M")
-            ))?))
+            ))?),
+        )
         .init();
     let cmd = clap::Command::new("vote-market-manager")
         .bin_name("vote-market-manager")
@@ -94,6 +96,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ),
         )
         .subcommand(
+            clap::command!("reset-epoch-gauge-voter").arg(
+                clap::Arg::new("owner").
+                required(true).
+                value_parser(value_parser!(String)).
+                help("The owner of the escrow to reset the epoch gauge voter for"),
+            ).arg(
+                clap::Arg::new("epoch")
+                    .required(true)
+                    .value_parser(value_parser!(u32))
+                    .help("The epoch to reset the epoch gauge voter for"),
+            ),
+        )
+        .subcommand(
             clap::command!("prepare-vote")
                 .arg(
                     clap::Arg::new("owner")
@@ -132,10 +147,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .subcommand(
             clap::command!("vote-test")
                 .arg(
-                    clap::Arg::new("escrow")
+                    clap::Arg::new("owner")
                         .required(true)
                         .value_parser(value_parser!(String))
-                        .help("The escrow to vote for"),
+                        .help("The owner of the escrow to vote for"),
                 )
                 .arg(
                     clap::Arg::new("config")
@@ -148,6 +163,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .required(true)
                         .value_parser(value_parser!(u32))
                         .help("The epoch to vote for"),
+                ),
+        )
+        .subcommand(
+            clap::command!("clear-votes")
+                .arg(
+                    clap::Arg::new("config")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The config to clear the votes for"),
+                )
+                .arg(
+                    clap::Arg::new("owner")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The owner of the escrow to clear the votes for"),
                 ),
         )
         .subcommand(
@@ -233,7 +263,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .value_parser(value_parser!(u32))
                         .help("The epoch to vote for"),
                 ),
-
         )
         .subcommand(
             clap::command!("set-maximum")
@@ -352,18 +381,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .subcommand(
             clap::command!("execute-claim")
                 .arg(
-                    clap::Arg::new("config").
-                    required(true).
-                    value_parser(value_parser!(String)).
-                    help("The config to claim for"),
+                    clap::Arg::new("config")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The config to claim for"),
                 )
                 .arg(
-                    clap::Arg::new("epoch").
-                    required(true).
-                    value_parser(value_parser!(u32)).
-                    help("The epoch to claim for"),
-                )
-
+                    clap::Arg::new("epoch")
+                        .required(true)
+                        .value_parser(value_parser!(u32))
+                        .help("The epoch to claim for"),
+                ),
         );
 
     let matches = cmd.get_matches();
@@ -415,6 +443,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let delegate = accounts::resolve::get_delegate(&config);
             println!("delegate: {:?}", delegate);
             actions::delegate::delegate(client, &escrow, &delegate, &payer);
+        }
+        Some(("reset-epoch-gauge-voter", matches)) => {
+            let owner = Pubkey::from_str(matches.get_one::<String>("owner").unwrap())?;
+            let epoch = matches.get_one::<u32>("epoch").unwrap();
+            actions::reset_epoch_gauge_voter::reset_epoch_gauge_voter(
+                &client,
+                &payer,
+                owner,
+                *epoch,
+            );
         }
         Some(("get-escrow", matches)) => {
             let owner = Pubkey::from_str(matches.get_one::<String>("owner").unwrap())?;
@@ -469,7 +507,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(("vote-test", matches)) => {
             println!("vote-test");
             let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap())?;
-            let escrow = Pubkey::from_str(matches.get_one::<String>("escrow").unwrap())?;
+            let owner = Pubkey::from_str(matches.get_one::<String>("owner").unwrap())?;
             let epoch = matches.get_one::<u32>("epoch").unwrap();
             let weights = vec![VoteInfo {
                 gauge: Pubkey::from_str("3xC4eW6xhW3Gpb4T5sCKFe73ay2K4aUUfxL57XFdguJx")?,
@@ -481,9 +519,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &client,
                 &payer,
                 config,
-                escrow,
+                owner,
                 *epoch,
                 weights,
+            )?;
+        }
+        Some(("clear-votes", matches)) => {
+            println!("clear-votes");
+            let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap())?;
+            let owner = Pubkey::from_str(matches.get_one::<String>("owner").unwrap())?;
+            actions::vote_market::clear_votes::clear_votes(
+                &anchor_client,
+                &client,
+                &payer,
+                config,
+                owner,
             )?;
         }
         Some(("setup", matches)) => {
@@ -534,13 +584,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap())?;
             let gauge = Pubkey::from_str(matches.get_one::<String>("gauge").unwrap())?;
             let epoch = matches.get_one::<u32>("epoch").unwrap();
-            actions::vote_market::refund::get_refund(
-                &anchor_client,
-                &payer,
-                config,
-                gauge,
-                *epoch,
-            );
+            actions::vote_market::refund::get_refund(&anchor_client, &payer, config, gauge, *epoch);
         }
         Some(("set-maximum", matches)) => {
             //TODO: bring out epoch
@@ -589,8 +633,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let epoch_data_string = std::fs::read_to_string(epoch_data)?;
             let mut data: actions::management::data::EpochData =
                 serde_json::from_str(&epoch_data_string)?;
-            let results =
-                actions::management::calculate_weights::calculate_weights(&mut data)?;
+            let results = actions::management::calculate_weights::calculate_weights(&mut data)?;
             println!("results {:?}", results);
             let vote_weights_json = serde_json::to_string(&results).unwrap();
             fs::write(
@@ -609,8 +652,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 serde_json::from_str(&epoch_data_string)?;
             let vote_weights_file = matches.get_one::<String>("vote-weights").unwrap();
             let vote_weights_string = std::fs::read_to_string(vote_weights_file)?;
-            let vote_weights: Vec<VoteInfo>=
-                serde_json::from_str(&vote_weights_string)?;
+            let vote_weights: Vec<VoteInfo> = serde_json::from_str(&vote_weights_string)?;
             actions::management::find_max_vote_buy::find_max_vote_buy(
                 &client,
                 &anchor_client,

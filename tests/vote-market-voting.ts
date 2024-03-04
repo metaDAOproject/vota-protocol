@@ -7,8 +7,9 @@ import dotenv from "dotenv";
 import { setupTokens } from "./setup-tokens";
 import { setupConfig } from "./test-setup";
 import GAUGE_IDL from "../external-state/idls/gauge.json";
+import LOCKER_IDL from "../external-state/idls/locker.json";
 import { Gauge } from "../external-state/types/gauge";
-import { GAUGE, GAUGE_PROGRAM_ID, GAUGEMEISTER } from "./constants";
+import {GAUGE, GAUGE_PROGRAM_ID, GAUGEMEISTER, LOCKED_VOTER_PROGRAM_ID} from "./constants";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   createAssociatedTokenAccount,
@@ -52,6 +53,10 @@ describe("vote market voting phase", () => {
     GAUGE_IDL as any,
     GAUGE_PROGRAM_ID
   ) as Program<Gauge>;
+  const lockerProgram = new Program(
+    LOCKER_IDL as any,
+   LOCKED_VOTER_PROGRAM_ID
+  );
   it("Creates a config account", async () => {
     const { config, allowedMints, allowedMintList, scriptAuthority } =
       await setupConfig(program);
@@ -398,5 +403,78 @@ describe("vote market voting phase", () => {
     );
     await new Promise((resolve) => setTimeout(resolve, 10000));
     expect(voteAccountAfter.weight).to.equal(100);
+
+    const escrowData = await lockerProgram.account.escrow.fetch(escrow);
+    const epochBuffer = Buffer.alloc(4);
+    epochBuffer.writeUInt32LE(gaugeMeisterData.currentRewardsEpoch + 1);
+    let [epochGaugeVoter, bump] = anchor.web3.PublicKey.findProgramAddressSync(
+        [
+            Buffer.from("EpochGaugeVoter"),
+            gaugeVoter.toBuffer(),
+            epochBuffer,
+        ],
+        GAUGE_PROGRAM_ID
+        );
+
+    // Create epoch gauge voter
+    const sig3 = await gaugeProgram.methods.prepareEpochGaugeVoterV2().accounts({
+      gaugemeister: GAUGEMEISTER,
+      locker: escrowData.locker,
+      escrow,
+      gaugeVoter,
+      epochGaugeVoter,
+      payer: program.provider.publicKey
+    }).rpc();
+
+    let [epochGauge, bump2] = anchor.web3.PublicKey.findProgramAddressSync(
+        [
+            Buffer.from("EpochGauge"),
+            GAUGE.toBuffer(),
+            epochBuffer,
+        ],
+        GAUGE_PROGRAM_ID
+        );
+
+    let [epochGaugeVote, bump3] = anchor.web3.PublicKey.findProgramAddressSync(
+        [
+            Buffer.from("EpochGaugeVote"),
+            gaugeVote.toBuffer(),
+            epochBuffer,
+        ],
+        GAUGE_PROGRAM_ID
+        );
+
+    // Commit vote
+    const commitVoteBuilder = await program.methods.commitVote(gaugeMeisterData.currentRewardsEpoch + 1).accounts({
+        config: config.publicKey,
+        gaugemeister: GAUGEMEISTER,
+        gauge: GAUGE,
+        gaugeVote,
+        gaugeVoter,
+        epochGauge,
+        epochGaugeVoter,
+        epochGaugeVote,
+        voteDelegate: delegate,
+        scriptAuthority: scriptAuthorityPayer.publicKey,
+        gaugeProgram: GAUGE_PROGRAM_ID
+        });
+    const commitVoteTx= await commitVoteBuilder.transaction();
+
+    const commitVoteSig = await program.provider.connection.sendTransaction(
+        commitVoteTx,
+        [scriptAuthorityPayer],
+        {
+          skipPreflight: false,
+        }
+    );
+    const latestBlockhash2 =
+        await program.provider.connection.getLatestBlockhash();
+    await program.provider.connection.confirmTransaction(
+        {
+          signature: commitVoteSig,
+          ...latestBlockhash2,
+        },
+        "confirmed"
+    );
   });
 });
