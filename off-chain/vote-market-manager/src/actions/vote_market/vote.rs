@@ -1,4 +1,4 @@
-use crate::accounts::resolve::{get_delegate, resolve_vote_keys};
+use crate::accounts::resolve::{get_delegate, get_escrow_address_for_owner, resolve_vote_keys};
 use crate::actions::management::data::VoteInfo;
 use crate::actions::prepare_vote::prepare_vote;
 use crate::{GAUGEMEISTER, LOCKER};
@@ -17,17 +17,15 @@ pub fn vote(
     client: &RpcClient,
     script_authority: &Keypair,
     config: Pubkey,
-    escrow: Pubkey,
+    owner: Pubkey,
     epoch: u32,
     weights: Vec<VoteInfo>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let vote_delegate = get_delegate(&config);
     println!("Vote delegate address is {}", vote_delegate);
     let program = anchor_client.program(vote_market::id())?;
+    let escrow = get_escrow_address_for_owner(&owner);
 
-    let escrow_account = client.get_account(&escrow).unwrap();
-    let escrow_data = Escrow::deserialize(&mut &escrow_account.data[8..])?;
-    let owner = escrow_data.owner;
     // Set weights
     for weight in weights {
         // Set weight

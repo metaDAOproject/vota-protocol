@@ -74,6 +74,7 @@ pub fn claim(
             system_program: solana_program::system_program::id(),
         })
         .send_with_spinner_and_config(RpcSendTransactionConfig {
+            skip_preflight: true,
             ..RpcSendTransactionConfig::default()
         });
     match result {

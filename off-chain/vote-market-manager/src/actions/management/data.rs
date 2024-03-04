@@ -22,7 +22,7 @@ pub struct EpochData {
         deserialize_with = "common::deserialize_pubkey_vec",
         serialize_with = "common::serialize_pubkey_vec"
     )]
-    pub escrows: Vec<Pubkey>,
+    pub escrow_owners: Vec<Pubkey>,
     pub usd_per_vote: f64,
 }
 

@@ -134,10 +134,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .subcommand(
             clap::command!("vote-test")
                 .arg(
-                    clap::Arg::new("escrow")
+                    clap::Arg::new("owner")
                         .required(true)
                         .value_parser(value_parser!(String))
-                        .help("The escrow to vote for"),
+                        .help("The owner of the escrow to vote for"),
                 )
                 .arg(
                     clap::Arg::new("config")
@@ -484,19 +484,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(("vote-test", matches)) => {
             println!("vote-test");
             let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap())?;
-            let escrow = Pubkey::from_str(matches.get_one::<String>("escrow").unwrap())?;
+            println!("calling vote 1");
+            let owner = Pubkey::from_str(matches.get_one::<String>("owner").unwrap())?;
+            println!("calling vote 2");
             let epoch = matches.get_one::<u32>("epoch").unwrap();
+            println!("calling vote 3");
             let weights = vec![VoteInfo {
                 gauge: Pubkey::from_str("3xC4eW6xhW3Gpb4T5sCKFe73ay2K4aUUfxL57XFdguJx")?,
                 weight: 100,
                 votes: 100,
             }];
+            println!("calling vote");
             actions::vote_market::vote::vote(
                 &anchor_client,
                 &client,
                 &payer,
                 config,
-                escrow,
+                owner,
                 *epoch,
                 weights,
             )?;

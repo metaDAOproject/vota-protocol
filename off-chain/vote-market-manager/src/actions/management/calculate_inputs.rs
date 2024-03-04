@@ -186,7 +186,7 @@ pub(crate) fn calculate_inputs(
         total_vote_buy_value,
         gauges,
         prices,
-        escrows: delegated_voters.iter().map(|x| x.0).collect(),
+        escrow_owners: delegated_voters.iter().map(|x| x.1.owner).collect(),
         sbr_per_epoch: 0,
         usd_per_vote,
     };
