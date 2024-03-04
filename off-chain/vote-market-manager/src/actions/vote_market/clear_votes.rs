@@ -9,6 +9,7 @@ use solana_sdk::commitment_config::{CommitmentConfig, CommitmentLevel};
 use solana_sdk::signature::{Keypair, Signer};
 use solana_sdk::transaction::Transaction;
 use std::fs;
+use std::str::FromStr;
 
 pub(crate) fn clear_votes(
     anchor_client: &Client<&Keypair>,
@@ -18,8 +19,9 @@ pub(crate) fn clear_votes(
     owner: Pubkey,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let program = anchor_client.program(vote_market::id())?;
-    let gauges_file = fs::File::open("gauges.json")?;
-    let gauges: Vec<Pubkey> = serde_json::from_reader(gauges_file)?;
+    let gauges_file = fs::File::open("off-chain/vote-market-manager/info/gauges.json")?;
+    let gauges: Vec<String> = serde_json::from_reader(gauges_file)?;
+    let gauges = gauges.iter().map(|g| Pubkey::from_str(g).unwrap()).collect::<Vec<Pubkey>>();
     let vote_delegate = get_delegate(&config);
     let (escrow, _) = Pubkey::find_program_address(
         &[
@@ -30,9 +32,20 @@ pub(crate) fn clear_votes(
         &locked_voter_state::id(),
     );
     let gauge_voter = get_gauge_voter(&escrow);
+    let gauge_votes = gauges
+        .iter()
+        .map(|g| get_gauge_vote(&get_gauge_voter(&escrow), g))
+        .collect::<Vec<Pubkey>>();
+    let gauge_vote_accounts = client.get_multiple_accounts(&gauge_votes)?;
     let mut instructions: Vec<Instruction> = Vec::new();
-    for gauge in gauges {
-        let gauge_vote = get_gauge_vote(&escrow, &gauge);
+
+
+    for (i, gauge) in gauges.iter().enumerate() {
+        // Can only clear initialized gauge_votes
+        if gauge_vote_accounts[i].is_none() {
+            continue;
+        }
+        let gauge_vote = gauge_votes[i];
         let vote_ixs = program
             .request()
             .signer(script_authority)
@@ -41,7 +54,7 @@ pub(crate) fn clear_votes(
                 config,
                 script_authority: script_authority.pubkey(),
                 gaugemeister: GAUGEMEISTER,
-                gauge: gauge,
+                gauge: *gauge,
                 gauge_voter: gauge_voter,
                 gauge_vote: gauge_vote,
                 escrow,
@@ -54,7 +67,8 @@ pub(crate) fn clear_votes(
             instructions.push(ix);
         }
     }
-    let tx = Transaction::new_with_payer(&instructions, Some(&script_authority.pubkey()));
+    let mut tx = Transaction::new_with_payer(&instructions, Some(&script_authority.pubkey()));
+    tx.sign(&[script_authority], client.get_latest_blockhash()?);
     let result = client.send_transaction_with_config(
         &tx,
         RpcSendTransactionConfig {
