@@ -31,7 +31,24 @@ pub fn set_maximum(
             script_authority: payer.pubkey(),
         })
         .args(vote_market::instruction::SetMaxAmount { epoch, max_amount })
-        .send()
-        .unwrap();
-    println!("result: {:?}", result);
+        .send();
+    match result {
+        Ok(sig) => {
+            log::info!(target: "efficiency",
+            sig=sig.to_string(),
+            gauge=gauge.to_string(),
+            epoch=epoch;
+            "set maximum amount"
+            );
+            println!("Set maximum amount for {:?}: {:?}", vote_buy, sig);
+        }
+        Err(e) => {
+            log::error!(target: "efficiency",
+            error=e.to_string(),
+            gauge=gauge.to_string(),
+            epoch=epoch;
+            "failed to set maximum amount");
+            println!("Error setting maximum amount: {:?}", e);
+        }
+    }
 }

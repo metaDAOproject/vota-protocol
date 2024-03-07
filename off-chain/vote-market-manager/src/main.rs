@@ -96,17 +96,46 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ),
         )
         .subcommand(
-            clap::command!("reset-epoch-gauge-voter").arg(
-                clap::Arg::new("owner").
-                required(true).
-                value_parser(value_parser!(String)).
-                help("The owner of the escrow to reset the epoch gauge voter for"),
-            ).arg(
-                clap::Arg::new("epoch")
-                    .required(true)
-                    .value_parser(value_parser!(u32))
-                    .help("The epoch to reset the epoch gauge voter for"),
-            ),
+            clap::command!("reset-epoch-gauge-voter")
+                .arg(
+                    clap::Arg::new("owner")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The owner of the escrow to reset the epoch gauge voter for"),
+                )
+                .arg(
+                    clap::Arg::new("epoch")
+                        .required(true)
+                        .value_parser(value_parser!(u32))
+                        .help("The epoch to reset the epoch gauge voter for"),
+                ),
+        )
+        .subcommand(
+            clap::command!("withdraw-votes")
+                .arg(
+                    clap::Arg::new("owner")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The owner of the escrow to withdraw votes for"),
+                )
+                .arg(
+                    clap::Arg::new("gauge")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The gauge to withdraw votes for"),
+                )
+                .arg(
+                    clap::Arg::new("config")
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .help("The config to withdraw votes for"),
+                )
+                .arg(
+                    clap::Arg::new("epoch")
+                        .required(true)
+                        .value_parser(value_parser!(u32))
+                        .help("The epoch to withdraw votes for"),
+                ),
         )
         .subcommand(
             clap::command!("prepare-vote")
@@ -164,6 +193,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .value_parser(value_parser!(u32))
                         .help("The epoch to vote for"),
                 ),
+        )
+        .subcommand(
+            clap::command!("check-votes")
+                .arg(
+                    clap::Arg::new("epoch")
+                        .required(true)
+                        .value_parser(value_parser!(u32))
+                        .help("The epoch to check the votes for"),
+            ),
         )
         .subcommand(
             clap::command!("clear-votes")
@@ -448,11 +486,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let owner = Pubkey::from_str(matches.get_one::<String>("owner").unwrap())?;
             let epoch = matches.get_one::<u32>("epoch").unwrap();
             actions::reset_epoch_gauge_voter::reset_epoch_gauge_voter(
-                &client,
-                &payer,
-                owner,
-                *epoch,
+                &client, &payer, owner, *epoch,
             );
+        }
+        Some(("withdraw-votes", matches)) => {
+            let owner = Pubkey::from_str(matches.get_one::<String>("owner").unwrap())?;
+            let gauge = Pubkey::from_str(matches.get_one::<String>("gauge").unwrap())?;
+            let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap())?;
+            let epoch = matches.get_one::<u32>("epoch").unwrap();
+            actions::withdraw_votes::withdraw_votes(&client, &payer, owner, gauge, config, *epoch);
         }
         Some(("get-escrow", matches)) => {
             let owner = Pubkey::from_str(matches.get_one::<String>("owner").unwrap())?;
@@ -523,6 +565,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 *epoch,
                 weights,
             )?;
+        }
+        Some(("check-votes", matches)) => {
+            println!("check-votes");
+            let epoch = matches.get_one::<u32>("epoch").unwrap();
+            actions::management::check_votes::check_votes(&client, &payer, *epoch)?;
         }
         Some(("clear-votes", matches)) => {
             println!("clear-votes");
