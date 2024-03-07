@@ -1,7 +1,9 @@
-use std::error::Error;
+use crate::accounts::resolve::VoteCreateStep::GaugeVote;
 use crate::accounts::resolve::{get_delegate, get_gauge_vote, get_gauge_voter};
+use crate::actions::management::utils;
 use crate::{GAUGEMEISTER, LOCKER};
 use anchor_client::Client;
+use anchor_lang::AnchorDeserialize;
 use solana_client::rpc_client::RpcClient;
 use solana_client::rpc_config::RpcSendTransactionConfig;
 use solana_program::instruction::Instruction;
@@ -9,11 +11,9 @@ use solana_program::pubkey::Pubkey;
 use solana_sdk::commitment_config::{CommitmentConfig, CommitmentLevel};
 use solana_sdk::signature::{Keypair, Signer};
 use solana_sdk::transaction::Transaction;
+use std::error::Error;
 use std::fs;
 use std::str::FromStr;
-use anchor_lang::AnchorDeserialize;
-use crate::accounts::resolve::VoteCreateStep::GaugeVote;
-use crate::actions::management::utils;
 
 pub(crate) fn clear_votes(
     anchor_client: &Client<&Keypair>,
@@ -46,7 +46,9 @@ pub(crate) fn clear_votes(
         if gauge_vote_accounts[i].is_none() {
             continue;
         }
-        let gauge_data = gauge_state::GaugeVote::deserialize(&mut &gauge_vote_accounts[i].clone().unwrap().data[8..])?;
+        let gauge_data = gauge_state::GaugeVote::deserialize(
+            &mut &gauge_vote_accounts[i].clone().unwrap().data[8..],
+        )?;
         if gauge_data.weight == 0 {
             continue;
         }
@@ -95,9 +97,13 @@ pub(crate) fn clear_votes(
                 user=owner.to_string(),
                 config=config.to_string();
                 "cleared votes");
-            client.confirm_transaction_with_spinner(&sig, &latest_blockhash, CommitmentConfig{
-                commitment: CommitmentLevel::Confirmed,
-            })?;
+            client.confirm_transaction_with_spinner(
+                &sig,
+                &latest_blockhash,
+                CommitmentConfig {
+                    commitment: CommitmentLevel::Confirmed,
+                },
+            )?;
             println!("Cleared votes for {:?}: {:?}", escrow, sig);
         }
         Err(e) => {

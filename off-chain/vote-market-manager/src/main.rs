@@ -195,12 +195,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ),
         )
         .subcommand(
-            clap::command!("check-votes")
-                .arg(
-                    clap::Arg::new("epoch")
-                        .required(true)
-                        .value_parser(value_parser!(u32))
-                        .help("The epoch to check the votes for"),
+            clap::command!("check-votes").arg(
+                clap::Arg::new("epoch")
+                    .required(true)
+                    .value_parser(value_parser!(u32))
+                    .help("The epoch to check the votes for"),
             ),
         )
         .subcommand(

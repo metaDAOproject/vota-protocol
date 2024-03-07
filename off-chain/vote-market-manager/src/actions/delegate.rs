@@ -20,6 +20,25 @@ pub fn delegate(client: RpcClient, escrow: &Pubkey, delegate: &Pubkey, owner: &K
         solana_sdk::transaction::Transaction::new_with_payer(&[close_ix], Some(&owner.pubkey()));
     let latest_blockhash = client.get_latest_blockhash().unwrap();
     transaction.sign(&[owner], latest_blockhash);
-    let result = client.send_and_confirm_transaction(&transaction).unwrap();
-    println!("result: {:?}", delegate);
+    let result = client.send_and_confirm_transaction(&transaction);
+    match result {
+        Ok(sig) => {
+            log::info!(target: "vote",
+            sig=sig.to_string(),
+            user=owner.pubkey().to_string(),
+            delegate=delegate.to_string();
+            "vote delegate set"
+            );
+            println!("Vote delegate set")
+        }
+        Err(e) => {
+            log::error!(target: "vote",
+            error=e.to_string(),
+            user=owner.pubkey().to_string(),
+            delegate=delegate.to_string();
+            "failed to set vote delegate"
+            );
+            println!("Error setting vote delegate: {:?}", e);
+        }
+    }
 }
