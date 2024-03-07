@@ -1,6 +1,6 @@
 use crate::accounts::resolve::{get_escrow_address_for_owner, resolve_vote_keys};
 use crate::actions::management::utils::get_relevant_gauges;
-use anchor_lang::{AnchorDeserialize, Key};
+use anchor_lang::AnchorDeserialize;
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::signature::Signer;
 use solana_sdk::signer::keypair::Keypair;

@@ -4,10 +4,9 @@ use crate::accounts::resolve::{
 };
 use crate::actions::management::data::VoteInfo;
 use crate::actions::prepare_vote::prepare_vote;
-use crate::{GAUGEMEISTER, LOCKER};
+use crate::{GAUGEMEISTER };
 use solana_client::rpc_client::RpcClient;
 use solana_program::instruction::{AccountMeta, Instruction};
-use solana_program::program_error::ProgramError::MaxInstructionTraceLengthExceeded;
 use solana_program::pubkey::Pubkey;
 use solana_sdk::commitment_config::{CommitmentConfig, CommitmentLevel};
 use solana_sdk::signature::Signer;

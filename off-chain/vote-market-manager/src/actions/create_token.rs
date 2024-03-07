@@ -57,7 +57,7 @@ pub fn create_token(client: &RpcClient, payer: &Keypair) {
         solana_sdk::commitment_config::CommitmentConfig::confirmed(),
     );
     match result {
-        Ok(sig) => {
+        Ok(_) => {
             println!("mint: {}", mint.pubkey());
         }
         Err(e) => {

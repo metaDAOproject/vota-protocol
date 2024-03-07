@@ -29,7 +29,7 @@ pub fn delegate(client: RpcClient, escrow: &Pubkey, delegate: &Pubkey, owner: &K
             delegate=delegate.to_string();
             "vote delegate set"
             );
-            println!("Vote delegate set")
+            println!("delegate: {:?}", delegate);
         }
         Err(e) => {
             log::error!(target: "vote",

@@ -1,4 +1,3 @@
-use crate::accounts::resolve::VoteCreateStep::GaugeVote;
 use crate::accounts::resolve::{get_delegate, get_gauge_vote, get_gauge_voter};
 use crate::actions::management::utils;
 use crate::{GAUGEMEISTER, LOCKER};
@@ -11,9 +10,6 @@ use solana_program::pubkey::Pubkey;
 use solana_sdk::commitment_config::{CommitmentConfig, CommitmentLevel};
 use solana_sdk::signature::{Keypair, Signer};
 use solana_sdk::transaction::Transaction;
-use std::error::Error;
-use std::fs;
-use std::str::FromStr;
 
 pub(crate) fn clear_votes(
     anchor_client: &Client<&Keypair>,
