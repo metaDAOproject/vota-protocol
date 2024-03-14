@@ -124,9 +124,8 @@ pub fn claim(
             },
         ))
     });
-    match result {
-        Ok(result) => {
-            match result {
+    //This worked once, but blockage expired will panic
+    match result.unwrap() {
                 Ok(sig) => {
                     log::info!(target: "claim",
             sig=sig.to_string(),
@@ -147,20 +146,7 @@ pub fn claim(
                 epoch=epoch;
                 "failed to claim vote payment");
                     println!("failed to claim vote payment");
-                }
             }
-        }
-        Err(e) => {
-        log::error!(target: "claim",
-            error=e.to_string(),
-            user=seller.to_string(),
-            config=config.to_string(),
-            gauge=gauge.to_string(),
-            epoch=epoch;
-            "failed to claim vote payment");
-        println!("failed to claim vote payment");
-        }
-
     }
     Ok(())
 }
