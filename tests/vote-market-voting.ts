@@ -445,7 +445,7 @@ describe("vote market voting phase", () => {
         );
 
     // Commit vote
-    const commitVoteBuilder = await program.methods.commitVote(gaugeMeisterData.currentRewardsEpoch + 1).accounts({
+    const commitVoteBuilder = program.methods.commitVote(gaugeMeisterData.currentRewardsEpoch + 1).accounts({
         config: config.publicKey,
         gaugemeister: GAUGEMEISTER,
         gauge: GAUGE,

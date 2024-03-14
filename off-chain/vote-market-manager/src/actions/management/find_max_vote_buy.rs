@@ -12,6 +12,8 @@ pub(crate) fn find_max_vote_buy(
     payer: &Keypair,
     data: EpochData,
     vote_infos: Vec<VoteInfo>,
+    dry_run: bool,
+    use_all: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!("find_max_vote_buy {:#?}", data);
     for gauge in &data.gauges {
@@ -50,14 +52,20 @@ pub(crate) fn find_max_vote_buy(
         println!("total_token_amount: {}", vote_buy_data.amount);
         println!("max_token_amount: {}", max_token_amount);
         println!("Setting max token amount for {}", gauge.gauge);
-        set_maximum(
-            anchor_client,
-            payer,
-            gauge.gauge,
-            data.config,
-            data.epoch,
-            max_token_amount as u64,
-        );
+        if !dry_run {
+            set_maximum(
+                anchor_client,
+                payer,
+                gauge.gauge,
+                data.config,
+                data.epoch,
+                if use_all {
+                    vote_buy_data.amount
+                } else {
+                    max_token_amount as u64
+                },
+            );
+        }
     }
     Ok(())
 }

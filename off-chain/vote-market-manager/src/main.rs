@@ -3,8 +3,10 @@ use std::{env, fs};
 
 use anchor_lang::AnchorDeserialize;
 use chrono::Utc;
-use clap::value_parser;
+use clap::ArgAction::SetTrue;
+use clap::{arg, value_parser};
 use dotenv::dotenv;
+use reqwest::get;
 use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::pubkey;
 use solana_sdk::pubkey::Pubkey;
@@ -14,6 +16,7 @@ use structured_logger::Builder;
 
 use crate::accounts::resolve::{get_delegate, get_escrow_address_for_owner};
 use crate::actions::management::data::VoteInfo;
+use crate::actions::management::priority_fee::get_priority_fee;
 use crate::actions::queries::escrows;
 use crate::utils::short_address;
 
@@ -28,6 +31,8 @@ const LOCKER: Pubkey = pubkey!("8erad8kmNrLJDJPe9UkmTHomrMV3EW48sjGeECyVjbYX");
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
+    let priority_fee = get_priority_fee();
+    println!("priority_fee: {:?}", priority_fee);
     Builder::with_level("info")
         .with_target_writer(
             "*",
@@ -398,6 +403,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .required(true)
                         .value_parser(value_parser!(String))
                         .help("The vote weights file output by the calculate-weights subcommand"),
+                )
+                .arg(
+                    clap::Arg::new("dry-run")
+                        .required(false)
+                        .long("dry-run")
+                        .short('d')
+                        .action(SetTrue)
+                        .help("Whether to actually set the maximums"),
+                )
+                .arg(
+                    clap::Arg::new("use-all")
+                        .required(false)
+                        .long("use-all")
+                        .short('u')
+                        .action(SetTrue)
+                        .help("Set to use all tokens even if valued higher than emissions"),
                 ),
         )
         .subcommand(
@@ -473,6 +494,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let delegate = get_delegate(&config);
             let escrows = escrows::get_delegated_escrows(&client, &delegate);
             println!("escrows: {:?}", escrows);
+            println!("Number of escrows: {:?}", escrows.len());
         }
         Some(("delegate", matches)) => {
             let escrow = get_escrow_address_for_owner(&payer.pubkey());
@@ -502,10 +524,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Some(("get-direct-votes", matches)) => {
             // Update this with the latest from the file from calculate-inputs
-            let usd_per_vote = 9.699848367796068e-12;
+            let sbr_price = 0.005778;
+            let sbr_per_epoch = 7000000;
             let epoch = matches.get_one::<u32>("epoch").unwrap();
             let direct_votes = actions::queries::direct_votes::get_direct_votes(&client, *epoch)?;
-            let mut total_votes = 0;
+            let total_votes = direct_votes.iter().map(|x| x.total_power).sum::<u64>();
+            let usd_per_vote = sbr_price * sbr_per_epoch as f64 / total_votes as f64;
+            println!("USD per vote: {:?}", usd_per_vote);
             for eg in direct_votes {
                 let gauge_account = client.get_account(&eg.gauge)?;
                 let gauge_data =
@@ -515,7 +540,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let quarry_data =
                     quarry_state::Quarry::deserialize(&mut quarry_account.data[8..].as_ref())?;
                 let quarry_mint = quarry_data.token_mint_key;
-                total_votes += eg.total_power;
                 println!(
                     "Pool Mint: {:?}, Gauge: {:?}, Power: {:?}, USD value of votes: {:?}",
                     short_address(&quarry_mint),
@@ -692,6 +716,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             )?;
         }
         Some(("find-max-vote-buy", matches)) => {
+            println!("Finding and setting max vote buy");
             let epoch_data = matches.get_one::<String>("epoch-data").unwrap();
             let epoch_data_string = std::fs::read_to_string(epoch_data)?;
             let data: actions::management::data::EpochData =
@@ -699,12 +724,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let vote_weights_file = matches.get_one::<String>("vote-weights").unwrap();
             let vote_weights_string = std::fs::read_to_string(vote_weights_file)?;
             let vote_weights: Vec<VoteInfo> = serde_json::from_str(&vote_weights_string)?;
+            println!("got here");
+            let dry_run = *matches.get_one::<bool>("dry-run").unwrap();
+            let use_all = *matches.get_one::<bool>("use-all").unwrap();
+            println!("dry-run: {:?}", dry_run);
             actions::management::find_max_vote_buy::find_max_vote_buy(
                 &client,
                 &anchor_client,
                 &payer,
                 data,
                 vote_weights,
+                dry_run,
+                use_all,
             )?;
         }
         Some(("execute-votes", matches)) => {
@@ -740,4 +771,3 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     Ok(())
 }
-

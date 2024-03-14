@@ -1,7 +1,7 @@
-use std::env;
+use crate::errors::VoteMarketManagerError;
 use reqwest::blocking::Client;
 use serde_json::json;
-use crate::errors::VoteMarketManagerError;
+use std::env;
 
 pub fn get_priority_fee() -> Result<f64, Box<dyn std::error::Error>> {
     let rpc_url = env::var("RPC_URL").unwrap().to_string();
@@ -9,7 +9,8 @@ pub fn get_priority_fee() -> Result<f64, Box<dyn std::error::Error>> {
         return Ok(0.0);
     }
     let client = Client::new();
-    let response = client.post(rpc_url, )
+    let response = client
+        .post(rpc_url)
         .json(&json!({
             "jsonrpc": "2.0",
             "id": 1,
@@ -20,9 +21,10 @@ pub fn get_priority_fee() -> Result<f64, Box<dyn std::error::Error>> {
                     "priority_level": "MEDIUM",
                 }
             } ]
-        })).send()?;
+        }))
+        .send()?;
     let json_response: serde_json::Value = response.json()?;
-    json_response["result"]["priorityFeeEstimate"].as_f64()
+    json_response["result"]["priorityFeeEstimate"]
+        .as_f64()
         .ok_or(VoteMarketManagerError::PriorityFeeNotInResult.into())
-
 }

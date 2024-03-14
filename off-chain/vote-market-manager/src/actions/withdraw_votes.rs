@@ -1,8 +1,5 @@
-use crate::accounts::resolve::{
-    get_delegate, get_escrow_address_for_owner,
-    resolve_vote_keys,
-};
-use crate::{GAUGEMEISTER};
+use crate::accounts::resolve::{get_delegate, get_escrow_address_for_owner, resolve_vote_keys};
+use crate::GAUGEMEISTER;
 use solana_client::rpc_client::RpcClient;
 use solana_program::instruction::AccountMeta;
 use solana_program::pubkey::Pubkey;

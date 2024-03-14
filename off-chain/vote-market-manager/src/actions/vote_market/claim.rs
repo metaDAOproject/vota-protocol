@@ -1,9 +1,14 @@
 use crate::accounts::resolve::{get_delegate, get_vote_buy, resolve_vote_keys};
 use crate::GAUGEMEISTER;
+use anchor_lang::prelude::Account;
+use retry::delay::Exponential;
+use retry::retry;
 use solana_client::rpc_config::RpcSendTransactionConfig;
+use solana_client::rpc_response::RpcBlockCommitment;
 use solana_program::pubkey::Pubkey;
-use solana_sdk::signature::Keypair;
-use solana_sdk::signer::Signer;
+use solana_sdk::commitment_config::{CommitmentConfig, CommitmentLevel};
+use solana_sdk::signature::{Keypair, Signer};
+use solana_sdk::transaction::Transaction;
 use spl_associated_token_account::get_associated_token_address;
 use spl_associated_token_account::instruction::create_associated_token_account;
 
@@ -17,11 +22,20 @@ pub fn claim(
     config: Pubkey,
     gauge: Pubkey,
     epoch: u32,
-) {
-    let program = anchor_client.program(vote_market::id()).unwrap();
+) -> Result<(), Box<dyn std::error::Error>> {
+    let vote_delegate = get_delegate(&config);
     let seller_token_account = get_associated_token_address(&seller, &mint);
-    let seller_token_account_info = client.get_account(&seller_token_account);
-    if !seller_token_account_info.is_ok() {
+    let vote_accounts = resolve_vote_keys(&escrow, &gauge, epoch);
+    let [ref seller_token_account_info, ref epoch_gauge_vote_acount_info] =
+        client.get_multiple_accounts(&[seller_token_account, vote_accounts.epoch_gauge_vote])?[..]
+    else {
+        return Err("Failed to get accounts".into());
+    };
+    if epoch_gauge_vote_acount_info.is_none() {
+        println!("No votes for {}. Nothing to do", escrow.to_string());
+        return Ok(());
+    }
+    if seller_token_account_info.is_none() {
         let create_ata_ix =
             create_associated_token_account(&payer.pubkey(), &seller, &mint, &spl_token::id());
         let latest_blockhash = client.get_latest_blockhash().unwrap();
@@ -41,13 +55,16 @@ pub fn claim(
     }
     let vote_buy = get_vote_buy(&config, &gauge, epoch);
     let token_vault = get_associated_token_address(&vote_buy, &mint);
-    let vote_delegate = get_delegate(&config);
-    let vote_accounts = resolve_vote_keys(&escrow, &gauge, epoch);
     let treasury = get_associated_token_address(&payer.pubkey(), &mint);
+    let program = anchor_client.program(vote_market::id()).unwrap();
 
-    let result = program
+    let priority_fee_ix =
+        solana_sdk::compute_budget::ComputeBudgetInstruction::set_compute_unit_price(10000);
+
+    let ixs = program
         .request()
         .signer(payer)
+        .instruction(priority_fee_ix)
         .args(vote_market::instruction::ClaimVotePayment { epoch })
         .accounts(vote_market::accounts::ClaimVotePayment {
             script_authority: payer.pubkey(),
@@ -73,10 +90,34 @@ pub fn claim(
             token_program: spl_token::id(),
             system_program: solana_program::system_program::id(),
         })
-        .send_with_spinner_and_config(RpcSendTransactionConfig {
-            skip_preflight: true,
-            ..RpcSendTransactionConfig::default()
-        });
+        .instructions()?;
+    let mut tx = Transaction::new_with_payer(&ixs, Some(&payer.pubkey()));
+
+    let latest_blockhash = client.get_latest_blockhash()?;
+    tx.sign(&[payer], latest_blockhash);
+    // From Helius discord
+    //I recommend following these best practices:
+    // * using alpha piriorty fee api from Helius to get a more reliable fee
+    // * sending transactions with maxRetries=0
+    // * polling transactions status with different commitment levels, and keep sending the same signed transaction (with maxRetries=0 and skipPreflight=true) until it gets to confirmed using exponential backoff
+    // * aborting if the blockheight goes over the lastValidBlockHeight
+
+    let sim = client.simulate_transaction(&tx).unwrap();
+    println!("simulated: {:?}", sim);
+    let retry_strategy = Exponential::from_millis(10).take(5);
+    let result = retry(retry_strategy, || {
+        client.send_and_confirm_transaction_with_spinner_and_config(
+            &tx,
+            CommitmentConfig {
+                commitment: CommitmentLevel::Processed,
+            },
+            RpcSendTransactionConfig {
+                skip_preflight: true,
+                max_retries: Some(0),
+                ..RpcSendTransactionConfig::default()
+            },
+        )
+    });
     match result {
         Ok(sig) => {
             log::info!(target: "claim",
@@ -91,13 +132,14 @@ pub fn claim(
         }
         Err(e) => {
             log::error!(target: "claim",
-            error=e.to_string(),
-            user=seller.to_string(),
-            config=config.to_string(),
-            gauge=gauge.to_string(),
-            epoch=epoch;
-            "failed to claim vote payment");
+                error=e.to_string(),
+                user=seller.to_string(),
+                config=config.to_string(),
+                gauge=gauge.to_string(),
+                epoch=epoch;
+                "failed to claim vote payment");
             println!("failed to claim vote payment");
         }
     }
+    Ok(())
 }

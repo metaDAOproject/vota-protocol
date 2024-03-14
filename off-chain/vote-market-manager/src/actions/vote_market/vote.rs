@@ -4,7 +4,7 @@ use crate::accounts::resolve::{
 };
 use crate::actions::management::data::VoteInfo;
 use crate::actions::prepare_vote::prepare_vote;
-use crate::{GAUGEMEISTER };
+use crate::GAUGEMEISTER;
 use solana_client::rpc_client::RpcClient;
 use solana_program::instruction::{AccountMeta, Instruction};
 use solana_program::pubkey::Pubkey;

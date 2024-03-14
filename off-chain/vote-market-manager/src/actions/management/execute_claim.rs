@@ -29,7 +29,7 @@ pub(crate) fn execute_claim(
                 config,
                 vote_buy.gauge,
                 epoch,
-            )
+            )?;
         }
     }
     Ok(())
