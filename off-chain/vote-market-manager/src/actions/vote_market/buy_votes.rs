@@ -4,9 +4,11 @@ use anchor_client::Client;
 use solana_program::pubkey::Pubkey;
 use solana_sdk::signature::{Keypair, Signer};
 use spl_associated_token_account::get_associated_token_address;
+use crate::actions::retry_logic;
 
 pub(crate) fn buy_votes(
     anchor_client: &Client<&Keypair>,
+    client: &solana_client::rpc_client::RpcClient,
     payer: &Keypair,
     config: &Pubkey,
     gauge: &Pubkey,
@@ -24,7 +26,7 @@ pub(crate) fn buy_votes(
         &[b"allow-list".as_ref(), config.as_ref()],
         &vote_market::id(),
     );
-    let result = program
+    let mut ixs = program
         .request()
         .signer(payer)
         .accounts(vote_market::accounts::IncreaseVoteBuy {
@@ -42,7 +44,9 @@ pub(crate) fn buy_votes(
             system_program: solana_program::system_program::id(),
         })
         .args(vote_market::instruction::IncreaseVoteBuy { amount, epoch })
-        .send();
+        .instructions().unwrap();
+    let result = retry_logic::retry_logic(client, payer, &mut ixs);
+
     match result {
         Ok(sig) => println!("Vote buy increased: {:?}", sig),
         Err(e) => println!("Error increasing vote buy: {:?}", e),

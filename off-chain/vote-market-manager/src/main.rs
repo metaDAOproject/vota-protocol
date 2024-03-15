@@ -626,7 +626,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .collect();
             }
             println!("mints: {:?}", mints);
-            actions::vote_market::update_mints::update_mints(&anchor_client, &payer, config, mints);
+            actions::vote_market::update_mints::update_mints(&anchor_client, &client, &payer, config, mints);
         }
         Some(("create-token", _)) => {
             println!("create-token");
@@ -642,6 +642,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let amount = matches.get_one::<u64>("amount").unwrap();
             actions::vote_market::buy_votes::buy_votes(
                 &anchor_client,
+                &client,
                 &payer,
                 &config,
                 &gauge,
