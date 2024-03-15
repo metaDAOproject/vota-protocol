@@ -1,21 +1,25 @@
 use crate::accounts::resolve::{get_delegate, get_vote_buy, resolve_vote_keys};
+use crate::errors::VoteMarketManagerError;
 use crate::GAUGEMEISTER;
 use anchor_lang::prelude::Account;
 use retry::delay::Exponential;
-use retry::{OperationResult, retry};
+use retry::{Error as RetryError, OperationResult, retry};
+use solana_client::rpc_client::RpcClient;
 use solana_client::rpc_config::RpcSendTransactionConfig;
 use solana_client::rpc_response::RpcBlockCommitment;
+use solana_program::instruction::Instruction;
 use solana_program::pubkey::Pubkey;
 use solana_sdk::commitment_config::{CommitmentConfig, CommitmentLevel};
-use solana_sdk::signature::{Keypair, Signer};
+use solana_sdk::signature::{Keypair, Signature, Signer};
 use solana_sdk::transaction::Transaction;
 use spl_associated_token_account::get_associated_token_address;
 use spl_associated_token_account::instruction::create_associated_token_account;
-use crate::errors::VoteMarketManagerError;
+use std::error::Error;
+use crate::actions::retry_logic;
 
 pub fn claim(
     anchor_client: &anchor_client::Client<&Keypair>,
-    client: &solana_client::rpc_client::RpcClient,
+    client: &RpcClient,
     payer: &Keypair,
     seller: Pubkey,
     mint: Pubkey,
@@ -23,7 +27,7 @@ pub fn claim(
     config: Pubkey,
     gauge: Pubkey,
     epoch: u32,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn Error>> {
     let vote_delegate = get_delegate(&config);
     let seller_token_account = get_associated_token_address(&seller, &mint);
     let vote_accounts = resolve_vote_keys(&escrow, &gauge, epoch);
@@ -59,13 +63,9 @@ pub fn claim(
     let treasury = get_associated_token_address(&payer.pubkey(), &mint);
     let program = anchor_client.program(vote_market::id()).unwrap();
 
-    let priority_fee_ix =
-        solana_sdk::compute_budget::ComputeBudgetInstruction::set_compute_unit_price(100000);
-
-    let ixs = program
+    let mut ixs = program
         .request()
         .signer(payer)
-        .instruction(priority_fee_ix)
         .args(vote_market::instruction::ClaimVotePayment { epoch })
         .accounts(vote_market::accounts::ClaimVotePayment {
             script_authority: payer.pubkey(),
@@ -92,42 +92,12 @@ pub fn claim(
             system_program: solana_program::system_program::id(),
         })
         .instructions()?;
-    let mut tx = Transaction::new_with_payer(&ixs, Some(&payer.pubkey()));
 
-    let latest_blockhash = client.get_latest_blockhash()?;
-    tx.sign(&[payer], latest_blockhash);
-    // From Helius discord
-    //I recommend following these best practices:
-    // * using alpha piriorty fee api from Helius to get a more reliable fee
-    // * sending transactions with maxRetries=0
-    // * polling transactions status with different commitment levels, and keep sending the same signed transaction (with maxRetries=0 and skipPreflight=true) until it gets to confirmed using exponential backoff
-    // * aborting if the blockheight goes over the lastValidBlockHeight
-
-    let sim = client.simulate_transaction(&tx).unwrap();
-    println!("simulated: {:?}", sim);
-    let retry_strategy = Exponential::from_millis(10).take(5);
-    let result = retry(retry_strategy, || {
-        if !(client.is_blockhash_valid(&latest_blockhash, CommitmentConfig{
-            commitment: CommitmentLevel::Processed
-        }).unwrap()) {
-            return OperationResult::Err("Blockhash Expired");
-        }
-        OperationResult::Ok(client.send_and_confirm_transaction_with_spinner_and_config(
-            &tx,
-            CommitmentConfig {
-                commitment: CommitmentLevel::Processed,
-            },
-            RpcSendTransactionConfig {
-                skip_preflight: true,
-                max_retries: Some(0),
-                ..RpcSendTransactionConfig::default()
-            },
-        ))
-    });
+    let result = retry_logic::retry_logic(client, &payer, &mut ixs);
     //This worked once, but blockage expired will panic
-    match result.unwrap() {
-                Ok(sig) => {
-                    log::info!(target: "claim",
+    match result {
+        Ok(sig) => {
+            log::info!(target: "claim",
             sig=sig.to_string(),
             user=seller.to_string(),
             config=config.to_string(),
@@ -135,18 +105,18 @@ pub fn claim(
             epoch=epoch;
             "claiming vote payment"
             );
-                    println!("claimed vote payment");
-                }
-                Err(e) => {
-                    log::error!(target: "claim",
+            println!("claimed vote payment");
+        }
+        Err(e) => {
+            log::error!(target: "claim",
                 error=e.to_string(),
                 user=seller.to_string(),
                 config=config.to_string(),
                 gauge=gauge.to_string(),
                 epoch=epoch;
                 "failed to claim vote payment");
-                    println!("failed to claim vote payment");
-            }
+            println!("failed to claim vote payment");
+        }
     }
     Ok(())
 }
