@@ -16,7 +16,7 @@ pub fn get_priority_fee() -> Result<f64, Box<dyn std::error::Error>> {
             "id": 1,
             "method": "getPriorityFeeEstimate",
             "params": [ {
-                "accountKeys": [gauge_state::id().to_string()],
+                "accountKeys": [gauge_state::id().to_string(),"JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4"],
                 "options": {
                     "priority_level": "MEDIUM",
                 }

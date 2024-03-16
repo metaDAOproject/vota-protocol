@@ -28,3 +28,4 @@ common = { path = "../../external-state/common" }
 structured-logger = "1.0.3"
 log = "0.4.20"
 retry = "2.0.0"
+anyhow = "1.0.81"

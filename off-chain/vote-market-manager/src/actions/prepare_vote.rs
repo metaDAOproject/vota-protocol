@@ -6,6 +6,7 @@ use solana_program::instruction::AccountMeta;
 use solana_program::pubkey::Pubkey;
 use solana_sdk::signature::Signer;
 use solana_sdk::signer::keypair::Keypair;
+use crate::actions::retry_logic::retry_logic;
 
 pub fn prepare_vote(client: &RpcClient, owner: Pubkey, gauge: Pubkey, payer: &Keypair, epoch: u32) {
     let escrow_address = get_escrow_address_for_owner(&owner);
@@ -31,13 +32,8 @@ pub fn prepare_vote(client: &RpcClient, owner: Pubkey, gauge: Pubkey, payer: &Ke
                     ],
                     data,
                 };
-                let mut transaction = solana_sdk::transaction::Transaction::new_with_payer(
-                    &[create_gauge_voter_ix],
-                    Some(&payer.pubkey()),
-                );
-                let latest_blockhash = client.get_latest_blockhash().unwrap();
-                transaction.sign(&[payer], latest_blockhash);
-                let result = client.send_and_confirm_transaction(&transaction);
+                let mut ixs = vec![create_gauge_voter_ix];
+                let result = retry_logic(client, payer, &mut ixs);
                 match result {
                     Ok(sig) => {
                         log::info!(target: "vote",
@@ -75,13 +71,8 @@ pub fn prepare_vote(client: &RpcClient, owner: Pubkey, gauge: Pubkey, payer: &Ke
                     ],
                     data,
                 };
-                let mut transaction = solana_sdk::transaction::Transaction::new_with_payer(
-                    &[create_gauge_vote_ix],
-                    Some(&payer.pubkey()),
-                );
-                let latest_blockhash = client.get_latest_blockhash().unwrap();
-                transaction.sign(&[payer], latest_blockhash);
-                let result = client.send_and_confirm_transaction(&transaction);
+                let mut ixs = vec![create_gauge_vote_ix];
+                let result = retry_logic(client, payer, &mut ixs);
                 match result {
                     Ok(sig) => {
                         log::info!(target: "vote",

@@ -12,6 +12,7 @@ pub enum KnownTokens {
     Msol,
     Blze,
     Sbr,
+    Meta,
 }
 
 impl From<String> for KnownTokens {
@@ -25,6 +26,7 @@ impl From<String> for KnownTokens {
             "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So" => KnownTokens::Msol,
             "BLZEEuZUBVqFhj8adcCFPJvPVCiCyVmh3hkJMrU8KuJA" => KnownTokens::Blze,
             "Saber2gLauYim4Mvftnrasomsv6NvAuncvMEZwcLpD1" => KnownTokens::Sbr,
+            "METADDFL6wWMWEoKTFJwcThTbUmtarRJZjRpzUvkxhr" => KnownTokens::Meta,
             _ => panic!("Unknown token"),
         }
     }
@@ -44,6 +46,7 @@ impl From<KnownTokens> for String {
             KnownTokens::Msol => "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So".to_string(),
             KnownTokens::Blze => "BLZEEuZUBVqFhj8adcCFPJvPVCiCyVmh3hkJMrU8KuJA".to_string(),
             KnownTokens::Sbr => "Saber2gLauYim4Mvftnrasomsv6NvAuncvMEZwcLpD1".to_string(),
+            KnownTokens::Meta => "METADDFL6wWMWEoKTFJwcThTbUmtarRJZjRpzUvkxhr".to_string(),
         }
     }
 }

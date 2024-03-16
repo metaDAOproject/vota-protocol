@@ -13,7 +13,7 @@ pub fn retry_logic<'a>(
     ixs: &'a mut Vec<Instruction>,
 ) -> Result<Signature, RetryError<&'a str>> {
     let priority_fee_ix =
-        solana_sdk::compute_budget::ComputeBudgetInstruction::set_compute_unit_price(6000);
+        solana_sdk::compute_budget::ComputeBudgetInstruction::set_compute_unit_price(10000);
     // Add the priority fee instruction to the beginning of the transaction
     ixs.insert(0, priority_fee_ix);
     let mut tx = Transaction::new_with_payer(&ixs, Some(&payer.pubkey()));
@@ -43,12 +43,13 @@ pub fn retry_logic<'a>(
             )
             .unwrap())
         {
+            println!("Blockhash expired. Checking if it landed");
             let blockhash = client.get_latest_blockhash().unwrap();
             let confirmed_result = client.confirm_transaction_with_spinner(
                 &signature,
             &blockhash,
             CommitmentConfig {
-                commitment: CommitmentLevel::Confirmed,
+                commitment: CommitmentLevel::Finalized,
             });
             match confirmed_result {
                 Ok(confirmed) => {
