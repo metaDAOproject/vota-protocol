@@ -10,6 +10,7 @@ use solana_program::pubkey::Pubkey;
 use solana_sdk::commitment_config::{CommitmentConfig, CommitmentLevel};
 use solana_sdk::signature::{Keypair, Signer};
 use solana_sdk::transaction::Transaction;
+use crate::actions::retry_logic::retry_logic;
 
 pub(crate) fn clear_votes(
     anchor_client: &Client<&Keypair>,
@@ -73,19 +74,7 @@ pub(crate) fn clear_votes(
     if instructions.is_empty() {
         return Ok(());
     }
-    let mut tx = Transaction::new_with_payer(&instructions, Some(&script_authority.pubkey()));
-    let latest_blockhash = client.get_latest_blockhash()?;
-    tx.sign(&[script_authority], latest_blockhash);
-    let result = client.send_transaction_with_config(
-        &tx,
-        RpcSendTransactionConfig {
-            skip_preflight: false,
-            preflight_commitment: None,
-            encoding: None,
-            max_retries: None,
-            min_context_slot: None,
-        },
-    );
+    let result = retry_logic(client, script_authority, &mut instructions);
     match result {
         Ok(sig) => {
             log::info!(target: "vote",
@@ -93,13 +82,6 @@ pub(crate) fn clear_votes(
                 user=owner.to_string(),
                 config=config.to_string();
                 "cleared votes");
-            client.confirm_transaction_with_spinner(
-                &sig,
-                &latest_blockhash,
-                CommitmentConfig {
-                    commitment: CommitmentLevel::Confirmed,
-                },
-            )?;
             println!("Cleared votes for {:?}: {:?}", escrow, sig);
         }
         Err(e) => {
