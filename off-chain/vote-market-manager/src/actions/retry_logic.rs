@@ -13,7 +13,7 @@ pub fn retry_logic<'a>(
     ixs: &'a mut Vec<Instruction>,
 ) -> Result<Signature, RetryError<&'a str>> {
     let priority_fee_ix =
-        solana_sdk::compute_budget::ComputeBudgetInstruction::set_compute_unit_price(10000);
+        solana_sdk::compute_budget::ComputeBudgetInstruction::set_compute_unit_price(6000);
     // Add the priority fee instruction to the beginning of the transaction
     ixs.insert(0, priority_fee_ix);
     let mut tx = Transaction::new_with_payer(&ixs, Some(&payer.pubkey()));
@@ -34,6 +34,7 @@ pub fn retry_logic<'a>(
     let result = retry::retry(retry_strategy, || {
         println!("Try number {}", try_number);
         try_number += 1;
+        // Check if the blockhash has expired
         if !(client
             .is_blockhash_valid(
                 &latest_blockhash,
@@ -52,11 +53,30 @@ pub fn retry_logic<'a>(
                 commitment: CommitmentLevel::Finalized,
             });
             match confirmed_result {
-                Ok(confirmed) => {
+                Ok(_confirmed) => {
                     return OperationResult::Ok(signature);
                 },
-                Err(e) => {
+                Err(_e) => {
                     return OperationResult::Err("Failed to try to confirm transaction")
+                }
+            }
+        }
+        // Poll to see if processed. First try thruogh it will send but won't check, so always this will
+        // need two tries at least.
+        if signature != Signature::default() {
+            let result = client.get_signature_status_with_commitment(&signature, CommitmentConfig {
+                commitment: CommitmentLevel::Processed,
+            });
+            match result {
+                Ok(status) => {
+                    if status.is_some() {
+                        return OperationResult::Ok(signature);
+                    } else {
+                        return OperationResult::Retry("Failed to confirm transaction")
+                    }
+                },
+                Err(_e) => {
+                    return OperationResult::Retry("Failed to try to confirm transaction")
                 }
             }
         }
@@ -65,26 +85,10 @@ pub fn retry_logic<'a>(
             max_retries: Some(0),
             ..RpcSendTransactionConfig::default()
         });
-        match sent {
-            Ok(sig) => {
-                signature = sig;
-                let result = client.confirm_transaction_with_commitment(&sig,
-                    CommitmentConfig {
-                        commitment: CommitmentLevel::Confirmed,
-                    });
-                match result {
-                    Ok(confirmed) => {
-                        if confirmed.value {
-                            return OperationResult::Ok(sig)
-                        } else {
-                            return OperationResult::Retry("Failed to confirm transaction")
-                        }
-                    },
-                    Err(e) => OperationResult::Retry("Failed to try to confirm transaction"),
-                }
-            },
-            Err(e) => OperationResult::Retry("Failed to send transaction even with skip preflight"),
+        if let Some(sig) = sent.ok() {
+            signature = sig;
         }
+        return OperationResult::Retry("Another attempt")
     });
     result
 }

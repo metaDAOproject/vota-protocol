@@ -4,9 +4,8 @@ use std::{env, fs};
 use anchor_lang::AnchorDeserialize;
 use chrono::Utc;
 use clap::ArgAction::SetTrue;
-use clap::{arg, value_parser};
+use clap::value_parser;
 use dotenv::dotenv;
-use reqwest::get;
 use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::pubkey;
 use solana_sdk::pubkey::Pubkey;
@@ -692,7 +691,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 config,
                 gauge,
                 *epoch,
-            );
+            )?;
         }
         Some(("calculate-inputs", matches)) => {
             let epoch = matches.get_one::<u32>("epoch").unwrap();
@@ -740,6 +739,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             )?;
         }
         Some(("execute-votes", matches)) => {
+            println!("Executing votes");
             let epoch_data = matches.get_one::<String>("epoch-data").unwrap();
             let epoch_data_string = std::fs::read_to_string(epoch_data)?;
             let data: actions::management::data::EpochData =

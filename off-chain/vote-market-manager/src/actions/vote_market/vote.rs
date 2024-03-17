@@ -1,5 +1,4 @@
 use anchor_lang::AnchorDeserialize;
-use anyhow::anyhow;
 use crate::accounts::resolve::{
     get_delegate, get_epoch_gauge_voter, get_escrow_address_for_owner, get_gauge_voter,
     resolve_vote_keys,

@@ -4,12 +4,9 @@ use crate::{GAUGEMEISTER, LOCKER};
 use anchor_client::Client;
 use anchor_lang::AnchorDeserialize;
 use solana_client::rpc_client::RpcClient;
-use solana_client::rpc_config::RpcSendTransactionConfig;
 use solana_program::instruction::Instruction;
 use solana_program::pubkey::Pubkey;
-use solana_sdk::commitment_config::{CommitmentConfig, CommitmentLevel};
 use solana_sdk::signature::{Keypair, Signer};
-use solana_sdk::transaction::Transaction;
 use crate::actions::retry_logic::retry_logic;
 
 pub(crate) fn clear_votes(

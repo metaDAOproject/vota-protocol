@@ -1,17 +1,8 @@
 use crate::accounts::resolve::{get_delegate, get_vote_buy, resolve_vote_keys};
-use crate::errors::VoteMarketManagerError;
 use crate::GAUGEMEISTER;
-use anchor_lang::prelude::Account;
-use retry::delay::Exponential;
-use retry::{Error as RetryError, OperationResult, retry};
 use solana_client::rpc_client::RpcClient;
-use solana_client::rpc_config::RpcSendTransactionConfig;
-use solana_client::rpc_response::RpcBlockCommitment;
-use solana_program::instruction::Instruction;
 use solana_program::pubkey::Pubkey;
-use solana_sdk::commitment_config::{CommitmentConfig, CommitmentLevel};
-use solana_sdk::signature::{Keypair, Signature, Signer};
-use solana_sdk::transaction::Transaction;
+use solana_sdk::signature::{Keypair, Signer};
 use spl_associated_token_account::get_associated_token_address;
 use spl_associated_token_account::instruction::create_associated_token_account;
 use std::error::Error;
