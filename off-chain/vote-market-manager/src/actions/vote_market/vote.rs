@@ -35,6 +35,8 @@ pub fn vote(
         let vote_accounts = resolve_vote_keys(&escrow, &weight.gauge, epoch);
         println!("Epoch the votes are for: {}", epoch);
         println!("Epoch gauge voter: {:?}", vote_accounts.epoch_gauge_voter);
+        prepare_vote(client, owner, weight.gauge, script_authority, epoch);
+
         //check if weight needs to change
         let vote_account = client.get_account(&vote_accounts.gauge_vote)?;
         let vote_data = gauge_state::GaugeVote::deserialize(&mut vote_account.data[..].as_ref())?;
@@ -44,7 +46,6 @@ pub fn vote(
             continue;
         }
 
-        prepare_vote(client, owner, weight.gauge, script_authority, epoch);
         println!("Prepare voter completed");
         let vote_ixs = program
             .request()

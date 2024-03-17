@@ -33,7 +33,7 @@ pub(crate) fn execute_votes(
             *escrow_owner,
         )?;
         //delay for 5 seconds to allow for votes to clear
-        std::thread::sleep(std::time::Duration::from_secs(5));
+        std::thread::sleep(std::time::Duration::from_secs(10));
         // Check for epoch_gauge_voter
         let escrow = get_escrow_address_for_owner(&escrow_owner);
         let epoch_gauge_voter = get_epoch_gauge_voter(&escrow, data.epoch);

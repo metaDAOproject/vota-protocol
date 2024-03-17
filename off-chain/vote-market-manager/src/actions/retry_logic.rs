@@ -5,7 +5,8 @@ use retry::{Error as RetryError, OperationResult};
 use solana_sdk::transaction::Transaction;
 use retry::delay::Exponential;
 use solana_sdk::commitment_config::{CommitmentConfig, CommitmentLevel};
-use solana_client::rpc_config::RpcSendTransactionConfig;
+use solana_client::rpc_config::{RpcSendTransactionConfig, RpcSimulateTransactionConfig};
+use crate::errors::VoteMarketManagerError;
 
 pub fn retry_logic<'a>(
     client: &'a RpcClient,
@@ -16,8 +17,15 @@ pub fn retry_logic<'a>(
         solana_sdk::compute_budget::ComputeBudgetInstruction::set_compute_unit_price(6000);
     // Add the priority fee instruction to the beginning of the transaction
     ixs.insert(0, priority_fee_ix);
+
     let mut tx = Transaction::new_with_payer(&ixs, Some(&payer.pubkey()));
-    let latest_blockhash = client.get_latest_blockhash().unwrap();
+    let (latest_blockhash, _) = client.get_latest_blockhash_with_commitment(
+        {
+            CommitmentConfig {
+                commitment: CommitmentLevel::Confirmed,
+            }
+        }
+    ).unwrap();
     tx.sign(&[payer], latest_blockhash);
     // From Helius discord
     //I recommend following these best practices:
@@ -26,8 +34,21 @@ pub fn retry_logic<'a>(
     // * polling transactions status with different commitment levels, and keep sending the same signed transaction (with maxRetries=0 and skipPreflight=true) until it gets to confirmed using exponential backoff
     // * aborting if the blockheight goes over the lastValidBlockHeight
 
-    let sim = client.simulate_transaction(&tx).unwrap();
+    let sim = client.simulate_transaction_with_config(&tx, {
+        RpcSimulateTransactionConfig {
+            replace_recent_blockhash: false,
+            sig_verify: true,
+            commitment: Some(CommitmentConfig {
+                commitment: CommitmentLevel::Confirmed,
+            }),
+            ..RpcSimulateTransactionConfig::default()
+        }
+
+    }).unwrap();
     println!("simulated: {:?}", sim);
+    if sim.value.err.is_some() {
+       println!("Simulate error: {:?}", sim.value.err.unwrap());
+    }
     let retry_strategy = Exponential::from_millis(100).take(10);
     let mut signature = Signature::default();
     let mut try_number = 0;
@@ -35,22 +56,18 @@ pub fn retry_logic<'a>(
         println!("Try number {}", try_number);
         try_number += 1;
         // Check if the blockhash has expired
-        if !(client
-            .is_blockhash_valid(
-                &latest_blockhash,
-                CommitmentConfig {
-                    commitment: CommitmentLevel::Processed,
-                },
-            )
-            .unwrap())
+        let is_valid = client.is_blockhash_valid(&latest_blockhash, CommitmentConfig {
+            commitment: CommitmentLevel::Confirmed,
+        }).unwrap();
+        println!("Is blockhash valid: {:?}", is_valid);
+        if !is_valid
         {
             println!("Blockhash expired. Checking if it landed");
-            let blockhash = client.get_latest_blockhash().unwrap();
             let confirmed_result = client.confirm_transaction_with_spinner(
                 &signature,
-            &blockhash,
+                &latest_blockhash,
             CommitmentConfig {
-                commitment: CommitmentLevel::Finalized,
+                commitment: CommitmentLevel::Confirmed,
             });
             match confirmed_result {
                 Ok(_confirmed) => {
@@ -70,9 +87,9 @@ pub fn retry_logic<'a>(
             match result {
                 Ok(status) => {
                     if status.is_some() {
+                        println!("Confirmed. Delaying so next instruction will work");
+                        std::thread::sleep(std::time::Duration::from_secs(5));
                         return OperationResult::Ok(signature);
-                    } else {
-                        return OperationResult::Retry("Failed to confirm transaction")
                     }
                 },
                 Err(_e) => {
@@ -86,6 +103,7 @@ pub fn retry_logic<'a>(
             ..RpcSendTransactionConfig::default()
         });
         if let Some(sig) = sent.ok() {
+            println!("Sent transaction: {:?}", sig);
             signature = sig;
         }
         return OperationResult::Retry("Another attempt")
