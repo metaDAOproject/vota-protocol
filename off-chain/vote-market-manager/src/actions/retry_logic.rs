@@ -12,11 +12,17 @@ pub fn retry_logic<'a>(
     client: &'a RpcClient,
     payer: &'a Keypair,
     ixs: &'a mut Vec<Instruction>,
+    max_cus: Option<u32>,
 ) -> Result<Signature, RetryError<&'a str>> {
+    let PRIORITY_FEE = 100_000;
     let priority_fee_ix =
-        solana_sdk::compute_budget::ComputeBudgetInstruction::set_compute_unit_price(6000);
+        solana_sdk::compute_budget::ComputeBudgetInstruction::set_compute_unit_price(PRIORITY_FEE);
     // Add the priority fee instruction to the beginning of the transaction
     ixs.insert(0, priority_fee_ix);
+    if let Some(cus) = max_cus {
+        let max_cus_ix = solana_sdk::compute_budget::ComputeBudgetInstruction::set_compute_unit_limit(cus);
+        ixs.insert(0, max_cus_ix);
+    }
 
     let mut tx = Transaction::new_with_payer(&ixs, Some(&payer.pubkey()));
     let (latest_blockhash, _) = client.get_latest_blockhash_with_commitment(
@@ -48,8 +54,14 @@ pub fn retry_logic<'a>(
     println!("simulated: {:?}", sim);
     if sim.value.err.is_some() {
        println!("Simulate error: {:?}", sim.value.err.unwrap());
+       return Err(RetryError {
+           tries: 0,
+           total_delay: std::time::Duration::from_millis(0),
+           error: "Simulation failed"
+
+       });
     }
-    let retry_strategy = Exponential::from_millis(100).take(10);
+    let retry_strategy = Exponential::from_millis(200).take(10);
     let mut signature = Signature::default();
     let mut try_number = 0;
     let result = retry::retry(retry_strategy, || {

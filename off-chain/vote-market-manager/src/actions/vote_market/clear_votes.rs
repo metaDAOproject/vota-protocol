@@ -71,7 +71,9 @@ pub(crate) fn clear_votes(
     if instructions.is_empty() {
         return Ok(());
     }
-    let result = retry_logic(client, script_authority, &mut instructions);
+    let max_cus = 200_000;
+    println!("Clearing votes");
+    let result = retry_logic(client, script_authority, &mut instructions, Some(max_cus));
     match result {
         Ok(sig) => {
             log::info!(target: "vote",

@@ -33,7 +33,8 @@ pub fn prepare_vote(client: &RpcClient, owner: Pubkey, gauge: Pubkey, payer: &Ke
                     data,
                 };
                 let mut ixs = vec![create_gauge_voter_ix];
-                let result = retry_logic(client, payer, &mut ixs);
+                let max_cus = 14_000;
+                let result = retry_logic(client, payer, &mut ixs, Some(max_cus));
                 match result {
                     Ok(sig) => {
                         log::info!(target: "vote",
@@ -72,7 +73,8 @@ pub fn prepare_vote(client: &RpcClient, owner: Pubkey, gauge: Pubkey, payer: &Ke
                     data,
                 };
                 let mut ixs = vec![create_gauge_vote_ix];
-                let result = retry_logic(client, payer, &mut ixs);
+                let max_cus = 15_000;
+                let result = retry_logic(client, payer, &mut ixs, Some(max_cus));
                 match result {
                     Ok(sig) => {
                         log::info!(target: "vote",

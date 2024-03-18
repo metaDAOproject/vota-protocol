@@ -24,7 +24,7 @@ pub(crate) fn update_mints(
             allowed_mints: allowed_mints_address,
             system_program: solana_program::system_program::id(),
         }).instructions().unwrap();
-    let result = retry_logic::retry_logic(client, payer, &mut ixs);
+    let result = retry_logic::retry_logic(client, payer, &mut ixs,None);
     match result {
         Ok(sig) => println!("allowed mints updated: {:?}", sig),
         Err(e) => println!("Error updating allowed mints: {:?}", e),

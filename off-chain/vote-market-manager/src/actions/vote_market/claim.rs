@@ -84,7 +84,7 @@ pub fn claim(
         })
         .instructions()?;
 
-    let result = retry_logic::retry_logic(client, &payer, &mut ixs);
+    let result = retry_logic::retry_logic(client, &payer, &mut ixs,None);
     //This worked once, but blockage expired will panic
     match result {
         Ok(sig) => {

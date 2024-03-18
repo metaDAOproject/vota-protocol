@@ -41,7 +41,7 @@ pub fn vote(
         let vote_account = client.get_account(&vote_accounts.gauge_vote)?;
         let vote_data = gauge_state::GaugeVote::deserialize(&mut vote_account.data[..].as_ref())?;
 
-        if vote_data.weight != weight.weight {
+        if vote_data.weight == weight.weight {
             println!("Weight is already set to {}", weight.weight);
             continue;
         }
@@ -70,7 +70,8 @@ pub fn vote(
         }
     }
     if vote_instructions.len() > 0 {
-        let vote_result = retry_logic(client, script_authority, &mut vote_instructions);
+        let max_cus = 100_000;
+        let vote_result = retry_logic(client, script_authority, &mut vote_instructions, Some(max_cus));
         match vote_result {
             Ok(sig) => {
                 log::info!(target: "vote",
@@ -120,7 +121,8 @@ pub fn vote(
             data,
         };
         let mut ixs = vec![create_epoch_gauge_voter_ix];
-        let result = retry_logic(client, script_authority, &mut ixs);
+        let max_cus = 20_000;
+        let result = retry_logic(client, script_authority, &mut ixs, Some(max_cus));
         match result {
             Ok(sig) => {
                 log::info!(target: "vote",
@@ -174,7 +176,8 @@ pub fn vote(
             commit_instructions.push(ix);
         }
     }
-    let commit_result = retry_logic(client, script_authority, &mut commit_instructions);
+    let max_cus = 50_000;
+    let commit_result = retry_logic(client, script_authority, &mut commit_instructions, Some(max_cus));
     match commit_result {
         Ok(sig) => {
             log::info!(target: "vote",
