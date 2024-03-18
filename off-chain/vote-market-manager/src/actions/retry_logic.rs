@@ -14,7 +14,7 @@ pub fn retry_logic<'a>(
     ixs: &'a mut Vec<Instruction>,
     max_cus: Option<u32>,
 ) -> Result<Signature, RetryError<&'a str>> {
-    let PRIORITY_FEE = 100_000;
+    let PRIORITY_FEE = 300_000;
     let priority_fee_ix =
         solana_sdk::compute_budget::ComputeBudgetInstruction::set_compute_unit_price(PRIORITY_FEE);
     // Add the priority fee instruction to the beginning of the transaction
@@ -39,7 +39,8 @@ pub fn retry_logic<'a>(
     // * sending transactions with maxRetries=0
     // * polling transactions status with different commitment levels, and keep sending the same signed transaction (with maxRetries=0 and skipPreflight=true) until it gets to confirmed using exponential backoff
     // * aborting if the blockheight goes over the lastValidBlockHeight
-
+    // delay for 1 sec to ensure blockhash is found by sim
+    std::thread::sleep(std::time::Duration::from_secs(2));
     let sim = client.simulate_transaction_with_config(&tx, {
         RpcSimulateTransactionConfig {
             replace_recent_blockhash: false,
@@ -100,7 +101,7 @@ pub fn retry_logic<'a>(
                 Ok(status) => {
                     if status.is_some() {
                         println!("Confirmed. Delaying so next instruction will work");
-                        std::thread::sleep(std::time::Duration::from_secs(5));
+                        std::thread::sleep(std::time::Duration::from_secs(10));
                         return OperationResult::Ok(signature);
                     }
                 },

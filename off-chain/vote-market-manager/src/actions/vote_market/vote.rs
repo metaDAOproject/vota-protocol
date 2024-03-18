@@ -121,7 +121,7 @@ pub fn vote(
             data,
         };
         let mut ixs = vec![create_epoch_gauge_voter_ix];
-        let max_cus = 20_000;
+        let max_cus = 25_000;
         let result = retry_logic(client, script_authority, &mut ixs, Some(max_cus));
         match result {
             Ok(sig) => {
@@ -176,7 +176,7 @@ pub fn vote(
             commit_instructions.push(ix);
         }
     }
-    let max_cus = 50_000;
+    let max_cus = 75_000;
     let commit_result = retry_logic(client, script_authority, &mut commit_instructions, Some(max_cus));
     match commit_result {
         Ok(sig) => {

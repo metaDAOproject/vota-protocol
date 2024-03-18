@@ -33,7 +33,7 @@ pub fn prepare_vote(client: &RpcClient, owner: Pubkey, gauge: Pubkey, payer: &Ke
                     data,
                 };
                 let mut ixs = vec![create_gauge_voter_ix];
-                let max_cus = 14_000;
+                let max_cus = 20_000;
                 let result = retry_logic(client, payer, &mut ixs, Some(max_cus));
                 match result {
                     Ok(sig) => {
@@ -73,7 +73,7 @@ pub fn prepare_vote(client: &RpcClient, owner: Pubkey, gauge: Pubkey, payer: &Ke
                     data,
                 };
                 let mut ixs = vec![create_gauge_vote_ix];
-                let max_cus = 15_000;
+                let max_cus = 20_000;
                 let result = retry_logic(client, payer, &mut ixs, Some(max_cus));
                 match result {
                     Ok(sig) => {
@@ -83,7 +83,10 @@ pub fn prepare_vote(client: &RpcClient, owner: Pubkey, gauge: Pubkey, payer: &Ke
                         epoch=epoch;
                         "gauge vote created"
                         );
-                        println!("Gauge vote created")
+                        println!("Gauge vote created");
+                        // Fails if I move on from gauge vote creation too fast.
+                        // Delay 10 sec
+                        std::thread::sleep(std::time::Duration::from_secs(10));
                     }
                     Err(e) => {
                         log::error!(target: "vote",
