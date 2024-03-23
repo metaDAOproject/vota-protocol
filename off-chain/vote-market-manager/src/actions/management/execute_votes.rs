@@ -1,6 +1,8 @@
 use crate::actions::management::data::{EpochData, VoteInfo};
 
-use crate::accounts::resolve::{get_epoch_gauge_voter, get_escrow_address_for_owner};
+use crate::accounts::resolve::{
+    get_epoch_gauge_voter, get_escrow_address_for_owner, get_gauge_voter,
+};
 use crate::actions::reset_epoch_gauge_voter::reset_epoch_gauge_voter;
 use crate::actions::vote_market::clear_votes::clear_votes;
 use crate::actions::vote_market::vote::vote;
@@ -25,6 +27,17 @@ pub(crate) fn execute_votes(
             i,
             data.escrow_owners.len()
         );
+        let escrow = get_escrow_address_for_owner(&escrow_owner);
+        let gauge_voter = get_gauge_voter(&escrow);
+        let epoch_gauge_voter = get_epoch_gauge_voter(&gauge_voter, data.epoch);
+        println!("epoch_guage_voter {:?}", epoch_gauge_voter);
+        let epoch_gauge_voter_account = client.get_account(&epoch_gauge_voter);
+        if epoch_gauge_voter_account.is_ok() {
+            println!("Epoch gauge voter found. Already voted");
+            continue;
+            // println!("Epoch gauge voter found, resetting");
+            // reset_epoch_gauge_voter(client, script_authority, *escrow_owner, data.epoch);
+        }
         clear_votes(
             anchor_client,
             client,
@@ -35,13 +48,6 @@ pub(crate) fn execute_votes(
         //delay for 5 seconds to allow for votes to clear
         std::thread::sleep(std::time::Duration::from_secs(10));
         // Check for epoch_gauge_voter
-        let escrow = get_escrow_address_for_owner(&escrow_owner);
-        let epoch_gauge_voter = get_epoch_gauge_voter(&escrow, data.epoch);
-        let epoch_gauge_voter_account = client.get_account(&epoch_gauge_voter);
-        if epoch_gauge_voter_account.is_ok() {
-            println!("Epoch gauge voter not found, resetting");
-            reset_epoch_gauge_voter(client, script_authority, *escrow_owner, data.epoch);
-        }
 
         let result = vote(
             anchor_client,

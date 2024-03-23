@@ -1,8 +1,8 @@
+use crate::actions::retry_logic::retry_logic;
 use solana_client::rpc_client::RpcClient;
 use solana_program::instruction::AccountMeta;
 use solana_program::pubkey::Pubkey;
 use solana_sdk::signature::{Keypair, Signer};
-use crate::actions::retry_logic::retry_logic;
 
 pub(crate) fn create_epoch_gauge(client: &RpcClient, payer: &Keypair, gauge: Pubkey, epoch: u32) {
     let (epoch_gauge, bump) = Pubkey::find_program_address(

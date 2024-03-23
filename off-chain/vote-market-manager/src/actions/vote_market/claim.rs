@@ -1,4 +1,5 @@
 use crate::accounts::resolve::{get_delegate, get_vote_buy, resolve_vote_keys};
+use crate::actions::retry_logic;
 use crate::GAUGEMEISTER;
 use solana_client::rpc_client::RpcClient;
 use solana_program::pubkey::Pubkey;
@@ -6,7 +7,6 @@ use solana_sdk::signature::{Keypair, Signer};
 use spl_associated_token_account::get_associated_token_address;
 use spl_associated_token_account::instruction::create_associated_token_account;
 use std::error::Error;
-use crate::actions::retry_logic;
 
 pub fn claim(
     anchor_client: &anchor_client::Client<&Keypair>,
@@ -31,23 +31,15 @@ pub fn claim(
         println!("No votes for {}. Nothing to do", escrow.to_string());
         return Ok(());
     }
+    let mut create_ata_ix = None;
     if seller_token_account_info.is_none() {
-        let create_ata_ix =
-            create_associated_token_account(&payer.pubkey(), &seller, &mint, &spl_token::id());
-        let latest_blockhash = client.get_latest_blockhash().unwrap();
-        let tx = solana_sdk::transaction::Transaction::new_signed_with_payer(
-            &[create_ata_ix],
-            Some(&payer.pubkey()),
-            &[payer],
-            latest_blockhash,
-        );
-        let tx = client
-            .send_and_confirm_transaction_with_spinner_and_commitment(
-                &tx,
-                solana_sdk::commitment_config::CommitmentConfig::confirmed(),
-            )
-            .unwrap();
-        println!("created associated token account: {:?}", tx);
+        create_ata_ix = Some(create_associated_token_account(
+            &payer.pubkey(),
+            &seller,
+            &mint,
+            &spl_token::id(),
+        ));
+        println!("creating associated token account");
     }
     let vote_buy = get_vote_buy(&config, &gauge, epoch);
     let token_vault = get_associated_token_address(&vote_buy, &mint);
@@ -84,7 +76,11 @@ pub fn claim(
         })
         .instructions()?;
 
-    let result = retry_logic::retry_logic(client, &payer, &mut ixs,None);
+    if let Some(ata_ix) = create_ata_ix {
+        ixs.insert(0, ata_ix);
+    }
+
+    let result = retry_logic::retry_logic(client, &payer, &mut ixs, Some(150_000));
     //This worked once, but blockage expired will panic
     match result {
         Ok(sig) => {

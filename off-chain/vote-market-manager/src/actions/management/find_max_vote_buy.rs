@@ -55,6 +55,7 @@ pub(crate) fn find_max_vote_buy(
         if !dry_run {
             set_maximum(
                 anchor_client,
+                client,
                 payer,
                 gauge.gauge,
                 data.config,

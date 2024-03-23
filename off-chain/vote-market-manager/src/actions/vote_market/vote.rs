@@ -1,18 +1,18 @@
-use anchor_lang::AnchorDeserialize;
 use crate::accounts::resolve::{
     get_delegate, get_epoch_gauge_voter, get_escrow_address_for_owner, get_gauge_voter,
     resolve_vote_keys,
 };
 use crate::actions::management::data::VoteInfo;
 use crate::actions::prepare_vote::prepare_vote;
+use crate::actions::retry_logic::retry_logic;
 use crate::GAUGEMEISTER;
+use anchor_lang::AnchorDeserialize;
 use solana_client::rpc_client::RpcClient;
 use solana_program::instruction::{AccountMeta, Instruction};
 use solana_program::pubkey::Pubkey;
 use solana_sdk::commitment_config::{CommitmentConfig, CommitmentLevel};
 use solana_sdk::signature::Signer;
 use solana_sdk::signer::keypair::Keypair;
-use crate::actions::retry_logic::retry_logic;
 
 pub fn vote(
     anchor_client: &anchor_client::Client<&Keypair>,
@@ -71,16 +71,21 @@ pub fn vote(
     }
     if vote_instructions.len() > 0 {
         let max_cus = 100_000;
-        let vote_result = retry_logic(client, script_authority, &mut vote_instructions, Some(max_cus));
+        let vote_result = retry_logic(
+            client,
+            script_authority,
+            &mut vote_instructions,
+            Some(max_cus),
+        );
         match vote_result {
             Ok(sig) => {
                 log::info!(target: "vote",
-            sig=sig.to_string(),
-            user=owner.to_string(),
-            config=config.to_string(),
-            epoch=epoch;
-            "set vote weight"
-            );
+                sig=sig.to_string(),
+                user=owner.to_string(),
+                config=config.to_string(),
+                epoch=epoch;
+                "set vote weight"
+                );
                 println!("Vote succsesful for {:?}: {:?}", escrow, sig);
             }
             Err(e) => {
@@ -91,7 +96,9 @@ pub fn vote(
                     epoch=epoch;
                     "failed to set vote weight");
                 println!("Error sending vote for {:?}: {:?}", escrow, e);
-                return Err(Box::<dyn std::error::Error>::from(anyhow::anyhow!(e.to_string())));
+                return Err(Box::<dyn std::error::Error>::from(anyhow::anyhow!(
+                    e.to_string()
+                )));
             }
         }
     }
@@ -104,8 +111,9 @@ pub fn vote(
     if epoch_gauge_voter_account.is_ok() {
         println!("Epoch gauge voter already exists");
     } else {
-        let data: Vec<u8> =
-            solana_program::hash::hash(b"global:prepare_epoch_gauge_voter_v2").to_bytes()[..8].to_vec();
+        let data: Vec<u8> = solana_program::hash::hash(b"global:prepare_epoch_gauge_voter_v2")
+            .to_bytes()[..8]
+            .to_vec();
         let create_epoch_gauge_voter_ix = solana_program::instruction::Instruction {
             program_id: gauge_state::id(),
             accounts: vec![
@@ -142,7 +150,9 @@ pub fn vote(
                 epoch=epoch;
                 "failed to prepare epoch gauge vote");
                 println!("Error preparing epoch gauge vote for {:?}: {:?}", escrow, e);
-                return Err(Box::<dyn std::error::Error>::from(anyhow::anyhow!(e.to_string())));
+                return Err(Box::<dyn std::error::Error>::from(anyhow::anyhow!(
+                    e.to_string()
+                )));
             }
         }
         //add a delay to wait for the epoch gauge voter to be created
@@ -177,7 +187,12 @@ pub fn vote(
         }
     }
     let max_cus = 75_000;
-    let commit_result = retry_logic(client, script_authority, &mut commit_instructions, Some(max_cus));
+    let commit_result = retry_logic(
+        client,
+        script_authority,
+        &mut commit_instructions,
+        Some(max_cus),
+    );
     match commit_result {
         Ok(sig) => {
             log::info!(target: "vote",
@@ -204,7 +219,9 @@ pub fn vote(
                 epoch=epoch;
                 "failed to commit vote");
             println!("Error committing vote for {:?}: {:?}", escrow, e);
-            return Err(Box::<dyn std::error::Error>::from(anyhow::anyhow!(e.to_string())));
+            return Err(Box::<dyn std::error::Error>::from(anyhow::anyhow!(
+                e.to_string()
+            )));
         }
     }
     Ok(())

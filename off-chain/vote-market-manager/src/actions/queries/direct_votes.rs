@@ -1,13 +1,13 @@
 use crate::ANCHOR_DISCRIMINATOR_SIZE;
 use anchor_lang::AnchorDeserialize;
 use gauge_state::{EpochGauge, Gauge};
+use quarry_state::Quarry;
 use solana_account_decoder::UiAccountEncoding;
 use solana_client::rpc_client::RpcClient;
 use solana_client::rpc_config::{RpcAccountInfoConfig, RpcProgramAccountsConfig};
 use solana_client::rpc_filter::RpcFilterType::DataSize;
 use solana_client::rpc_filter::{Memcmp, MemcmpEncodedBytes, RpcFilterType};
 use solana_program::pubkey;
-use quarry_state::Quarry;
 
 pub(crate) fn get_direct_votes(
     client: &RpcClient,

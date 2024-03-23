@@ -3,8 +3,8 @@ use std::{env, fs};
 
 use anchor_lang::AnchorDeserialize;
 use chrono::Utc;
-use clap::ArgAction::SetTrue;
 use clap::value_parser;
+use clap::ArgAction::SetTrue;
 use dotenv::dotenv;
 use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::pubkey;
@@ -625,7 +625,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .collect();
             }
             println!("mints: {:?}", mints);
-            actions::vote_market::update_mints::update_mints(&anchor_client, &client, &payer, config, mints);
+            actions::vote_market::update_mints::update_mints(
+                &anchor_client,
+                &client,
+                &payer,
+                config,
+                mints,
+            );
         }
         Some(("create-token", _)) => {
             println!("create-token");
@@ -654,7 +660,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap())?;
             let gauge = Pubkey::from_str(matches.get_one::<String>("gauge").unwrap())?;
             let epoch = matches.get_one::<u32>("epoch").unwrap();
-            actions::vote_market::refund::get_refund(&anchor_client, &payer, config, gauge, *epoch);
+            actions::vote_market::refund::get_refund(
+                &anchor_client,
+                &client,
+                &payer,
+                config,
+                gauge,
+                *epoch,
+            );
         }
         Some(("set-maximum", matches)) => {
             //TODO: bring out epoch
@@ -664,6 +677,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let epoch = matches.get_one::<u32>("epoch").unwrap();
             actions::vote_market::set_maximum::set_maximum(
                 &anchor_client,
+                &client,
                 &payer,
                 gauge,
                 config,

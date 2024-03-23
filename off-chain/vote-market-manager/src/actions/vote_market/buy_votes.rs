@@ -1,10 +1,10 @@
 use crate::accounts::resolve::get_vote_buy;
+use crate::actions::retry_logic;
 use crate::GAUGEMEISTER;
 use anchor_client::Client;
 use solana_program::pubkey::Pubkey;
 use solana_sdk::signature::{Keypair, Signer};
 use spl_associated_token_account::get_associated_token_address;
-use crate::actions::retry_logic;
 
 pub(crate) fn buy_votes(
     anchor_client: &Client<&Keypair>,
@@ -44,7 +44,8 @@ pub(crate) fn buy_votes(
             system_program: solana_program::system_program::id(),
         })
         .args(vote_market::instruction::IncreaseVoteBuy { amount, epoch })
-        .instructions().unwrap();
+        .instructions()
+        .unwrap();
     let result = retry_logic::retry_logic(client, payer, &mut ixs, None);
 
     match result {

@@ -60,13 +60,16 @@ pub(crate) fn calculate_inputs(
     // Get all of the relevant prices for calculating weights and efficiency
     // get tokens used in vote buys
     let mut tokens: Vec<KnownTokens> = vote_buys.iter().map(|x| x.mint.into()).collect();
+    println!("got here");
 
     // Add SBR price
     tokens.push(KnownTokens::Sbr);
 
     // Get USD values of relevant tokens
     let mut prices: HashMap<KnownTokens, f64> = HashMap::new();
+    println!("about to fetch here");
     fetch_token_prices(&mut prices, tokens)?;
+    println!("finished to fetch here");
 
     // Find direct votes
 

@@ -56,13 +56,15 @@ pub fn fetch_token_prices(
     tokens: Vec<KnownTokens>,
 ) -> Result<(), Box<dyn std::error::Error + 'static>> {
     let mints: Vec<String> = tokens.iter().map(|x| (*x).into()).collect();
+    println!("mints {:?}", mints);
     let api_url = format!(
-        "https://api.coingecko.com/api/v3/simple/token_price/solana?contract_addresses={}&vs_currencies=usd",
+        "https://api.coingecko.com/api/v3/simple/token_price/solana?contract_addresses={}&vs_currencies=usd&x_cg_demo_api_key=YOUR KEY,
         mints.join("%2C")
     );
     let client = Client::new();
     let response = client.get(api_url).send()?;
     let json_response: serde_json::Value = response.json()?;
+    println!("response {:?}", json_response);
     for mint_address in mints {
         let price = json_response.get(mint_address.clone());
         match price {

@@ -1,8 +1,8 @@
+use crate::actions::retry_logic;
 use anchor_client::Client;
 use solana_client::rpc_client::RpcClient;
 use solana_program::pubkey::Pubkey;
 use solana_sdk::signature::{Keypair, Signer};
-use crate::actions::retry_logic;
 
 pub(crate) fn update_mints(
     anchor_client: &Client<&Keypair>,
@@ -23,8 +23,10 @@ pub(crate) fn update_mints(
             admin: payer.pubkey(),
             allowed_mints: allowed_mints_address,
             system_program: solana_program::system_program::id(),
-        }).instructions().unwrap();
-    let result = retry_logic::retry_logic(client, payer, &mut ixs,None);
+        })
+        .instructions()
+        .unwrap();
+    let result = retry_logic::retry_logic(client, payer, &mut ixs, None);
     match result {
         Ok(sig) => println!("allowed mints updated: {:?}", sig),
         Err(e) => println!("Error updating allowed mints: {:?}", e),

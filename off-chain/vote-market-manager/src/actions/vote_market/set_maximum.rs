@@ -1,8 +1,11 @@
+use crate::actions::retry_logic::retry_logic;
+use solana_client::rpc_client::RpcClient;
 use solana_program::pubkey::Pubkey;
 use solana_sdk::signature::{Keypair, Signer};
 
 pub fn set_maximum(
     anchor_client: &anchor_client::Client<&Keypair>,
+    client: &RpcClient,
     payer: &Keypair,
     gauge: Pubkey,
     config: Pubkey,
@@ -21,7 +24,7 @@ pub fn set_maximum(
     .0;
 
     let program = anchor_client.program(vote_market::id()).unwrap();
-    let result = program
+    let mut ixs = program
         .request()
         .signer(payer)
         .accounts(vote_market::accounts::SetMaxAmount {
@@ -31,7 +34,9 @@ pub fn set_maximum(
             script_authority: payer.pubkey(),
         })
         .args(vote_market::instruction::SetMaxAmount { epoch, max_amount })
-        .send();
+        .instructions()
+        .unwrap();
+    let result = retry_logic(client, payer, &mut ixs, Some(20_000));
     match result {
         Ok(sig) => {
             log::info!(target: "efficiency",

@@ -1,5 +1,6 @@
 use crate::accounts::resolve::{get_delegate, get_gauge_vote, get_gauge_voter};
 use crate::actions::management::utils;
+use crate::actions::retry_logic::retry_logic;
 use crate::{GAUGEMEISTER, LOCKER};
 use anchor_client::Client;
 use anchor_lang::AnchorDeserialize;
@@ -7,7 +8,6 @@ use solana_client::rpc_client::RpcClient;
 use solana_program::instruction::Instruction;
 use solana_program::pubkey::Pubkey;
 use solana_sdk::signature::{Keypair, Signer};
-use crate::actions::retry_logic::retry_logic;
 
 pub(crate) fn clear_votes(
     anchor_client: &Client<&Keypair>,
