@@ -22,146 +22,155 @@ pub fn vote(
     owner: Pubkey,
     epoch: u32,
     weights: Vec<VoteInfo>,
+    skip_weights: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let vote_delegate = get_delegate(&config);
     println!("Vote delegate address is {}", vote_delegate);
     let program = anchor_client.program(vote_market::id())?;
     let escrow = get_escrow_address_for_owner(&owner);
 
-    // Set weights
-    let mut vote_instructions: Vec<Instruction> = Vec::new();
-    for weight in weights.clone() {
-        // Set weight
-        let vote_accounts = resolve_vote_keys(&escrow, &weight.gauge, epoch);
-        println!("Epoch the votes are for: {}", epoch);
-        println!("Epoch gauge voter: {:?}", vote_accounts.epoch_gauge_voter);
-        prepare_vote(client, owner, weight.gauge, script_authority, epoch);
+    if !skip_weights {
+        // Set weights
+        let mut vote_instructions: Vec<Instruction> = Vec::new();
+        for weight in weights.clone() {
+            // Set weight
+            let vote_accounts = resolve_vote_keys(&escrow, &weight.gauge, epoch);
+            println!("Epoch the votes are for: {}", epoch);
+            println!("Epoch gauge voter: {:?}", vote_accounts.epoch_gauge_voter);
+            prepare_vote(client, owner, weight.gauge, script_authority, epoch);
 
-        //check if weight needs to change
-        let vote_account = client.get_account(&vote_accounts.gauge_vote)?;
-        let vote_data = gauge_state::GaugeVote::deserialize(&mut vote_account.data[..].as_ref())?;
+            //check if weight needs to change
+            let vote_account = client.get_account(&vote_accounts.gauge_vote)?;
+            let vote_data = gauge_state::GaugeVote::deserialize(&mut vote_account.data[..].as_ref())?;
 
-        if vote_data.weight == weight.weight {
-            println!("Weight is already set to {}", weight.weight);
-            continue;
+            if vote_data.weight == weight.weight {
+                println!("Weight is already set to {}", weight.weight);
+                continue;
+            }
+
+            println!("Prepare voter completed");
+            let vote_ixs = program
+                .request()
+                .signer(script_authority)
+                .args(vote_market::instruction::Vote {
+                    weight: weight.weight,
+                })
+                .accounts(vote_market::accounts::Vote {
+                    config,
+                    script_authority: script_authority.pubkey(),
+                    gaugemeister: GAUGEMEISTER,
+                    gauge: weight.gauge,
+                    gauge_voter: vote_accounts.gauge_voter,
+                    gauge_vote: vote_accounts.gauge_vote,
+                    escrow,
+                    vote_delegate,
+                    gauge_program: gauge_state::id(),
+                })
+                .instructions()?;
+            for ix in vote_ixs {
+                vote_instructions.push(ix);
+            }
         }
-
-        println!("Prepare voter completed");
-        let vote_ixs = program
-            .request()
-            .signer(script_authority)
-            .args(vote_market::instruction::Vote {
-                weight: weight.weight,
-            })
-            .accounts(vote_market::accounts::Vote {
-                config,
-                script_authority: script_authority.pubkey(),
-                gaugemeister: GAUGEMEISTER,
-                gauge: weight.gauge,
-                gauge_voter: vote_accounts.gauge_voter,
-                gauge_vote: vote_accounts.gauge_vote,
-                escrow,
-                vote_delegate,
-                gauge_program: gauge_state::id(),
-            })
-            .instructions()?;
-        for ix in vote_ixs {
-            vote_instructions.push(ix);
-        }
-    }
-    if vote_instructions.len() > 0 {
-        let max_cus = 100_000;
-        let vote_result = retry_logic(
-            client,
-            script_authority,
-            &mut vote_instructions,
-            Some(max_cus),
-        );
-        match vote_result {
-            Ok(sig) => {
-                log::info!(target: "vote",
+        if vote_instructions.len() > 0 {
+            let max_cus = 100_000;
+            let vote_result = retry_logic(
+                client,
+                script_authority,
+                &mut vote_instructions,
+                Some(max_cus),
+            );
+            match vote_result {
+                Ok(sig) => {
+                    log::info!(target: "vote",
                 sig=sig.to_string(),
                 user=owner.to_string(),
                 config=config.to_string(),
                 epoch=epoch;
                 "set vote weight"
                 );
-                println!("Vote succsesful for {:?}: {:?}", escrow, sig);
-            }
-            Err(e) => {
-                log::error!(target: "vote",
+                    println!("Vote succsesful for {:?}: {:?}", escrow, sig);
+                }
+                Err(e) => {
+                    log::error!(target: "vote",
                     error=e.to_string(),
                     user=owner.to_string(),
                     config=config.to_string(),
                     epoch=epoch;
                     "failed to set vote weight");
-                println!("Error sending vote for {:?}: {:?}", escrow, e);
-                return Err(Box::<dyn std::error::Error>::from(anyhow::anyhow!(
+                    println!("Error sending vote for {:?}: {:?}", escrow, e);
+                    return Err(Box::<dyn std::error::Error>::from(anyhow::anyhow!(
                     e.to_string()
                 )));
+                }
             }
         }
-    }
 
-    println!("Creating epoch gauge voter");
-    // Create epoch gauge voter when all votes are complete
-    let gauge_voter = get_gauge_voter(&escrow);
-    let epoch_gauge_voter = get_epoch_gauge_voter(&gauge_voter, epoch);
-    let epoch_gauge_voter_account = client.get_account(&epoch_gauge_voter);
-    if epoch_gauge_voter_account.is_ok() {
-        println!("Epoch gauge voter already exists");
-    } else {
-        let data: Vec<u8> = solana_program::hash::hash(b"global:prepare_epoch_gauge_voter_v2")
-            .to_bytes()[..8]
-            .to_vec();
-        let create_epoch_gauge_voter_ix = solana_program::instruction::Instruction {
-            program_id: gauge_state::id(),
-            accounts: vec![
-                //Gauge vote account
-                AccountMeta::new_readonly(crate::GAUGEMEISTER, false),
-                AccountMeta::new_readonly(crate::LOCKER, false),
-                AccountMeta::new_readonly(escrow, false),
-                AccountMeta::new_readonly(gauge_voter, false),
-                AccountMeta::new(epoch_gauge_voter, false),
-                AccountMeta::new(script_authority.pubkey(), true),
-                AccountMeta::new_readonly(solana_program::system_program::id(), false),
-            ],
-            data,
-        };
-        let mut ixs = vec![create_epoch_gauge_voter_ix];
-        let max_cus = 25_000;
-        let result = retry_logic(client, script_authority, &mut ixs, Some(max_cus));
-        match result {
-            Ok(sig) => {
-                log::info!(target: "vote",
+        println!("Creating epoch gauge voter");
+        // Create epoch gauge voter when all votes are complete
+        let gauge_voter = get_gauge_voter(&escrow);
+        let epoch_gauge_voter = get_epoch_gauge_voter(&gauge_voter, epoch);
+        let epoch_gauge_voter_account = client.get_account(&epoch_gauge_voter);
+        if epoch_gauge_voter_account.is_ok() {
+            println!("Epoch gauge voter already exists");
+        } else {
+            let data: Vec<u8> = solana_program::hash::hash(b"global:prepare_epoch_gauge_voter_v2")
+                .to_bytes()[..8]
+                .to_vec();
+            let create_epoch_gauge_voter_ix = solana_program::instruction::Instruction {
+                program_id: gauge_state::id(),
+                accounts: vec![
+                    //Gauge vote account
+                    AccountMeta::new_readonly(crate::GAUGEMEISTER, false),
+                    AccountMeta::new_readonly(crate::LOCKER, false),
+                    AccountMeta::new_readonly(escrow, false),
+                    AccountMeta::new_readonly(gauge_voter, false),
+                    AccountMeta::new(epoch_gauge_voter, false),
+                    AccountMeta::new(script_authority.pubkey(), true),
+                    AccountMeta::new_readonly(solana_program::system_program::id(), false),
+                ],
+                data,
+            };
+            let mut ixs = vec![create_epoch_gauge_voter_ix];
+            let max_cus = 25_000;
+            let result = retry_logic(client, script_authority, &mut ixs, Some(max_cus));
+            match result {
+                Ok(sig) => {
+                    log::info!(target: "vote",
                 sig=sig.to_string(),
                 user=owner.to_string(),
                 config=config.to_string(),
                 epoch=epoch;
                 "epoch gauge vote prepared"
                 );
-                println!("Epoch gauge vote prepared for {:?}: {:?}", escrow, result);
-            }
-            Err(e) => {
-                log::error!(target: "vote",
+                    println!("Epoch gauge vote prepared for {:?}: {:?}", escrow, result);
+                }
+                Err(e) => {
+                    log::error!(target: "vote",
                 error=e.to_string(),
                 user=owner.to_string(),
                 config=config.to_string(),
                 epoch=epoch;
                 "failed to prepare epoch gauge vote");
-                println!("Error preparing epoch gauge vote for {:?}: {:?}", escrow, e);
-                return Err(Box::<dyn std::error::Error>::from(anyhow::anyhow!(
+                    println!("Error preparing epoch gauge vote for {:?}: {:?}", escrow, e);
+                    return Err(Box::<dyn std::error::Error>::from(anyhow::anyhow!(
                     e.to_string()
                 )));
+                }
             }
+            //add a delay to wait for the epoch gauge voter to be created
+            std::thread::sleep(std::time::Duration::from_secs(5));
         }
-        //add a delay to wait for the epoch gauge voter to be created
-        std::thread::sleep(std::time::Duration::from_secs(5));
+    } else {
+        println!("Skipping setting weights");
     }
     let mut commit_instructions: Vec<Instruction> = Vec::new();
     for weight in weights {
         let vote_accounts = resolve_vote_keys(&escrow, &weight.gauge, epoch);
-
+        let epoch_gauge_vote_account = client.get_account(&vote_accounts.epoch_gauge_vote);
+        // Only try to commit if it isn't already committed.
+        if epoch_gauge_vote_account.is_ok() {
+            continue;
+        }
         // Commit vote
         let commit_ixs = program
             .request()
@@ -187,42 +196,45 @@ pub fn vote(
         }
     }
     let max_cus = 75_000;
-    let commit_result = retry_logic(
-        client,
-        script_authority,
-        &mut commit_instructions,
-        Some(max_cus),
-    );
-    match commit_result {
-        Ok(sig) => {
-            log::info!(target: "vote",
+    if commit_instructions.len() > 0 {
+        let commit_result = retry_logic(
+            client,
+            script_authority,
+            &mut commit_instructions,
+            Some(max_cus),
+        );
+        match commit_result {
+            Ok(sig) => {
+                log::info!(target: "vote",
             sig=sig.to_string(),
             user=owner.to_string(),
             config=config.to_string(),
             epoch=epoch;
             "vote committed"
             );
-            client.confirm_transaction_with_spinner(
-                &sig,
-                &client.get_latest_blockhash()?,
-                CommitmentConfig {
-                    commitment: CommitmentLevel::Confirmed,
-                },
-            )?;
-            println!("Vote committed for {:?}: {:?}", escrow, sig);
-        }
-        Err(e) => {
-            log::error!(target: "vote",
+                client.confirm_transaction_with_spinner(
+                    &sig,
+                    &client.get_latest_blockhash()?,
+                    CommitmentConfig {
+                        commitment: CommitmentLevel::Confirmed,
+                    },
+                )?;
+                println!("Vote committed for {:?}: {:?}", escrow, sig);
+            }
+            Err(e) => {
+                log::error!(target: "vote",
                 error=e.to_string(),
                 user=owner.to_string(),
                 config=config.to_string(),
                 epoch=epoch;
                 "failed to commit vote");
-            println!("Error committing vote for {:?}: {:?}", escrow, e);
-            return Err(Box::<dyn std::error::Error>::from(anyhow::anyhow!(
+                println!("Error committing vote for {:?}: {:?}", escrow, e);
+                return Err(Box::<dyn std::error::Error>::from(anyhow::anyhow!(
                 e.to_string()
             )));
+            }
         }
     }
+
     Ok(())
 }

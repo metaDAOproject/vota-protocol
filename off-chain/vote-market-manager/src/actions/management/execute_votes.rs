@@ -31,22 +31,24 @@ pub(crate) fn execute_votes(
         println!("epoch_guage_voter {:?}", epoch_gauge_voter);
         let epoch_gauge_voter_account = client.get_account(&epoch_gauge_voter);
         // TODO: Actually need to check that all votes are committed.
+        let mut skip_weights = false;
         if epoch_gauge_voter_account.is_ok() {
             println!("Epoch gauge voter found. Already voted");
-            continue;
+            skip_weights = true;
             // println!("Epoch gauge voter found, resetting");
             // reset_epoch_gauge_voter(client, script_authority, *escrow_owner, data.epoch);
         }
-        clear_votes(
-            anchor_client,
-            client,
-            script_authority,
-            data.config,
-            *escrow_owner,
-        )?;
-        //delay for 5 seconds to allow for votes to clear
-        std::thread::sleep(std::time::Duration::from_secs(10));
-        // Check for epoch_gauge_voter
+        if !skip_weights {
+            clear_votes(
+                anchor_client,
+                client,
+                script_authority,
+                data.config,
+                *escrow_owner,
+            )?;
+            //delay for 5 seconds to allow for votes to clear
+            std::thread::sleep(std::time::Duration::from_secs(10));
+        }
 
         let result = vote(
             anchor_client,
@@ -56,6 +58,7 @@ pub(crate) fn execute_votes(
             *escrow_owner,
             data.epoch,
             vote_weights.clone(),
+            skip_weights,
         );
         match result {
             Ok(_) => println!("Escrow owner: {:?} voted", escrow_owner),

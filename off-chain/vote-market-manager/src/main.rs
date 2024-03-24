@@ -586,6 +586,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 owner,
                 *epoch,
                 weights,
+                false,
             )?;
         }
         Some(("check-votes", matches)) => {
