@@ -7,6 +7,7 @@ use solana_program::instruction::Instruction;
 use solana_sdk::commitment_config::{CommitmentConfig, CommitmentLevel};
 use solana_sdk::signature::{Keypair, Signature, Signer};
 use solana_sdk::transaction::Transaction;
+use crate::actions::rpc_retry::retry_rpc;
 
 pub fn retry_logic<'a>(
     client: &'a RpcClient,
@@ -26,12 +27,12 @@ pub fn retry_logic<'a>(
     }
 
     let mut tx = Transaction::new_with_payer(&ixs, Some(&payer.pubkey()));
-    let (latest_blockhash, _) = client
+    let (latest_blockhash, _) = retry_rpc(|| client
         .get_latest_blockhash_with_commitment({
             CommitmentConfig {
                 commitment: CommitmentLevel::Confirmed,
             }
-        })
+        }))
         .or_else(|_| {
             Err(RetryError {
                 tries: 0,
@@ -48,7 +49,7 @@ pub fn retry_logic<'a>(
     // * aborting if the blockheight goes over the lastValidBlockHeight
     // delay for 1 sec to ensure blockhash is found by sim
     std::thread::sleep(std::time::Duration::from_secs(3));
-    let sim = client
+    let sim = retry_rpc(|| client
         .simulate_transaction_with_config(&tx, {
             RpcSimulateTransactionConfig {
                 replace_recent_blockhash: false,
@@ -58,7 +59,7 @@ pub fn retry_logic<'a>(
                 }),
                 ..RpcSimulateTransactionConfig::default()
             }
-        })
+        }))
         .or_else(|_| {
             Err(RetryError {
                 tries: 0,
@@ -82,20 +83,22 @@ pub fn retry_logic<'a>(
         println!("Try number {}", try_number);
         try_number += 1;
         // Check if the blockhash has expired
-        let is_valid = client
+        let is_valid;
+        let is_valid_result = retry_rpc(|| client
             .is_blockhash_valid(
                 &latest_blockhash,
                 CommitmentConfig {
                     commitment: CommitmentLevel::Confirmed,
                 },
-            )
-            .or_else(|_| {
-                Err(RetryError {
-                    tries: 0,
-                    total_delay: std::time::Duration::from_millis(0),
-                    error: "RPC failed to check valid blockhash",
-                })
-            }).unwrap();
+            ));
+        match is_valid_result {
+            Ok(is_valid_value) => {
+                is_valid = is_valid_value;
+            }
+            Err(_) => {
+                return OperationResult::Err("RPC Error checking for whether blockhash is valid");
+            }
+        }
         println!("Is blockhash valid: {:?}", is_valid);
         if !is_valid {
             println!("Blockhash expired. Checking if it landed");

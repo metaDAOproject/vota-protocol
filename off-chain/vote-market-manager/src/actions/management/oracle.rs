@@ -58,7 +58,7 @@ pub fn fetch_token_prices(
     let mints: Vec<String> = tokens.iter().map(|x| (*x).into()).collect();
     println!("mints {:?}", mints);
     let api_url = format!(
-        "https://api.coingecko.com/api/v3/simple/token_price/solana?contract_addresses={}&vs_currencies=usd&x_cg_demo_api_key=YOUR KEY,
+        "https://api.coingecko.com/api/v3/simple/token_price/solana?contract_addresses={}&vs_currencies=usd&x_cg_demo_api_key=CG-peB9HWkWcL7PL6y7js84ggXe",
         mints.join("%2C")
     );
     let client = Client::new();

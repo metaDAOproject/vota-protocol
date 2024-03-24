@@ -10,3 +10,4 @@ mod retry_logic;
 pub(crate) mod trigger_epoch;
 pub(crate) mod vote_market;
 pub(crate) mod withdraw_votes;
+pub(crate) mod rpc_retry;

@@ -1,8 +1,6 @@
 use crate::actions::management::data::{EpochData, VoteInfo};
 
-use crate::accounts::resolve::{
-    get_epoch_gauge_voter, get_escrow_address_for_owner, get_gauge_voter,
-};
+use crate::accounts::resolve::{get_epoch_gauge_voter, get_escrow_address_for_owner, get_gauge_voter, resolve_vote_keys};
 use crate::actions::reset_epoch_gauge_voter::reset_epoch_gauge_voter;
 use crate::actions::vote_market::clear_votes::clear_votes;
 use crate::actions::vote_market::vote::vote;
@@ -32,6 +30,7 @@ pub(crate) fn execute_votes(
         let epoch_gauge_voter = get_epoch_gauge_voter(&gauge_voter, data.epoch);
         println!("epoch_guage_voter {:?}", epoch_gauge_voter);
         let epoch_gauge_voter_account = client.get_account(&epoch_gauge_voter);
+        // TODO: Actually need to check that all votes are committed.
         if epoch_gauge_voter_account.is_ok() {
             println!("Epoch gauge voter found. Already voted");
             continue;

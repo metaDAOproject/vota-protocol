@@ -24,10 +24,10 @@ pub fn get_all_vote_buys(epoch: u32, config: &Pubkey) -> Vec<VoteBuy> {
                         MemcmpEncodedBytes::Bytes(GAUGEMEISTER.to_bytes().to_vec()),
                     )),
                     //Check if the gauge is enabled
-                    RpcFilterType::Memcmp(Memcmp::new(
-                        ANCHOR_DISCRIMINATOR_SIZE + 32 * 2,
-                        MemcmpEncodedBytes::Bytes((false as u8).to_le_bytes().to_vec()),
-                    )),
+                    // RpcFilterType::Memcmp(Memcmp::new(
+                    //     ANCHOR_DISCRIMINATOR_SIZE + 32 * 2,
+                    //     MemcmpEncodedBytes::Bytes((false as u8).to_le_bytes().to_vec()),
+                    // )),
                 ]),
                 account_config: RpcAccountInfoConfig {
                     encoding: Some(UiAccountEncoding::Base64),
@@ -42,6 +42,7 @@ pub fn get_all_vote_buys(epoch: u32, config: &Pubkey) -> Vec<VoteBuy> {
     let mut vote_buy_addresses: Vec<Pubkey> = Vec::new();
     let mut vote_buy_parsed_accounts: Vec<VoteBuy> = Vec::new();
     for (key, _) in &accounts {
+        println!("{:?}",key);
         let vote_buy_address = Pubkey::find_program_address(
             &[
                 b"vote-buy".as_ref(),
