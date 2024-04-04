@@ -15,14 +15,57 @@ pub fn retry_logic<'a>(
     ixs: &'a mut Vec<Instruction>,
     max_cus: Option<u32>,
 ) -> Result<Signature, RetryError<&'a str>> {
+    let sim_ixs = ixs.clone();
+    let mut sim_tx = Transaction::new_with_payer(&ixs, Some(&payer.pubkey()));
+    let (latest_blockhash, _) = retry_rpc(|| client
+        .get_latest_blockhash_with_commitment({
+            CommitmentConfig {
+                commitment: CommitmentLevel::Confirmed,
+            }
+        }))
+        .or_else(|_| {
+            Err(RetryError {
+                tries: 0,
+                total_delay: std::time::Duration::from_millis(0),
+                error: "RPC failed to get blockhash",
+            })
+        })?;
+    sim_tx.sign(&[payer], latest_blockhash);
+    // From Helius discord
+    //I recommend following these best practices:
+    // * using alpha piriorty fee api from Helius to get a more reliable fee
+    // * sending transactions with maxRetries=0
+    // * polling transactions status with different commitment levels, and keep sending the same signed transaction (with maxRetries=0 and skipPreflight=true) until it gets to confirmed using exponential backoff
+    // * aborting if the blockheight goes over the lastValidBlockHeight
+    // delay for 1 sec to ensure blockhash is found by sim
+    std::thread::sleep(std::time::Duration::from_secs(3));
+    let sim = retry_rpc(|| client
+        .simulate_transaction_with_config(&sim_tx, {
+            RpcSimulateTransactionConfig {
+                replace_recent_blockhash: false,
+                sig_verify: true,
+                commitment: Some(CommitmentConfig {
+                    commitment: CommitmentLevel::Confirmed,
+                }),
+                ..RpcSimulateTransactionConfig::default()
+            }
+        }))
+        .or_else(|_| {
+            Err(RetryError {
+                tries: 0,
+                total_delay: std::time::Duration::from_millis(0),
+                error: "RPC failed to get sim results",
+            })
+        })?;
+    println!("simulated: {:?}", sim);
     let PRIORITY_FEE = 140_000;
     let priority_fee_ix =
         solana_sdk::compute_budget::ComputeBudgetInstruction::set_compute_unit_price(PRIORITY_FEE);
     // Add the priority fee instruction to the beginning of the transaction
     ixs.insert(0, priority_fee_ix);
-    if let Some(cus) = max_cus {
+    if let Some(cus) = sim.value.units_consumed {
         let max_cus_ix =
-            solana_sdk::compute_budget::ComputeBudgetInstruction::set_compute_unit_limit(cus);
+            solana_sdk::compute_budget::ComputeBudgetInstruction::set_compute_unit_limit((cus as u32) + 100);
         ixs.insert(0, max_cus_ix);
     }
 
@@ -41,33 +84,6 @@ pub fn retry_logic<'a>(
             })
         })?;
     tx.sign(&[payer], latest_blockhash);
-    // From Helius discord
-    //I recommend following these best practices:
-    // * using alpha piriorty fee api from Helius to get a more reliable fee
-    // * sending transactions with maxRetries=0
-    // * polling transactions status with different commitment levels, and keep sending the same signed transaction (with maxRetries=0 and skipPreflight=true) until it gets to confirmed using exponential backoff
-    // * aborting if the blockheight goes over the lastValidBlockHeight
-    // delay for 1 sec to ensure blockhash is found by sim
-    std::thread::sleep(std::time::Duration::from_secs(3));
-    let sim = retry_rpc(|| client
-        .simulate_transaction_with_config(&tx, {
-            RpcSimulateTransactionConfig {
-                replace_recent_blockhash: false,
-                sig_verify: true,
-                commitment: Some(CommitmentConfig {
-                    commitment: CommitmentLevel::Confirmed,
-                }),
-                ..RpcSimulateTransactionConfig::default()
-            }
-        }))
-        .or_else(|_| {
-            Err(RetryError {
-                tries: 0,
-                total_delay: std::time::Duration::from_millis(0),
-                error: "RPC failed to get sim results",
-            })
-        })?;
-    println!("simulated: {:?}", sim);
     // delay for 1 sec because it doesn't always find the blockhash from a successful sim.
     std::thread::sleep(std::time::Duration::from_secs(1));
     if sim.value.err.is_some() {
