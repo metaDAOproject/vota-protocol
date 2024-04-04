@@ -15,7 +15,7 @@ pub fn retry_logic<'a>(
     ixs: &'a mut Vec<Instruction>,
     max_cus: Option<u32>,
 ) -> Result<Signature, RetryError<&'a str>> {
-    let PRIORITY_FEE = 132_000;
+    let PRIORITY_FEE = 140_000;
     let priority_fee_ix =
         solana_sdk::compute_budget::ComputeBudgetInstruction::set_compute_unit_price(PRIORITY_FEE);
     // Add the priority fee instruction to the beginning of the transaction
@@ -68,6 +68,8 @@ pub fn retry_logic<'a>(
             })
         })?;
     println!("simulated: {:?}", sim);
+    // delay for 1 sec because it doesn't always find the blockhash from a successful sim.
+    std::thread::sleep(std::time::Duration::from_secs(1));
     if sim.value.err.is_some() {
         println!("Simulate error: {:?}", sim.value.err.unwrap());
         return Err(RetryError {

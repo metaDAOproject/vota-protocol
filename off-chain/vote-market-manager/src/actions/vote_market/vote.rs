@@ -72,7 +72,7 @@ pub fn vote(
             }
         }
         if vote_instructions.len() > 0 {
-            let max_cus = 100_000;
+            let max_cus = 200_000;
             let vote_result = retry_logic(
                 client,
                 script_authority,
@@ -195,7 +195,7 @@ pub fn vote(
             commit_instructions.push(ix);
         }
     }
-    let max_cus = 75_000;
+    let max_cus = 230_000;
     if commit_instructions.len() > 0 {
         let commit_result = retry_logic(
             client,
