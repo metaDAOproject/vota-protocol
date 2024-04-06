@@ -31,7 +31,6 @@ pub fn vote(
 
     if !skip_weights {
         // Set weights
-        let mut vote_instructions: Vec<Instruction> = Vec::new();
         for weight in weights.clone() {
             // Set weight
             let vote_accounts = resolve_vote_keys(&escrow, &weight.gauge, epoch);
@@ -41,7 +40,8 @@ pub fn vote(
 
             //check if weight needs to change
             let vote_account = client.get_account(&vote_accounts.gauge_vote)?;
-            let vote_data = gauge_state::GaugeVote::deserialize(&mut vote_account.data[..].as_ref())?;
+            let vote_data =
+                gauge_state::GaugeVote::deserialize(&mut vote_account.data[..].as_ref())?;
 
             if vote_data.weight == weight.weight {
                 println!("Weight is already set to {}", weight.weight);
@@ -49,7 +49,7 @@ pub fn vote(
             }
 
             println!("Prepare voter completed");
-            let vote_ixs = program
+            let mut vote_ixs = program
                 .request()
                 .signer(script_authority)
                 .args(vote_market::instruction::Vote {
@@ -67,27 +67,16 @@ pub fn vote(
                     gauge_program: gauge_state::id(),
                 })
                 .instructions()?;
-            for ix in vote_ixs {
-                vote_instructions.push(ix);
-            }
-        }
-        if vote_instructions.len() > 0 {
-            let max_cus = 200_000;
-            let vote_result = retry_logic(
-                client,
-                script_authority,
-                &mut vote_instructions,
-                Some(max_cus),
-            );
+            let vote_result = retry_logic(client, script_authority, &mut vote_ixs, None);
             match vote_result {
                 Ok(sig) => {
                     log::info!(target: "vote",
-                sig=sig.to_string(),
-                user=owner.to_string(),
-                config=config.to_string(),
-                epoch=epoch;
-                "set vote weight"
-                );
+                    sig=sig.to_string(),
+                    user=owner.to_string(),
+                    config=config.to_string(),
+                    epoch=epoch;
+                    "set vote weight"
+                    );
                     println!("Vote succsesful for {:?}: {:?}", escrow, sig);
                 }
                 Err(e) => {
@@ -99,8 +88,8 @@ pub fn vote(
                     "failed to set vote weight");
                     println!("Error sending vote for {:?}: {:?}", escrow, e);
                     return Err(Box::<dyn std::error::Error>::from(anyhow::anyhow!(
-                    e.to_string()
-                )));
+                        e.to_string()
+                    )));
                 }
             }
         }
@@ -136,12 +125,12 @@ pub fn vote(
             match result {
                 Ok(sig) => {
                     log::info!(target: "vote",
-                sig=sig.to_string(),
-                user=owner.to_string(),
-                config=config.to_string(),
-                epoch=epoch;
-                "epoch gauge vote prepared"
-                );
+                    sig=sig.to_string(),
+                    user=owner.to_string(),
+                    config=config.to_string(),
+                    epoch=epoch;
+                    "epoch gauge vote prepared"
+                    );
                     println!("Epoch gauge vote prepared for {:?}: {:?}", escrow, result);
                 }
                 Err(e) => {
@@ -153,8 +142,8 @@ pub fn vote(
                 "failed to prepare epoch gauge vote");
                     println!("Error preparing epoch gauge vote for {:?}: {:?}", escrow, e);
                     return Err(Box::<dyn std::error::Error>::from(anyhow::anyhow!(
-                    e.to_string()
-                )));
+                        e.to_string()
+                    )));
                 }
             }
             //add a delay to wait for the epoch gauge voter to be created
@@ -163,7 +152,6 @@ pub fn vote(
     } else {
         println!("Skipping setting weights");
     }
-    let mut commit_instructions: Vec<Instruction> = Vec::new();
     for weight in weights {
         let vote_accounts = resolve_vote_keys(&escrow, &weight.gauge, epoch);
         let epoch_gauge_vote_account = client.get_account(&vote_accounts.epoch_gauge_vote);
@@ -172,7 +160,7 @@ pub fn vote(
             continue;
         }
         // Commit vote
-        let commit_ixs = program
+        let mut commit_ixs = program
             .request()
             .signer(script_authority)
             .args(vote_market::instruction::CommitVote { epoch })
@@ -191,27 +179,21 @@ pub fn vote(
                 system_program: solana_program::system_program::id(),
             })
             .instructions()?;
-        for ix in commit_ixs {
-            commit_instructions.push(ix);
-        }
-    }
-    let max_cus = 230_000;
-    if commit_instructions.len() > 0 {
         let commit_result = retry_logic(
             client,
             script_authority,
-            &mut commit_instructions,
-            Some(max_cus),
+            &mut commit_ixs,
+            None
         );
         match commit_result {
             Ok(sig) => {
                 log::info!(target: "vote",
-            sig=sig.to_string(),
-            user=owner.to_string(),
-            config=config.to_string(),
-            epoch=epoch;
-            "vote committed"
-            );
+                sig=sig.to_string(),
+                user=owner.to_string(),
+                config=config.to_string(),
+                epoch=epoch;
+                "vote committed"
+                );
                 client.confirm_transaction_with_spinner(
                     &sig,
                     &client.get_latest_blockhash()?,
@@ -230,11 +212,12 @@ pub fn vote(
                 "failed to commit vote");
                 println!("Error committing vote for {:?}: {:?}", escrow, e);
                 return Err(Box::<dyn std::error::Error>::from(anyhow::anyhow!(
-                e.to_string()
-            )));
+                    e.to_string()
+                )));
             }
         }
     }
+
 
     Ok(())
 }

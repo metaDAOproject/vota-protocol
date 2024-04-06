@@ -1,8 +1,8 @@
-use retry::delay::{Exponential, Fixed};
+use crate::actions::rpc_retry::retry_rpc;
 use crate::{GAUGEMEISTER, LOCKER};
+use retry::delay::{Exponential, Fixed};
 use solana_client::rpc_client::RpcClient;
 use solana_program::pubkey::Pubkey;
-use crate::actions::rpc_retry::retry_rpc;
 
 pub fn get_escrow_address_for_owner(owner: &Pubkey) -> Pubkey {
     Pubkey::find_program_address(

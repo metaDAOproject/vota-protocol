@@ -1,4 +1,4 @@
-use crate::errors::VoteMarketManagerError;
+use crate::actions::rpc_retry::retry_rpc;
 use retry::delay::Exponential;
 use retry::{Error as RetryError, OperationResult};
 use solana_client::rpc_client::RpcClient;
@@ -7,7 +7,6 @@ use solana_program::instruction::Instruction;
 use solana_sdk::commitment_config::{CommitmentConfig, CommitmentLevel};
 use solana_sdk::signature::{Keypair, Signature, Signer};
 use solana_sdk::transaction::Transaction;
-use crate::actions::rpc_retry::retry_rpc;
 
 pub fn retry_logic<'a>(
     client: &'a RpcClient,
@@ -16,20 +15,21 @@ pub fn retry_logic<'a>(
     max_cus: Option<u32>,
 ) -> Result<Signature, RetryError<&'a str>> {
     let sim_ixs = ixs.clone();
-    let mut sim_tx = Transaction::new_with_payer(&ixs, Some(&payer.pubkey()));
-    let (latest_blockhash, _) = retry_rpc(|| client
-        .get_latest_blockhash_with_commitment({
+    let mut sim_tx = Transaction::new_with_payer(&sim_ixs, Some(&payer.pubkey()));
+    let (latest_blockhash, _) = retry_rpc(|| {
+        client.get_latest_blockhash_with_commitment({
             CommitmentConfig {
                 commitment: CommitmentLevel::Confirmed,
             }
-        }))
-        .or_else(|_| {
-            Err(RetryError {
-                tries: 0,
-                total_delay: std::time::Duration::from_millis(0),
-                error: "RPC failed to get blockhash",
-            })
-        })?;
+        })
+    })
+    .or_else(|_| {
+        Err(RetryError {
+            tries: 0,
+            total_delay: std::time::Duration::from_millis(0),
+            error: "RPC failed to get blockhash",
+        })
+    })?;
     sim_tx.sign(&[payer], latest_blockhash);
     // From Helius discord
     //I recommend following these best practices:
@@ -38,9 +38,9 @@ pub fn retry_logic<'a>(
     // * polling transactions status with different commitment levels, and keep sending the same signed transaction (with maxRetries=0 and skipPreflight=true) until it gets to confirmed using exponential backoff
     // * aborting if the blockheight goes over the lastValidBlockHeight
     // delay for 1 sec to ensure blockhash is found by sim
-    std::thread::sleep(std::time::Duration::from_secs(3));
-    let sim = retry_rpc(|| client
-        .simulate_transaction_with_config(&sim_tx, {
+    std::thread::sleep(std::time::Duration::from_secs(4));
+    let sim = retry_rpc(|| {
+        client.simulate_transaction_with_config(&sim_tx, {
             RpcSimulateTransactionConfig {
                 replace_recent_blockhash: false,
                 sig_verify: true,
@@ -49,40 +49,44 @@ pub fn retry_logic<'a>(
                 }),
                 ..RpcSimulateTransactionConfig::default()
             }
-        }))
-        .or_else(|_| {
-            Err(RetryError {
-                tries: 0,
-                total_delay: std::time::Duration::from_millis(0),
-                error: "RPC failed to get sim results",
-            })
-        })?;
+        })
+    })
+    .or_else(|_| {
+        Err(RetryError {
+            tries: 0,
+            total_delay: std::time::Duration::from_millis(0),
+            error: "RPC failed to get sim results",
+        })
+    })?;
     println!("simulated: {:?}", sim);
-    let PRIORITY_FEE = 140_000;
+    let PRIORITY_FEE = 200_000;
     let priority_fee_ix =
         solana_sdk::compute_budget::ComputeBudgetInstruction::set_compute_unit_price(PRIORITY_FEE);
     // Add the priority fee instruction to the beginning of the transaction
     ixs.insert(0, priority_fee_ix);
     if let Some(cus) = sim.value.units_consumed {
         let max_cus_ix =
-            solana_sdk::compute_budget::ComputeBudgetInstruction::set_compute_unit_limit((cus as u32) + 100);
+            solana_sdk::compute_budget::ComputeBudgetInstruction::set_compute_unit_limit(
+                (cus as u32) + 1000,
+            );
         ixs.insert(0, max_cus_ix);
     }
 
     let mut tx = Transaction::new_with_payer(&ixs, Some(&payer.pubkey()));
-    let (latest_blockhash, _) = retry_rpc(|| client
-        .get_latest_blockhash_with_commitment({
-            CommitmentConfig {
-                commitment: CommitmentLevel::Confirmed,
-            }
-        }))
-        .or_else(|_| {
-            Err(RetryError {
-                tries: 0,
-                total_delay: std::time::Duration::from_millis(0),
-                error: "RPC failed to get blockhash",
-            })
-        })?;
+    // let (latest_blockhash, _) = retry_rpc(|| {
+    //     client.get_latest_blockhash_with_commitment({
+    //         CommitmentConfig {
+    //             commitment: CommitmentLevel::Confirmed,
+    //         }
+    //     })
+    // })
+    // .or_else(|_| {
+    //     Err(RetryError {
+    //         tries: 0,
+    //         total_delay: std::time::Duration::from_millis(0),
+    //         error: "RPC failed to get blockhash",
+    //     })
+    // })?;
     tx.sign(&[payer], latest_blockhash);
     // delay for 1 sec because it doesn't always find the blockhash from a successful sim.
     std::thread::sleep(std::time::Duration::from_secs(1));
@@ -102,13 +106,14 @@ pub fn retry_logic<'a>(
         try_number += 1;
         // Check if the blockhash has expired
         let is_valid;
-        let is_valid_result = retry_rpc(|| client
-            .is_blockhash_valid(
+        let is_valid_result = retry_rpc(|| {
+            client.is_blockhash_valid(
                 &latest_blockhash,
                 CommitmentConfig {
                     commitment: CommitmentLevel::Confirmed,
                 },
-            ));
+            )
+        });
         match is_valid_result {
             Ok(is_valid_value) => {
                 is_valid = is_valid_value;

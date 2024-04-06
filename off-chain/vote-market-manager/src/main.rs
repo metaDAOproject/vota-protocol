@@ -84,6 +84,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ),
         )
         .subcommand(
+            clap::command!("get-gauges"),
+        )
+        .subcommand(
             clap::command!("get-escrow").arg(
                 clap::Arg::new("owner")
                     .required(true)
@@ -554,6 +557,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let epoch = matches.get_one::<u32>("epoch").unwrap();
             let vote_buys = actions::queries::vote_buys::get_all_vote_buys(*epoch, &config);
             println!("vote buys: {:?}", vote_buys);
+        }
+        Some(("get-gauges", _)) => {
+            actions::queries::get_gauges::get_gauges(client);
         }
         Some(("prepare-vote", matches)) => {
             println!("prepare-vote");

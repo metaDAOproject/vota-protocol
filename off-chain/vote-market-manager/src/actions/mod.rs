@@ -7,7 +7,7 @@ pub mod management;
 pub(crate) mod queries;
 pub(crate) mod reset_epoch_gauge_voter;
 mod retry_logic;
+pub(crate) mod rpc_retry;
 pub(crate) mod trigger_epoch;
 pub(crate) mod vote_market;
 pub(crate) mod withdraw_votes;
-pub(crate) mod rpc_retry;

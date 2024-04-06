@@ -33,7 +33,6 @@ pub(crate) fn clear_votes(
         .map(|g| get_gauge_vote(&get_gauge_voter(&escrow), g))
         .collect::<Vec<Pubkey>>();
     let gauge_vote_accounts = client.get_multiple_accounts(&gauge_votes)?;
-    let mut instructions: Vec<Instruction> = Vec::new();
 
     for (i, gauge) in gauges.iter().enumerate() {
         // Can only clear initialized gauge_votes
@@ -47,7 +46,7 @@ pub(crate) fn clear_votes(
             continue;
         }
         let gauge_vote = gauge_votes[i];
-        let vote_ixs = program
+        let mut vote_ixs = program
             .request()
             .signer(script_authority)
             .args(vote_market::instruction::Vote { weight: 0 })
@@ -64,32 +63,25 @@ pub(crate) fn clear_votes(
             })
             .instructions()
             .unwrap();
-        for ix in vote_ixs {
-            instructions.push(ix);
-        }
-    }
-    if instructions.is_empty() {
-        return Ok(());
-    }
-    let max_cus = 200_000;
-    println!("Clearing votes");
-    let result = retry_logic(client, script_authority, &mut instructions, Some(max_cus));
-    match result {
-        Ok(sig) => {
-            log::info!(target: "vote",
+        println!("Clearing votes");
+        let result = retry_logic(client, script_authority, &mut vote_ixs, None);
+        match result {
+            Ok(sig) => {
+                log::info!(target: "vote",
                 sig=sig.to_string(),
                 user=owner.to_string(),
                 config=config.to_string();
                 "cleared votes");
-            println!("Cleared votes for {:?}: {:?}", escrow, sig);
-        }
-        Err(e) => {
-            log::error!(target: "vote",
+                println!("Cleared votes for {:?}: {:?}", escrow, sig);
+            }
+            Err(e) => {
+                log::error!(target: "vote",
                 error=e.to_string(),
                 user=owner.to_string(),
                 config=config.to_string();
                 "failed to clear votes");
-            println!("Error clearing votes for {:?}: {:?}", escrow, e);
+                println!("Error clearing votes for {:?}: {:?}", escrow, e);
+            }
         }
     }
     Ok(())
