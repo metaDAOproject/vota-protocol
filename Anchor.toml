@@ -15,8 +15,11 @@ url = "https://api.apr.dev"
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 --file ./tests/vote-market-voting.ts --file ./tests/vote-market-rewards.ts"
 
+[test]
+startup_wait = 10000
+
 [test.validator]
-url = "https://api.mainnet-beta.solana.com"
+url = "https://mainnet.helius-rpc.com/?api-key=efa64d65-80ac-4f32-a701-fba4acc33236"
 
 [[test.validator.account]]
 address = "28ZDtf6d2wsYhBvabTxUHTRT6MDxqjmqR7RMCp348tyU"
