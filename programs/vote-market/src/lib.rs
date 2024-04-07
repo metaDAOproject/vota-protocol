@@ -175,7 +175,7 @@ pub mod vote_market {
                 return err!(errors::VoteMarketError::MaxVoteBuyAmountNotSet);
             }
         };
-        let total_payment = get_user_payment(total_power, total_vote_payment, allocated_power)?;
+        let total_payment = get_user_payment(total_power, allocated_power, total_vote_payment)?;
         let fee = get_fee(total_payment, ctx.accounts.config.claim_fee)?;
         let payment_to_user = total_payment - fee;
         let transfer_ix = spl_token::instruction::transfer(
