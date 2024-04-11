@@ -14,6 +14,7 @@ pub fn retry_logic<'a>(
     ixs: &'a mut Vec<Instruction>,
     max_cus: Option<u32>,
 ) -> Result<Signature, RetryError<&'a str>> {
+    let jito_client = RpcClient::new("https://mainnet.block-engine.jito.wtf/api/v1/transactions");
     let sim_ixs = ixs.clone();
     let mut sim_tx = Transaction::new_with_payer(&sim_ixs, Some(&payer.pubkey()));
     let (latest_blockhash, _) = retry_rpc(|| {
@@ -59,6 +60,14 @@ pub fn retry_logic<'a>(
         })
     })?;
     println!("simulated: {:?}", sim);
+    if sim.value.err.is_some() {
+        println!("Simulate error: {:?}", sim.value.err.unwrap());
+        return Err(RetryError {
+            tries: 0,
+            total_delay: std::time::Duration::from_millis(0),
+            error: "Simulation failed",
+        });
+    }
     let PRIORITY_FEE = 200_000;
     let priority_fee_ix =
         solana_sdk::compute_budget::ComputeBudgetInstruction::set_compute_unit_price(PRIORITY_FEE);
@@ -88,16 +97,16 @@ pub fn retry_logic<'a>(
     //     })
     // })?;
     tx.sign(&[payer], latest_blockhash);
-    // delay for 1 sec because it doesn't always find the blockhash from a successful sim.
-    std::thread::sleep(std::time::Duration::from_secs(1));
-    if sim.value.err.is_some() {
-        println!("Simulate error: {:?}", sim.value.err.unwrap());
-        return Err(RetryError {
-            tries: 0,
-            total_delay: std::time::Duration::from_millis(0),
-            error: "Simulation failed",
-        });
-    }
+    // Send to jito client
+    jito_client.send_transaction_with_config(
+        &tx,
+        RpcSendTransactionConfig {
+            skip_preflight: true,
+            max_retries: Some(0),
+            ..RpcSendTransactionConfig::default()
+        },
+    ).unwrap();
+
     let retry_strategy = Exponential::from_millis(200).take(10);
     let mut signature = Signature::default();
     let mut try_number = 0;

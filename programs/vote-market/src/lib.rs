@@ -141,6 +141,7 @@ pub mod vote_market {
 
     pub fn claim_vote_payment(ctx: Context<ClaimVotePayment>, epoch: u32) -> Result<()> {
         //seed checks. Doing this on the Accounts struct uses too much stack space
+        msg!("Claiming payment");
         let (expected_epoch_gauge, _) = Pubkey::find_program_address(
             &[
                 b"EpochGauge".as_ref(),
@@ -175,6 +176,9 @@ pub mod vote_market {
                 return err!(errors::VoteMarketError::MaxVoteBuyAmountNotSet);
             }
         };
+        msg!("Total Power: {}", total_power);
+        msg!("Allocated Power: {}", allocated_power);
+        msg!("Total Vote Payment: {}", total_vote_payment);
         let total_payment = get_user_payment(total_power, allocated_power, total_vote_payment)?;
         let fee = get_fee(total_payment, ctx.accounts.config.claim_fee)?;
         let payment_to_user = total_payment - fee;
