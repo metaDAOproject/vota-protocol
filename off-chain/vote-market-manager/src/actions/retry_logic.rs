@@ -1,9 +1,10 @@
 use dotenv::Error;
 use crate::actions::rpc_retry::retry_rpc;
-use retry::delay::Exponential;
+use retry::delay::{Exponential, Fixed};
 use retry::{Error as RetryError, OperationResult};
 use solana_client::rpc_client::RpcClient;
 use solana_client::rpc_config::{RpcSendTransactionConfig, RpcSimulateTransactionConfig};
+use solana_client::rpc_response::RpcSimulateTransactionResult;
 use solana_program::instruction::Instruction;
 use solana_sdk::commitment_config::{CommitmentConfig, CommitmentLevel};
 use solana_sdk::signature::{Keypair, Signature, Signer};
@@ -15,7 +16,7 @@ pub fn retry_logic<'a>(
     ixs: &'a mut Vec<Instruction>,
     max_cus: Option<u32>,
 ) -> Result<Signature, RetryError<&'a str>> {
-    let jito_client = RpcClient::new("https://mainnet.block-engine.jito.wtf/api/v1/transactions");
+    //let jito_client = RpcClient::new("https://mainnet.block-engine.jito.wtf/api/v1/transactions");
     let sim_ixs = ixs.clone();
     let mut sim_tx = Transaction::new_with_payer(&sim_ixs, Some(&payer.pubkey()));
     let (latest_blockhash, _) = retry_rpc(|| {
@@ -41,40 +42,51 @@ pub fn retry_logic<'a>(
     // * aborting if the blockheight goes over the lastValidBlockHeight
     // delay for 1 sec to ensure blockhash is found by sim
     std::thread::sleep(std::time::Duration::from_secs(4));
-    let sim = retry_rpc(|| {
-        client.simulate_transaction_with_config(&sim_tx, {
-            RpcSimulateTransactionConfig {
-                replace_recent_blockhash: false,
-                sig_verify: true,
-                commitment: Some(CommitmentConfig {
-                    commitment: CommitmentLevel::Confirmed,
-                }),
-                ..RpcSimulateTransactionConfig::default()
-            }
-        })
-    })
-    .or_else(|_| {
-        Err(RetryError {
-            tries: 0,
-            total_delay: std::time::Duration::from_millis(0),
-            error: "RPC failed to get sim results",
-        })
-    })?;
-    println!("simulated: {:?}", sim);
-    if sim.value.err.is_some() {
-        println!("Simulate error: {:?}", sim.value.err.unwrap());
-        return Err(RetryError {
-            tries: 0,
-            total_delay: std::time::Duration::from_millis(0),
-            error: "Simulation failed",
+    let sim_strategy = Fixed::from_millis(200).take(5);
+    let sim_result  = retry::retry(sim_strategy, || {
+        let sim = retry_rpc(|| {
+            client.simulate_transaction_with_config(&sim_tx, {
+                RpcSimulateTransactionConfig {
+                    replace_recent_blockhash: false,
+                    sig_verify: true,
+                    commitment: Some(CommitmentConfig {
+                        commitment: CommitmentLevel::Confirmed,
+                    }),
+                    ..RpcSimulateTransactionConfig::default()
+                }
+            })
+        }).or_else(|_| {
+            Err(RetryError {
+                tries: 0,
+                total_delay: std::time::Duration::from_millis(0),
+                error: "RPC failed to simulate transaction",
+            })
         });
+        sim
     }
-    let PRIORITY_FEE = 71_000;
+    );
+    let mut sim_cus : Option<u64> = None;
+    match sim_result {
+        Ok(sim) => {
+            println!("simulated: {:?}", sim);
+            sim_cus = sim.value.units_consumed;
+        }
+        Err(e) => {
+            //TODO: MAke a proper error
+            println!("Error simulating transaction: {:?}", e);
+            return Err(RetryError {
+                tries: 0,
+                total_delay: std::time::Duration::from_millis(0),
+                error: "RPC failed to get sim results",
+            });
+        }
+    }
+    let priority_fee = 71_000;
     let priority_fee_ix =
-        solana_sdk::compute_budget::ComputeBudgetInstruction::set_compute_unit_price(PRIORITY_FEE);
+        solana_sdk::compute_budget::ComputeBudgetInstruction::set_compute_unit_price(priority_fee);
     // Add the priority fee instruction to the beginning of the transaction
     ixs.insert(0, priority_fee_ix);
-    if let Some(cus) = sim.value.units_consumed {
+    if let Some(cus) = sim_cus {
         let max_cus_ix =
             solana_sdk::compute_budget::ComputeBudgetInstruction::set_compute_unit_limit(
                 (cus as u32) + 1000,
@@ -95,14 +107,14 @@ pub fn retry_logic<'a>(
         let mut tx = Transaction::new_with_payer(&ixs, Some(&payer.pubkey()));
         tx.sign(&[payer], latest_blockhash);
         // Send to jito client
-        jito_client.send_transaction_with_config(
-            &tx,
-            RpcSendTransactionConfig {
-                skip_preflight: true,
-                max_retries: Some(0),
-                ..RpcSendTransactionConfig::default()
-            },
-        ).unwrap();
+        // jito_client.send_transaction_with_config(
+        //     &tx,
+        //     RpcSendTransactionConfig {
+        //         skip_preflight: true,
+        //         max_retries: Some(0),
+        //         ..RpcSendTransactionConfig::default()
+        //     },
+        // ).unwrap();
 
         let mut signature = Signature::default();
         let retry_strategy = Exponential::from_millis(200).take(8);
@@ -187,9 +199,9 @@ pub fn retry_logic<'a>(
             }
         }
     }
-    return Err(RetryError {
-        tries: 0,
-        total_delay: std::time::Duration::from_millis(0),
-        error: "Escaped the mandatory send loop somehow",
-    });
+    // return Err(RetryError {
+    //     tries: 0,
+    //     total_delay: std::time::Duration::from_millis(0),
+    //     error: "Escaped the mandatory send loop somehow",
+    // });
 }
