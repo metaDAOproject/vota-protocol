@@ -1,3 +1,4 @@
+use dotenv::Error;
 use crate::actions::rpc_retry::retry_rpc;
 use retry::delay::Exponential;
 use retry::{Error as RetryError, OperationResult};
@@ -68,7 +69,7 @@ pub fn retry_logic<'a>(
             error: "Simulation failed",
         });
     }
-    let PRIORITY_FEE = 200_000;
+    let PRIORITY_FEE = 71_000;
     let priority_fee_ix =
         solana_sdk::compute_budget::ComputeBudgetInstruction::set_compute_unit_price(PRIORITY_FEE);
     // Add the priority fee instruction to the beginning of the transaction
@@ -81,106 +82,114 @@ pub fn retry_logic<'a>(
         ixs.insert(0, max_cus_ix);
     }
 
-    let mut tx = Transaction::new_with_payer(&ixs, Some(&payer.pubkey()));
-    // let (latest_blockhash, _) = retry_rpc(|| {
-    //     client.get_latest_blockhash_with_commitment({
-    //         CommitmentConfig {
-    //             commitment: CommitmentLevel::Confirmed,
-    //         }
-    //     })
-    // })
-    // .or_else(|_| {
-    //     Err(RetryError {
-    //         tries: 0,
-    //         total_delay: std::time::Duration::from_millis(0),
-    //         error: "RPC failed to get blockhash",
-    //     })
-    // })?;
-    tx.sign(&[payer], latest_blockhash);
-    // Send to jito client
-    jito_client.send_transaction_with_config(
-        &tx,
-        RpcSendTransactionConfig {
-            skip_preflight: true,
-            max_retries: Some(0),
-            ..RpcSendTransactionConfig::default()
-        },
-    ).unwrap();
-
-    let retry_strategy = Exponential::from_millis(200).take(10);
-    let mut signature = Signature::default();
     let mut try_number = 0;
-    let result = retry::retry(retry_strategy, || {
-        println!("Try number {}", try_number);
-        try_number += 1;
-        // Check if the blockhash has expired
-        let is_valid;
-        let is_valid_result = retry_rpc(|| {
-            client.is_blockhash_valid(
-                &latest_blockhash,
+
+    loop {
+        let (latest_blockhash,_) = retry_rpc(|| {
+            client.get_latest_blockhash_with_commitment({
                 CommitmentConfig {
                     commitment: CommitmentLevel::Confirmed,
-                },
-            )
-        });
-        match is_valid_result {
-            Ok(is_valid_value) => {
-                is_valid = is_valid_value;
-            }
-            Err(_) => {
-                return OperationResult::Err("RPC Error checking for whether blockhash is valid");
-            }
-        }
-        println!("Is blockhash valid: {:?}", is_valid);
-        if !is_valid {
-            println!("Blockhash expired. Checking if it landed");
-            let confirmed_result = client.confirm_transaction_with_spinner(
-                &signature,
-                &latest_blockhash,
-                CommitmentConfig {
-                    commitment: CommitmentLevel::Confirmed,
-                },
-            );
-            match confirmed_result {
-                Ok(_confirmed) => {
-                    return OperationResult::Ok(signature);
                 }
-                Err(_e) => return OperationResult::Err("Failed to try to confirm transaction"),
-            }
-        }
-        // Poll to see if processed. First try thruogh it will send but won't check, so always this will
-        // need two tries at least.
-        if signature != Signature::default() {
-            let result = client.get_signature_status_with_commitment(
-                &signature,
-                CommitmentConfig {
-                    commitment: CommitmentLevel::Processed,
-                },
-            );
-            match result {
-                Ok(status) => {
-                    if status.is_some() {
-                        println!("Confirmed. Delaying so next instruction will work");
-                        std::thread::sleep(std::time::Duration::from_secs(10));
-                        return OperationResult::Ok(signature);
-                    }
-                }
-                Err(_e) => return OperationResult::Retry("Failed to try to confirm transaction"),
-            }
-        }
-        let sent = client.send_transaction_with_config(
+            })
+        }).unwrap();
+        let mut tx = Transaction::new_with_payer(&ixs, Some(&payer.pubkey()));
+        tx.sign(&[payer], latest_blockhash);
+        // Send to jito client
+        jito_client.send_transaction_with_config(
             &tx,
             RpcSendTransactionConfig {
                 skip_preflight: true,
                 max_retries: Some(0),
                 ..RpcSendTransactionConfig::default()
             },
-        );
-        if let Some(sig) = sent.ok() {
-            println!("Sent transaction: {:?}", sig);
-            signature = sig;
+        ).unwrap();
+
+        let mut signature = Signature::default();
+        let retry_strategy = Exponential::from_millis(200).take(8);
+        let result = retry::retry(retry_strategy, || {
+            println!("Try number {}", try_number);
+            try_number += 1;
+            // Check if the blockhash has expired
+            let is_valid;
+            let is_valid_result = retry_rpc(|| {
+                client.is_blockhash_valid(
+                    &latest_blockhash,
+                    CommitmentConfig {
+                        commitment: CommitmentLevel::Confirmed,
+                    },
+                )
+            });
+            match is_valid_result {
+                Ok(is_valid_value) => {
+                    is_valid = is_valid_value;
+                }
+                Err(_) => {
+                    return OperationResult::Err("RPC Error checking for whether blockhash is valid");
+                }
+            }
+            println!("Is blockhash valid: {:?}", is_valid);
+            if !is_valid {
+                println!("Blockhash expired. Checking if it landed");
+                let confirmed_result = client.confirm_transaction_with_spinner(
+                    &signature,
+                    &latest_blockhash,
+                    CommitmentConfig {
+                        commitment: CommitmentLevel::Confirmed,
+                    },
+                );
+                match confirmed_result {
+                    Ok(_confirmed) => {
+                        return OperationResult::Ok(signature);
+                    }
+                    Err(_e) => return OperationResult::Err("Failed to try to confirm transaction"),
+                }
+            }
+            // Poll to see if processed. First try thruogh it will send but won't check, so always this will
+            // need two tries at least.
+            if signature != Signature::default() {
+                let result = client.get_signature_status_with_commitment(
+                    &signature,
+                    CommitmentConfig {
+                        commitment: CommitmentLevel::Processed,
+                    },
+                );
+                match result {
+                    Ok(status) => {
+                        if status.is_some() {
+                            println!("Confirmed. Delaying so next instruction will work");
+                            std::thread::sleep(std::time::Duration::from_secs(10));
+                            return OperationResult::Ok(signature);
+                        }
+                    }
+                    Err(_e) => return OperationResult::Retry("Failed to try to confirm transaction"),
+                }
+            }
+            let sent = client.send_transaction_with_config(
+                &tx,
+                RpcSendTransactionConfig {
+                    skip_preflight: true,
+                    max_retries: Some(0),
+                    ..RpcSendTransactionConfig::default()
+                },
+            );
+            if let Some(sig) = sent.ok() {
+                println!("Sent transaction: {:?}", sig);
+                signature = sig;
+            }
+            return OperationResult::Retry("Another attempt");
+        });
+        match result {
+            Ok(sig) => {
+                return Ok(sig);
+            }
+            Err(e) => {
+                println!("Trying again {}", e);
+            }
         }
-        return OperationResult::Retry("Another attempt");
+    }
+    return Err(RetryError {
+        tries: 0,
+        total_delay: std::time::Duration::from_millis(0),
+        error: "Escaped the mandatory send loop somehow",
     });
-    result
 }
