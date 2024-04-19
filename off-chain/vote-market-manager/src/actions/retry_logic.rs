@@ -16,7 +16,7 @@ pub fn retry_logic<'a>(
     ixs: &'a mut Vec<Instruction>,
     max_cus: Option<u32>,
 ) -> Result<Signature, RetryError<&'a str>> {
-    //let jito_client = RpcClient::new("https://mainnet.block-engine.jito.wtf/api/v1/transactions");
+//    let jito_client = RpcClient::new("https://mainnet.block-engine.jito.wtf/api/v1/transactions");
     let sim_ixs = ixs.clone();
     let mut sim_tx = Transaction::new_with_payer(&sim_ixs, Some(&payer.pubkey()));
     let (latest_blockhash, _) = retry_rpc(|| {
@@ -69,6 +69,13 @@ pub fn retry_logic<'a>(
     match sim_result {
         Ok(sim) => {
             println!("simulated: {:?}", sim);
+            if sim.value.err.is_some() {
+                return Err(RetryError {
+                    tries: 0,
+                    total_delay: std::time::Duration::from_millis(0),
+                    error: "Simulated transaction returned an error",
+                });
+            }
             sim_cus = sim.value.units_consumed;
         }
         Err(e) => {
@@ -81,7 +88,7 @@ pub fn retry_logic<'a>(
             });
         }
     }
-    let priority_fee = 71_000;
+    let priority_fee = 200_000;
     let priority_fee_ix =
         solana_sdk::compute_budget::ComputeBudgetInstruction::set_compute_unit_price(priority_fee);
     // Add the priority fee instruction to the beginning of the transaction

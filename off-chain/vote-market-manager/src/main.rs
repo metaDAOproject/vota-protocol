@@ -61,6 +61,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ),
         )
         .subcommand(
+            clap::command!("get-escrow-votes").arg(
+                clap::Arg::new("config")
+                    .required(true)
+                    .value_parser(value_parser!(String))
+                    .help("The config to calculate the escrow delegate"))
+                    .arg(
+                        clap::Arg::new("gauge")
+                            .required(true)
+                            .value_parser(value_parser!(String))
+                            .help("The gauge to get the votes for")
+                    )
+                    .arg(
+                    clap::Arg::new("epoch")
+                        .required(true)
+                        .value_parser(value_parser!(u32))
+                        .help("The epoch to get the votes for")
+                    ),
+        )
+        .subcommand(
             clap::command!("get-direct-votes").arg(
                 clap::Arg::new("epoch")
                     .required(true)
@@ -497,6 +516,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let escrows = escrows::get_delegated_escrows(&client, &delegate);
             println!("escrows: {:?}", escrows);
             println!("Number of escrows: {:?}", escrows.len());
+        }
+        Some(("get-escrow-votes", matches)) => {
+            let config = Pubkey::from_str(matches.get_one::<String>("config").unwrap())?;
+            let gauge = Pubkey::from_str(matches.get_one::<String>("gauge").unwrap())?;
+            let epoch = matches.get_one::<u32>("epoch").unwrap();
+            let delegate = get_delegate(&config);
+            escrows::get_escrow_votes(&client, &delegate, &gauge, *epoch);
+            println!("done");
         }
         Some(("delegate", matches)) => {
             let escrow = get_escrow_address_for_owner(&payer.pubkey());
