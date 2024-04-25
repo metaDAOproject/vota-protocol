@@ -55,11 +55,11 @@ pub fn retry_logic<'a>(
                     ..RpcSimulateTransactionConfig::default()
                 }
             })
-        }).or_else(|_| {
+        }).or_else(|e| {
             Err(RetryError {
                 tries: 0,
                 total_delay: std::time::Duration::from_millis(0),
-                error: "RPC failed to simulate transaction",
+                error: format!("RPC failed to simulate transaction {}", e),
             })
         });
         sim
@@ -88,7 +88,7 @@ pub fn retry_logic<'a>(
             });
         }
     }
-    let priority_fee = 200_000;
+    let priority_fee = 75_000;
     let priority_fee_ix =
         solana_sdk::compute_budget::ComputeBudgetInstruction::set_compute_unit_price(priority_fee);
     // Add the priority fee instruction to the beginning of the transaction
