@@ -11,7 +11,7 @@ solana-client = "1.17.16"
 solana-sdk = "1.17.16"
 solana-account-decoder = "1.17.16"
 solana-program = "1.17.16"
-locked-voter-state = { path = "../../external-state/locked-voter-state" }
+saber-locker = { path = "../../../saber-locker/programs/saber-locker" }
 gauge-state = {path = "../../external-state/gauge-state"}
 quarry-state = {path = "../../external-state/quarry-state"}
 vote-market = { path = "../../programs/vote-market" }

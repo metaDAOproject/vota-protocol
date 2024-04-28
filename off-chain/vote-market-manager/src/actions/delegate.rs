@@ -9,7 +9,7 @@ pub fn delegate(client: RpcClient, escrow: &Pubkey, delegate: &Pubkey, owner: &K
         solana_program::hash::hash(b"global:set_vote_delegate").to_bytes()[..8].to_vec();
     data.extend_from_slice(&delegate.to_bytes());
     let close_ix = solana_program::instruction::Instruction {
-        program_id: locked_voter_state::id(),
+        program_id: saber_locker::id(),
         accounts: vec![
             AccountMeta::new(*escrow, false),
             AccountMeta::new_readonly(owner.pubkey(), true),

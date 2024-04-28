@@ -70,7 +70,7 @@ pub fn claim(
             epoch_gauge: vote_accounts.epoch_gauge,
             epoch_gauge_vote: vote_accounts.epoch_gauge_vote,
             gauge_program: gauge_state::id(),
-            locked_voter_program: locked_voter_state::id(),
+            locked_voter_program: saber_locker::id(),
             token_program: spl_token::id(),
             system_program: solana_program::system_program::id(),
         })

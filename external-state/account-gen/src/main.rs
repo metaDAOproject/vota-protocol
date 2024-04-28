@@ -5,7 +5,7 @@ use dotenv::dotenv;
 use gauge_state::{
     EpochGauge, EpochGaugeVote, EpochGaugeVoter, Gauge, GaugeVote, GaugeVoter, Gaugemeister,
 };
-use locked_voter_state::{Escrow, Locker};
+use saber_locker::{Escrow, Locker};
 use solana_sdk::signature::{Keypair, Signer};
 use solana_sdk::signer::keypair::read_keypair_file;
 use std::{env, fs};
@@ -114,7 +114,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
             gaugemeister_data.locker.to_bytes().as_ref(),
             payer.pubkey().to_bytes().as_ref(),
         ],
-        &locked_voter_state::id(),
+        &saber_locker::id(),
     );
     println!("Escrow address is {}", escrow_address);
     let (gauge_voter_address, _) = Pubkey::find_program_address(
@@ -198,7 +198,7 @@ fn create_user_votes(
             gaugemeister_data.locker.to_bytes().as_ref(),
             payer.pubkey().to_bytes().as_ref(),
         ],
-        &locked_voter_state::id(),
+        &saber_locker::id(),
     );
     let (vote_delegate_address, _) = Pubkey::find_program_address(
         &[b"vote-delegate", config.to_bytes().as_ref()],

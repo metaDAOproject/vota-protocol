@@ -1,13 +1,12 @@
 use crate::actions::rpc_retry::retry_rpc;
 use crate::{GAUGEMEISTER, LOCKER};
-use retry::delay::{Exponential, Fixed};
 use solana_client::rpc_client::RpcClient;
 use solana_program::pubkey::Pubkey;
 
 pub fn get_escrow_address_for_owner(owner: &Pubkey) -> Pubkey {
     Pubkey::find_program_address(
         &[b"Escrow".as_ref(), LOCKER.as_ref(), owner.as_ref()],
-        &locked_voter_state::id(),
+        &saber_locker::id(),
     )
     .0
 }

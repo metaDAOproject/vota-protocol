@@ -69,8 +69,13 @@ filename = "./test-accounts/epoch-gauge-voter.json"
 address = "HmeFZh5TPAM1iuuX8YPkKaAjy9P5vi4f1otP3hMWYhos"
 filename = "./test-accounts/epoch-gauge-vote.json"
 
-[[test.validator.clone]]
+[[test.validator.account]]
 address = "GaugesLJrnVjNNWLReiw3Q7xQhycSBRgeHGTMDUaX231"
+filename = "./gauge_program.json"
+
+[[test.validator.account]]
+address = "4RV2XFNPa5egEiMLru8814ZqxhZT8eeqFrTxdqxyTaZm"
+filename = "./gauge_program_data.json"
 
 [[test.validator.clone]]
 address = "LocktDzaV1W2Bm9DeZeiyz4J9zs4fRqNiYqQyracRXw"

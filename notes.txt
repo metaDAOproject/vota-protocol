@@ -4,3 +4,15 @@ MDS-USDC 141574808964509
 SOL-bSOL 144280222944722
 UXD-USDC 215424247757
 USDT-USDC 721401114723
+
+
+Extract a test escrow
+Move new escrow into account gen
+get anchor tests to pass
+switch to using saber-locker delegate in tests
+get example.sh to pass.
+
+How will I work on the CLI
+
+
+Questions about how the transfer will work

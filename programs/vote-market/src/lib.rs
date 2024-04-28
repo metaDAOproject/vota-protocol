@@ -7,7 +7,6 @@ use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use gauge_state::GaugeProgram;
-use locked_voter_state::LockedVoterProgram;
 
 declare_id!("VotAjwzAEF9ZLNAYEB1ivXt51911EqYGVu9NeaEKRyy");
 
@@ -574,8 +573,8 @@ pub struct ClaimVotePayment<'info> {
         gaugemeister.locker.as_ref(),
         escrow.owner.as_ref()],
     bump,
-    seeds::program = locked_voter_state::id())]
-    pub escrow: Account<'info, locked_voter_state::Escrow>,
+    seeds::program = saber_locker::id())]
+    pub escrow: Account<'info, saber_locker::Escrow>,
     #[account(owner = gauge_program.key(),
     constraint = gaugemeister.locker == escrow.locker)]
     pub gaugemeister: Account<'info, gauge_state::Gaugemeister>,
@@ -613,7 +612,7 @@ pub struct ClaimVotePayment<'info> {
     // Seeds checked in instruction body
     pub epoch_gauge_vote: Account<'info, gauge_state::EpochGaugeVote>,
     pub gauge_program: Program<'info, GaugeProgram>,
-    pub locked_voter_program: Program<'info, LockedVoterProgram>,
+    pub locked_voter_program: Program<'info, saber_locker::SaberLockerProgram>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
@@ -648,8 +647,8 @@ pub struct Vote<'info> {
     gaugemeister.locker.as_ref(),
     escrow.owner.as_ref()],
     bump,
-    seeds::program = locked_voter_state::id())]
-    pub escrow: Account<'info, locked_voter_state::Escrow>,
+    seeds::program = saber_locker::id())]
+    pub escrow: Account<'info, saber_locker::Escrow>,
     #[account(mut, seeds =
     [b"vote-delegate", config.key().as_ref()],
     bump)]

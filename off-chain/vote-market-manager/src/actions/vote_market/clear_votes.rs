@@ -25,7 +25,7 @@ pub(crate) fn clear_votes(
             LOCKER.to_bytes().as_ref(),
             owner.to_bytes().as_ref(),
         ],
-        &locked_voter_state::id(),
+        &saber_locker::id(),
     );
     let gauge_voter = get_gauge_voter(&escrow);
     let gauge_votes = gauges

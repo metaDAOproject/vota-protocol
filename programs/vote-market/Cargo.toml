@@ -18,7 +18,6 @@ default = []
 [dependencies]
 anchor-lang = { version = "0.29.0", features = ["init-if-needed"]}
 anchor-spl = "0.29.0"
-ahash = "=0.8.4"
 gauge-state = { path = "../../external-state/gauge-state" }
-locked-voter-state = { path = "../../external-state/locked-voter-state" }
 u128 = "0.1.0"
+saber-locker = { path = "../../../saber-locker/programs/saber-locker", features = ["no-entrypoint"] }

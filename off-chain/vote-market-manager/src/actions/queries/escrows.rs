@@ -1,6 +1,6 @@
 use crate::ANCHOR_DISCRIMINATOR_SIZE;
 use anchor_lang::{AccountDeserialize, AnchorDeserialize};
-use locked_voter_state::Escrow;
+use saber_locker::Escrow;
 use solana_account_decoder::UiAccountEncoding;
 use solana_client::rpc_client::RpcClient;
 use solana_client::rpc_config::{RpcAccountInfoConfig, RpcProgramAccountsConfig};
@@ -15,7 +15,7 @@ use crate::utils::get_multiple_accounts;
 pub fn get_delegated_escrows(client: &RpcClient, delegate: &Pubkey) -> Vec<(Pubkey, Escrow)> {
     let accounts = client
         .get_program_accounts_with_config(
-            &locked_voter_state::id(),
+            &saber_locker::id(),
             RpcProgramAccountsConfig {
                 filters: Some(vec![
                     DataSize((ANCHOR_DISCRIMINATOR_SIZE + Escrow::LEN) as u64),

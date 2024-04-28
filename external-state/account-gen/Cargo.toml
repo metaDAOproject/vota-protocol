@@ -11,11 +11,10 @@ serde_json = { version = "1.0.111", features = [] }
 anchor-lang = "0.29.0"
 solana-sdk = "1.17.15"
 gauge-state = { path = "../gauge-state" }
-locked-voter-state = { path = "../locked-voter-state" }
+saber-locker = { path = "../../../saber-locker/programs/saber-locker" }
 vote-market = { path = "../../programs/vote-market" }
 base64 = "0.21.6"
 dotenv = "0.15.0"
-ahash = "=0.8.4"
 thiserror = "1.0.56"
 toml = "0.8.8"
 common = { path = "../common" }
