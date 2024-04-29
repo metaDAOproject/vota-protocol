@@ -4,7 +4,7 @@ export const GAUGE_PROGRAM_ID = new web3.PublicKey(
   "GaugesLJrnVjNNWLReiw3Q7xQhycSBRgeHGTMDUaX231"
 );
 export const LOCKED_VOTER_PROGRAM_ID = new web3.PublicKey(
-  "LocktDzaV1W2Bm9DeZeiyz4J9zs4fRqNiYqQyracRXw"
+  "8KPY9nyQu8bJ53tsXo9CKmbvaDSKjcqGhF771kjomixp"
 );
 export const GAUGE = new web3.PublicKey(
   "3xC4eW6xhW3Gpb4T5sCKFe73ay2K4aUUfxL57XFdguJx"

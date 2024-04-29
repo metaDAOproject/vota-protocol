@@ -16,3 +16,6 @@ How will I work on the CLI
 
 
 Questions about how the transfer will work
+
+
+Create fixed account uploads to load needed programs

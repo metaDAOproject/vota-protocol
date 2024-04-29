@@ -1,3 +1,4 @@
+use solana_sdk::pubkey;
 use solana_sdk::pubkey::Pubkey;
 use toml::{Table, Value};
 
@@ -6,7 +7,7 @@ pub struct AddressInfo {
     pub pubkey: Pubkey,
 }
 
-pub fn update_anchor_toml(table: &mut Value, update_info: Vec<AddressInfo>) {
+pub fn update_anchor_toml(table: &mut Value, update_info: &mut Vec<AddressInfo>) {
     let addresses = table
         .get_next_table("test")
         .unwrap()

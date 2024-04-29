@@ -34,48 +34,56 @@ address = "2AtXU77mwCTgEEnpAvz9uFUWBNmt7f4rCCGQVKwQBGpw"
 filename = "./test-accounts/epoch-gauge.json"
 
 [[test.validator.account]]
-address = "C8CMP5RkRQneDtYruTNWbRXihorfXpYh7JdEXjia1DJL"
+address = "6pNteYRSaiAFzFDm8QUhrrrtTVnFBTb1DuXqNS21xXD3"
 filename = "./test-accounts/escrow.json"
 
 [[test.validator.account]]
-address = "5mMpr6k2AzWVcAPjoJTgfQfbe9HCHTjTUPJm8TxragF"
+address = "DjwouQT131wP1z6YhuRzNZ4DCDvBVXwzF7youRpgzB2D"
 filename = "./test-accounts/gauge-voter.json"
 
 [[test.validator.account]]
-address = "E3NpYfVxUJbUH375vC6MpZE54NZrqc79hvE4U3pUgvou"
+address = "BwqqrXwRKwvSNdhuWGMGg39C71qJBNhnTPzeqXAKi5jC"
 filename = "./test-accounts/gauge-vote.json"
 
 [[test.validator.account]]
-address = "FXLMDGpLirbot2DY9JCmeKZtvu1TFaWSszE1Bd1kQAn"
+address = "Fn5P9KHHNSVWq3LDxSeKxTPt2huM3HfV8Za42PYSaApq"
 filename = "./test-accounts/escrow-no-vote.json"
 
 [[test.validator.account]]
-address = "2VshMQTveehVLKvE6mMtxazzz2geq9DKtMJLTqFf79YN"
+address = "AnoiRjkQfifC98RxdNRrCSvhrbQaqQgp8CG9k6hcUR9Y"
 filename = "./test-accounts/gauge-voter-no-vote.json"
 
 [[test.validator.account]]
-address = "3KQwaioayMgkUkrKsDCkQUS7cKrKkqVFko5EhDqhjZjt"
+address = "GNtF2YjawJJVgxLvTEgfRFj2MX6PjnVTgs3a2JdUQkSg"
 filename = "./test-accounts/gauge-vote-no-vote.json"
 
 [[test.validator.account]]
-address = "8erad8kmNrLJDJPe9UkmTHomrMV3EW48sjGeECyVjbYX"
+address = "89vsS5gQbaAqJsCEoJAHw31RWDquG97FttnQ4qqqUA37"
 filename = "./test-accounts/locker.json"
 
 [[test.validator.account]]
-address = "8J3ePFUwdqJLWN1YPN4fyueKjtmR8nVG7VYhKXXzAzGp"
+address = "4JNBYKYHTLEmZMZ8VHJsbnbH7h72pNN2xRfbns4togQJ"
 filename = "./test-accounts/epoch-gauge-voter.json"
 
 [[test.validator.account]]
-address = "HmeFZh5TPAM1iuuX8YPkKaAjy9P5vi4f1otP3hMWYhos"
+address = "8gF5s9K79yJyCFn5k7C3F7CdEEvrZDJCVxpfkDMxAryh"
 filename = "./test-accounts/epoch-gauge-vote.json"
 
 [[test.validator.account]]
 address = "GaugesLJrnVjNNWLReiw3Q7xQhycSBRgeHGTMDUaX231"
-filename = "./gauge_program.json"
+filename = "./test-accounts/gauge-program.json"
 
 [[test.validator.account]]
 address = "4RV2XFNPa5egEiMLru8814ZqxhZT8eeqFrTxdqxyTaZm"
-filename = "./gauge_program_data.json"
+filename = "./test-accounts/gauge-program-data.json"
+
+[[test.validator.account]]
+address = "8KPY9nyQu8bJ53tsXo9CKmbvaDSKjcqGhF771kjomixp"
+filename = "./test-accounts/saber-locker-program.json"
+
+[[test.validator.account]]
+address = "EUupCTLfEdtgLMuhRF6iL7V3wAjwF2tpvDuDckggeQxT"
+filename = "./test-accounts/saber-locker-program-data.json"
 
 [[test.validator.clone]]
 address = "LocktDzaV1W2Bm9DeZeiyz4J9zs4fRqNiYqQyracRXw"

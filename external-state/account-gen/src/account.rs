@@ -76,6 +76,20 @@ impl Root {
     }
 }
 
+pub fn copy_account(account_name: &str, accounts_to_update: &mut Vec<AddressInfo>) -> Result<(), Box<dyn std::error::Error>> {
+    let account_file = get_account_file(account_name)?;
+    let account = Root::from_string(&account_file)?;
+    accounts_to_update.push(AddressInfo {
+        name: account_name.to_string(),
+        pubkey: account.pubkey,
+    });
+    fs::copy(
+        format!("./external-state/account-gen/test-accounts/{}.json", account_name),
+        format!("./test-accounts/{}.json", account_name),
+    )?;
+    Ok(())
+}
+
 pub fn process_account<T: AccountDeserialize + AccountSerialize, F>(
     account_name: &str,
     new_address: Option<Pubkey>,

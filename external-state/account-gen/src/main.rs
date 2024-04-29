@@ -1,4 +1,4 @@
-use crate::account::process_account;
+use crate::account::{copy_account, process_account};
 use crate::toml_update::{update_anchor_toml, AddressInfo};
 use anchor_lang::prelude::*;
 use dotenv::dotenv;
@@ -163,9 +163,14 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         "",
     )?;
 
+    copy_account("gauge-program", &mut accounts_to_update)?;
+    copy_account("gauge-program-data", &mut accounts_to_update)?;
+    copy_account("saber-locker-program", &mut accounts_to_update)?;
+    copy_account("saber-locker-program-data", &mut accounts_to_update)?;
+
     let anchor_toml_file = fs::read_to_string("./Anchor.toml").unwrap();
     let mut anchor_toml = Value::Table(anchor_toml_file.parse::<Table>().unwrap());
-    update_anchor_toml(&mut anchor_toml, accounts_to_update);
+    update_anchor_toml(&mut anchor_toml, &mut accounts_to_update);
     fs::copy("./Anchor.toml", "./Anchor.toml.bak")?;
     fs::write("./Anchor.toml", toml::to_string(&anchor_toml).unwrap())?;
     Ok(())
