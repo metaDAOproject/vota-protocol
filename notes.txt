@@ -1,6 +1,2 @@
-epoch 105 potential votes
-
-MDS-USDC 141574808964509
-SOL-bSOL 144280222944722
-UXD-USDC 215424247757
-USDT-USDC 721401114723
+Will use webhook to trigger votes at beginning of epoch.
+Should push vote buy phase back one epoch in the program.
